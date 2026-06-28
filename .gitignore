@@ -1,0 +1,7 @@
+# The signer source is checked out here by scrape-and-sign.yml at CI time only;
+# it must never be committed back into the manifest repo.
+/app-src/
+
+# Local Python tooling cruft (scripts/gen-manifest.py).
+__pycache__/
+*.pyc

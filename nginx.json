@@ -1,0 +1,6 @@
+{
+  "name": "nginx",
+  "display_name": "Nginx",
+  "kind": "service",
+  "releases": []
+}

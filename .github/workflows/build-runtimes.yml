@@ -1,0 +1,58 @@
+# Scaffold — the real bundle build pipeline is future work
+# (see docs/runtimes-and-services.md#php-extensions).
+#
+# This workflow will eventually build the components that have no usable
+# per-platform upstream binary and must be produced reproducibly by DevXDK:
+#   - PHP, as a version-matched bundle with its baseline extensions (built from
+#     source on Linux/macOS; the Windows build repackaged with PECL DLLs + a
+#     default php.ini).
+#   - Python, where no upstream binary exists for a target (e.g. Linux).
+#
+# Eventual flow per (component, os):
+#   1. Build the version-matched bundle (PHP locked to its minor's extension set).
+#   2. Compute the SHA256 of each produced archive.
+#   3. Upload the archives to a GitHub Release in this repo.
+#   4. A follow-up step adds the release entry (version, per-platform url + sha256
+#      + size_bytes) to the matching component JSON, then triggers
+#      scrape-and-sign.yml so every JSON is re-signed with minisign.
+#
+# Today every step is a placeholder echo so the matrix shape and intent are
+# reviewable; nothing is built or published yet.
+
+name: build-runtimes
+
+on:
+  workflow_dispatch:
+
+# Least privilege: the placeholder steps read only. The future upload-to-Release
+# step will escalate to contents: write on its own job when implemented (M-13).
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [php, python]
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Build bundle (TODO)
+        run: |
+          echo "TODO build ${{ matrix.component }} bundle for ${{ matrix.os }}"
+
+      - name: Compute SHA256 (TODO)
+        run: |
+          echo "TODO compute SHA256 for ${{ matrix.component }} on ${{ matrix.os }}"
+
+      - name: Upload to GitHub Releases (TODO)
+        run: |
+          echo "TODO upload ${{ matrix.component }} bundle to a GitHub Release"
+
+      - name: Update component JSON + trigger re-sign (TODO)
+        run: |
+          echo "TODO add release entry to ${{ matrix.component }}.json and trigger scrape-and-sign"

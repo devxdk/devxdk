@@ -1,0 +1,6 @@
+{
+  "name": "mariadb",
+  "display_name": "MariaDB",
+  "kind": "service",
+  "releases": []
+}

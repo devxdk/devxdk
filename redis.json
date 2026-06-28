@@ -1,0 +1,6 @@
+{
+  "name": "redis",
+  "display_name": "Redis",
+  "kind": "service",
+  "releases": []
+}

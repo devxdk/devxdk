@@ -1,0 +1,94 @@
+# Refresh upstream-sourced manifests (node.json, go.json) and sign every
+# COMPONENT manifest with DevXDK's own signer (cmd/devxdk-mansign).
+#
+# devxdk-mansign writes the exact detached-signature format DevXDK verifies in
+# its internal/minisign package — byte-for-byte identical to the reference
+# minisign binary — so the whole repo signs with ONE tool and ONE key format.
+# The key is the simple unencrypted devxdk-mansign key (base64 keyID||seed); there
+# is no separate key passphrase (unlike the reference minisign CLI).
+#
+# Only component manifests are signed. A stray root JSON (a config or lockfile)
+# must never receive a trusted signature, so each file is shape-checked first.
+#
+# The base64 PUBLIC key embedded in DevXDK clients (internal/trust) is the
+# manifest trust root. The SECRET half never leaves this repo's Actions secrets:
+#   MINISIGN_SECRET_KEY  contents of the devxdk-mansign manifest key file
+# Building the signer pulls cmd/devxdk-mansign from the private app repo, which
+# needs a read-only token (the public repo's GITHUB_TOKEN can't reach it):
+#   DEVXDK_SIGNER_TOKEN  PAT/deploy token with read access to devxdk/devxdkcode
+
+name: scrape-and-sign
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  scrape-and-sign:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Checkout signer source (private app repo)
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          repository: devxdk/devxdkcode
+          token: ${{ secrets.DEVXDK_SIGNER_TOKEN }}
+          path: app-src
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.x"
+
+      - name: Refresh node.json / go.json from upstream
+        run: python3 scripts/gen-manifest.py
+
+      - name: Build the signer (cmd/devxdk-mansign)
+        working-directory: app-src
+        run: go build -trimpath -o "$RUNNER_TEMP/devxdk-mansign" ./cmd/devxdk-mansign
+
+      - name: Sign every component manifest
+        env:
+          MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
+        run: |
+          set -euo pipefail
+          keyfile="$(mktemp)"
+          trap 'rm -f "$keyfile"' EXIT
+          printf '%s' "$MINISIGN_SECRET_KEY" > "$keyfile"
+          # Sign only component manifests: one has a top-level "kind" AND "releases"
+          # (verified against the committed *.json). A stray root JSON is skipped so
+          # it never gets a trusted signature.
+          to_sign=()
+          for f in *.json; do
+            if python3 -c "import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if isinstance(d, dict) and 'kind' in d and 'releases' in d else 1)" "$f"; then
+              to_sign+=("$f")
+            else
+              echo "skip (not a component manifest): $f"
+            fi
+          done
+          if [ "${#to_sign[@]}" -eq 0 ]; then
+            echo "no component manifests found to sign" >&2
+            exit 1
+          fi
+          "$RUNNER_TEMP/devxdk-mansign" -key "$keyfile" "${to_sign[@]}"
+
+      - name: Commit and push refreshed + signed manifests
+        run: |
+          set -euo pipefail
+          git config user.name "devxdk-bot"
+          git config user.email "bot@devxdk.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No manifest changes to commit."
+          else
+            git commit -m "chore: refresh and re-sign manifests"
+            git push
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

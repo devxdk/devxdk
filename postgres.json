@@ -1,0 +1,6 @@
+{
+  "name": "postgres",
+  "display_name": "PostgreSQL",
+  "kind": "service",
+  "releases": []
+}

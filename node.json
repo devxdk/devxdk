@@ -1,0 +1,34 @@
+{
+  "name": "node",
+  "display_name": "Node.js",
+  "kind": "runtime",
+  "releases": [
+    {
+      "version": "24.17.0",
+      "channel": "lts",
+      "released_at": "2026-06-17",
+      "platforms": {
+        "windows/amd64": {
+          "url": "https://nodejs.org/dist/v24.17.0/node-v24.17.0-win-x64.zip",
+          "sha256": "f2aa33b35b75aca5f3f7b85675a6f6423201053e9381911e64961f3bda2528ab",
+          "size_bytes": 36948900
+        },
+        "linux/amd64": {
+          "url": "https://nodejs.org/dist/v24.17.0/node-v24.17.0-linux-x64.tar.gz",
+          "sha256": "e0472427aa791ad80bdc426ff7cc73cdd28ed0f616d1ff9689a23a7f47f1265f",
+          "size_bytes": 57017543
+        },
+        "darwin/amd64": {
+          "url": "https://nodejs.org/dist/v24.17.0/node-v24.17.0-darwin-x64.tar.gz",
+          "sha256": "80da552fe037290cb130e9dea590f5eeeb7aa450636f0c89ab41415511c1ec27",
+          "size_bytes": 53067264
+        },
+        "darwin/arm64": {
+          "url": "https://nodejs.org/dist/v24.17.0/node-v24.17.0-darwin-arm64.tar.gz",
+          "sha256": "4fc3266a3702eebc39cc37661cf4eeceeade307e242ab64e4d7ce7949197e11f",
+          "size_bytes": 51886390
+        }
+      }
+    }
+  ]
+}

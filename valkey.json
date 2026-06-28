@@ -1,0 +1,6 @@
+{
+  "name": "valkey",
+  "display_name": "Valkey",
+  "kind": "service",
+  "releases": []
+}

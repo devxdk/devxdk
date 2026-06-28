@@ -1,0 +1,6 @@
+# Signed artifacts and their detached signatures must reach clients byte-for-byte
+# identical to what was signed. Disable all git line-ending normalization on them
+# (and CNAME) so signature verification can never break on a CRLF round-trip.
+*.json    -text
+*.minisig -text
+CNAME     -text
