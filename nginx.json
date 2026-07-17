@@ -2,5 +2,18 @@
   "name": "nginx",
   "display_name": "Nginx",
   "kind": "service",
-  "releases": []
+  "releases": [
+    {
+      "version": "1.30.4",
+      "channel": "stable",
+      "released_at": "",
+      "platforms": {
+        "windows/amd64": {
+          "url": "https://nginx.org/download/nginx-1.30.4.zip",
+          "sha256": "159294214d403f34f0bb4ae598801ab1f6a0d8c8da707f8f08748e294a222a01",
+          "size_bytes": 2774788
+        }
+      }
+    }
+  ]
 }

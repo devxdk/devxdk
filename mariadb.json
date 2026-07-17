@@ -2,5 +2,23 @@
   "name": "mariadb",
   "display_name": "MariaDB",
   "kind": "service",
-  "releases": []
+  "releases": [
+    {
+      "version": "11.8.8",
+      "channel": "stable",
+      "released_at": "",
+      "platforms": {
+        "windows/amd64": {
+          "url": "https://archive.mariadb.org/mariadb-11.8.8/winx64-packages/mariadb-11.8.8-winx64.zip",
+          "sha256": "20871a79964e1819ddaad9247b676b9d08c958c345e5e3d4748242b2b2965ff1",
+          "size_bytes": 96738552
+        },
+        "linux/amd64": {
+          "url": "https://archive.mariadb.org/mariadb-11.8.8/bintar-linux-systemd-x86_64/mariadb-11.8.8-linux-systemd-x86_64.tar.gz",
+          "sha256": "fbd4e8d05946c974b0560c94f01ce4c687291b6528074c2e001fb8f35c0d2762",
+          "size_bytes": 429017672
+        }
+      }
+    }
+  ]
 }

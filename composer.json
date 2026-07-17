@@ -2,5 +2,18 @@
   "name": "composer",
   "display_name": "Composer",
   "kind": "runtime",
-  "releases": []
+  "releases": [
+    {
+      "version": "2.10.2",
+      "channel": "stable",
+      "released_at": "",
+      "platforms": {
+        "any": {
+          "url": "https://getcomposer.org/download/2.10.2/composer.phar",
+          "sha256": "5ee7125f8a30a34d246cefdc0bc85b8a783b28f2aec968994118512350d28027",
+          "size_bytes": 3639279
+        }
+      }
+    }
+  ]
 }
