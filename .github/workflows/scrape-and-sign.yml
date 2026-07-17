@@ -27,12 +27,25 @@ on:
 permissions:
   contents: write
 
+# One run at a time: a schedule firing beside a manual dispatch would race the
+# final push (non-fast-forward rejection for the loser).
+concurrency:
+  group: scrape-and-sign
+  cancel-in-progress: false
+
 jobs:
   scrape-and-sign:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Sync to the live main tip
+        # Checkout pins github.sha, which on a RE-RUN of an old run is days
+        # stale — regenerating on it would push-reject against the real tip.
+        run: |
+          git fetch origin main
+          git reset --hard FETCH_HEAD
 
       - name: Checkout signer source (private app repo)
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -86,9 +99,17 @@ jobs:
           git add -A
           if git diff --cached --quiet; then
             echo "No manifest changes to commit."
-          else
-            git commit -m "chore: refresh and re-sign manifests"
-            git push
+            exit 0
           fi
+          git commit -m "chore: refresh and re-sign manifests"
+          # Retry a rejected push by replaying onto the moved tip: an
+          # identical concurrent refresh rebases to an empty commit and the
+          # push no-ops; a genuine conflict fails loudly for the next
+          # scheduled run to converge.
+          for _ in 1 2 3; do
+            if git push; then exit 0; fi
+            git pull --rebase origin main
+          done
+          git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
