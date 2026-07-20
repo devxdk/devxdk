@@ -26,6 +26,7 @@ from devxdk_manifest.sources import go, node  # noqa: E402
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 STATE_FILE = REPO_ROOT / "state" / "scrape-versions.json"
+LEDGER_FILE = REPO_ROOT / "state" / "asset-revisions.json"
 
 # Component name -> builder. Only scrape sources that reproduce their manifest
 # byte-for-byte live here; the rest arrive with Phase 2.
@@ -43,6 +44,9 @@ def main(argv=None):
     cfg = config.load()
     fetcher = fetch.Fetcher()
     state = merge.ScrapeState.load(STATE_FILE)
+    # Managed (built/adopted) platforms live in the ledger; pass it so recompose
+    # preserves them when a scrape line regenerates.
+    ledger = merge.LedgerState.load(LEDGER_FILE)
 
     # Only components declared scrape in the config AND with an implemented
     # source are regenerated; this keeps the config the single source of truth.
@@ -54,7 +58,7 @@ def main(argv=None):
             candidate = SOURCES[name](fetcher)
             # The monotonic guard admits/evicts against committed state, rejecting
             # a feed rollback or a silent republish of a released version.
-            _state, manifest, actions = merge.scrape_reconcile(state, cfg, candidate)
+            _state, manifest, actions = merge.scrape_reconcile(state, cfg, candidate, ledger)
         except Exception as e:  # noqa: BLE001 - report and continue other components
             sys.stderr.write(f"ERROR scraping {name}: {e}\n")
             rc = 1

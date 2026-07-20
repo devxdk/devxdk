@@ -470,19 +470,33 @@ def manifest_tuples(cfg, manifest: dict):
     return out
 
 
-def recompose(name: str, display_name: str, kind: str, cfg, state: ScrapeState) -> dict:
-    """Rebuild a component manifest from the current scrape state — releases
-    grouped across platforms by version, newest-first, canonical field order."""
-    # version -> {"channel","released_at","platforms": {pkey: asset}}
+def _merge_platform(by_version, name, ver, channel, released_at, pkey, asset):
+    entry = by_version.setdefault(ver, {"channel": channel, "released_at": released_at, "platforms": {}})
+    if entry["channel"] != channel or entry["released_at"] != released_at:
+        raise GuardError(f"{name} {ver}: channel/released_at differ across platforms")
+    entry["platforms"][pkey] = asset
+
+
+def recompose(name: str, display_name: str, kind: str, cfg, state: ScrapeState, ledger=None) -> dict:
+    """Rebuild a component manifest from BOTH sources of truth: the scrape state
+    (scrape platforms) and the ordering ledger (built/adopted platforms). This is
+    why the scraper "never touches" managed entries — it rebuilds the whole
+    manifest from state, and a managed platform's tuple lives in the ledger, so
+    regenerating a scrape line preserves it. Releases group across platforms by
+    version, newest-first, with canonical field/platform order."""
     by_version = {}
-    for cname, lid, pkey, rec in state.iter_records():
+    for cname, _lid, pkey, rec in state.iter_records():
         if cname != name:
             continue
         for t in rec.tuples:
-            entry = by_version.setdefault(t.version, {"channel": t.channel, "released_at": t.released_at, "platforms": {}})
-            if entry["channel"] != t.channel or entry["released_at"] != t.released_at:
-                raise GuardError(f"{name} {t.version}: channel/released_at differ across platforms")
-            entry["platforms"][pkey] = schema.asset(t.url, t.sha256, t.size_bytes)
+            _merge_platform(by_version, name, t.version, t.channel, t.released_at, pkey,
+                            schema.asset(t.url, t.sha256, t.size_bytes))
+    if ledger is not None:
+        for cname, ver, pkey, lr in ledger.iter_records():
+            if cname != name or lr.status == "tombstone" or lr.revoked:
+                continue  # tombstoned/revoked entries are not in the manifest
+            _merge_platform(by_version, name, ver, lr.channel, lr.released_at, pkey,
+                            schema.asset(lr.url, lr.sha256, lr.size_bytes))
 
     releases = []
     import functools
@@ -553,15 +567,16 @@ def check_scrape_parity(cfg, state: ScrapeState, repo_root) -> list:
     return errors
 
 
-def scrape_reconcile(state: ScrapeState, cfg, candidate: dict):
+def scrape_reconcile(state: ScrapeState, cfg, candidate: dict, ledger=None):
     """Reconcile a freshly-scraped candidate manifest against the state.
 
-    Returns (new_state, recomposed_manifest, actions). Mutates a copy of state;
-    the caller writes both the manifest and the updated state atomically."""
+    Returns (new_state, recomposed_manifest, actions). Mutates state in place;
+    the caller writes both the manifest and the updated state atomically. The
+    ledger is threaded through so a mixed component (e.g. nginx: scraped Windows +
+    built Unix) keeps its managed platforms when a scrape line regenerates."""
     name = candidate["name"]
     tuples_by_key = manifest_tuples(cfg, candidate)
     all_actions = []
-    # Work on the live state (records are mutated in place via put()).
     for (lid, pkey), cands in tuples_by_key.items():
         rec = state.get(name, lid, pkey)
         if rec is None:
@@ -570,5 +585,5 @@ def scrape_reconcile(state: ScrapeState, cfg, candidate: dict):
         new_rec, actions = reconcile_key(rec, cands, retain)
         state.put(name, lid, pkey, new_rec)
         all_actions.extend((name, lid, pkey, a) for a in actions)
-    manifest = recompose(name, candidate["display_name"], candidate["kind"], cfg, state)
+    manifest = recompose(name, candidate["display_name"], candidate["kind"], cfg, state, ledger)
     return state, manifest, all_actions
