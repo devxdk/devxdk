@@ -1,0 +1,6 @@
+# The reviewed devxdk/devxdkcode commit scrape-and-sign checks out to build the
+# signer (cmd/devxdk-mansign) and to read internal/download/allowlist.go for the
+# manifest URL-host validator. Pinning it stops any app-repo writer from reaching
+# the MANIFEST trust root by altering the signer at an unpinned branch tip.
+# Bump via a normal reviewed PR (mansign/allowlist changes are rare by design).
+c37a8f5cce1d45ebd3670ca3df16aedbb0be066e

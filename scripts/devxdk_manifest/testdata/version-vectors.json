@@ -1,0 +1,40 @@
+{
+  "_comment": "CANONICAL shared Go<->Python version test vectors for the product natural-order comparator and the lenient parser. VENDORED byte-identically to scripts/devxdk_manifest/testdata/version-vectors.json in the public manifest repo (seeded from this copy in Phase 0). A drifted copy fails the fail-closed anonymous parity gate once armed (post-public-flip). Edit the canonical and re-vendor; do not edit one side alone.",
+  "compare": [
+    {"a": "1.0.0", "b": "1.0.0", "cmp": 0},
+    {"a": "1.0.1", "b": "1.0.0", "cmp": 1},
+    {"a": "1.0.0", "b": "1.0.1", "cmp": -1},
+    {"a": "2.0.0", "b": "1.9.9", "cmp": 1},
+    {"a": "1.2.0", "b": "1.1.9", "cmp": 1},
+    {"a": "11.8.8", "b": "11.8.10", "cmp": -1},
+    {"a": "18.4", "b": "18.3", "cmp": 1},
+    {"a": "1.0.0", "b": "1.0.0-rc1", "cmp": 1},
+    {"a": "1.0.0-rc1", "b": "1.0.0", "cmp": -1},
+    {"a": "1.0.0-rc.9", "b": "1.0.0-rc.10", "cmp": -1},
+    {"a": "1.0.0-rc.10", "b": "1.0.0-rc.9", "cmp": 1},
+    {"a": "8.6.0RC9", "b": "8.6.0RC10", "cmp": -1},
+    {"a": "8.6.0RC10", "b": "8.6.0RC9", "cmp": 1},
+    {"a": "9.0.0-RC1", "b": "9.0.0-rc1", "cmp": 0},
+    {"a": "1.0.0-rc.1", "b": "1.0.0-rc.2", "cmp": -1},
+    {"a": "1.0.0-alpha", "b": "1.0.0-beta", "cmp": -1},
+    {"a": "1.0.0-rc.1", "b": "1.0.0-rc.1.1", "cmp": -1},
+    {"a": "1.0.0-rc.02", "b": "1.0.0-rc.2", "cmp": 0}
+  ],
+  "parse": [
+    {"in": "8.5.6", "ok": true, "major": 8, "minor": 5, "patch": 6, "prerelease": ""},
+    {"in": "v1.2.3", "ok": true, "major": 1, "minor": 2, "patch": 3, "prerelease": ""},
+    {"in": "go1.26.3", "ok": true, "major": 1, "minor": 26, "patch": 3, "prerelease": ""},
+    {"in": "1.2", "ok": true, "major": 1, "minor": 2, "patch": 0, "prerelease": ""},
+    {"in": "1", "ok": true, "major": 1, "minor": 0, "patch": 0, "prerelease": ""},
+    {"in": "9.0.0-rc1", "ok": true, "major": 9, "minor": 0, "patch": 0, "prerelease": "rc1"},
+    {"in": "8.6.0RC9", "ok": true, "major": 8, "minor": 6, "patch": 0, "prerelease": "RC9"},
+    {"in": "1.2.3-rc.1+build", "ok": true, "major": 1, "minor": 2, "patch": 3, "prerelease": "rc.1"},
+    {"in": "1.2.3+build.5", "ok": true, "major": 1, "minor": 2, "patch": 3, "prerelease": ""},
+    {"in": "01.02.03", "ok": true, "major": 1, "minor": 2, "patch": 3, "prerelease": ""},
+    {"in": "", "ok": false},
+    {"in": "8a.5.6", "ok": false},
+    {"in": "1.2.3.4", "ok": false},
+    {"in": "banana", "ok": false},
+    {"in": "1..2", "ok": false}
+  ]
+}
