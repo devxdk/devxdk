@@ -275,9 +275,13 @@ jobs:
       - name: Reconcile Releases and emit the verified-legs handoff
         id: publish
         run: |
-          # Phase 1/3: download each success leg by immutable id, verify the
-          # member-digest manifest, reconcile the component Release assets
-          # (source-before-object-code for copyleft), and upload finalizable-metas.
+          # Phase 1/3: for each success leg, download BY its immutable id
+          # (needs.leg-<id>.outputs.artifact_id) into its own fresh directory,
+          # run `python3 scripts/handoff.py verify <dir> --expect <manifest_sha256>`
+          # (the leg's other job output) to authenticate every member, then
+          # reconcile the component Release assets (source-before-object-code for
+          # copyleft) and upload finalizable-metas. The leg-side handoff is wired;
+          # this body lands with the recipes that produce real bundles.
           echo "publish is implemented with the Phase 1/3 recipes" >&2
           echo "finalizable_artifact_id=" >> "$GITHUB_OUTPUT"
 

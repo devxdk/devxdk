@@ -33,6 +33,14 @@ permissions:
 jobs:
   leg:
     runs-on: ${{ inputs.runner }}
+    # publish consumes this leg by its IMMUTABLE artifact id, never by name (an
+    # artifact name is substitutable — overwrite mints a fresh id, and the
+    # run-scoped token would let a sibling leg rewrite a same-named artifact). The
+    # member-digest manifest's sha256 crosses on the orchestration plane a sibling
+    # cannot forge, so publish can verify every downloaded byte before it Releases.
+    outputs:
+      artifact_id: ${{ steps.upload.outputs.artifact-id }}
+      manifest_sha256: ${{ steps.handoff.outputs.manifest_sha256 }}
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -44,7 +52,13 @@ jobs:
         env:
           LEG_ITEMS: ${{ inputs.items }}
         run: bash recipes/leg.sh "${{ inputs.leg }}"
+      - name: Write the member-digest manifest
+        id: handoff
+        run: |
+          sha="$(python3 scripts/handoff.py write "build/${{ inputs.leg }}")"
+          echo "manifest_sha256=${sha}" >> "$GITHUB_OUTPUT"
       - name: Upload the leg artifact
+        id: upload
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ inputs.leg }}-build
