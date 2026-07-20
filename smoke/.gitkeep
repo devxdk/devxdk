@@ -1,0 +1,3 @@
+# On-OS smoke helpers the recipes source (php -m diff + php --ini; redis/valkey
+# PING cycle with the app's exact invocation; nginx -t; initdb cycle; python pip
+# invocation). Land with the Phase-1/3 recipes.

@@ -1,0 +1,39 @@
+; Default php.ini for the DevXDK Windows PHP bundle (php-windows-repack).
+; The bundle is flat: php.exe / php-cgi.exe / ext/ / php.ini at the archive root.
+; extension_dir is relative so it resolves under whatever version dir the bundle
+; is extracted into; the php/composer shims pin PHPRC to this file and the
+; php-fpm/php-cgi service launches with -c <version-dir>/php.ini.
+
+extension_dir = "ext"
+expose_php = Off
+
+; Baseline extension set (carried over from DevKit-PHP), matched to each PHP
+; version by the repack. The php_redis DLL is added from the pinned PECL build.
+extension=mbstring
+extension=curl
+extension=fileinfo
+extension=openssl
+extension=pdo_mysql
+extension=mysqli
+extension=pdo_sqlite
+extension=sqlite3
+extension=redis
+extension=sodium
+extension=intl
+extension=zip
+extension=exif
+extension=sockets
+extension=gd
+extension=soap
+
+; OPcache is a Zend extension.
+zend_extension=opcache
+opcache.enable=1
+opcache.enable_cli=0
+
+; Sensible local-development defaults.
+memory_limit = 512M
+max_execution_time = 120
+upload_max_filesize = 64M
+post_max_size = 64M
+date.timezone = UTC
