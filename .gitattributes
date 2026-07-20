@@ -4,3 +4,6 @@
 *.json    -text
 *.minisig -text
 CNAME     -text
+# Trust material (public keys, the pinned-verifier hash, rotation records) must
+# also round-trip verbatim so a CRLF can never break key parsing or verification.
+keys/**   -text

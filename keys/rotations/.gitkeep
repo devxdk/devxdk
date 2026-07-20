@@ -1,0 +1,2 @@
+# Old-key-signed trust-root rotation records (<seq>-<trust_root>.json + .minisig)
+# land here during a two-stage key rotation. Empty until the first rotation.

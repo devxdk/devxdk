@@ -1,0 +1,12 @@
+# The official minisign release binary, pinned for the manifest-repo CI
+# signature verifier. CI verifies Ed25519 signatures with reference minisign
+# because stdlib Python cannot, and the Go verifier lives in the private app
+# repo (unreachable from this secretless CI). devxdk-mansign's signature format
+# is byte-identical to reference minisign, so it verifies cleanly.
+#
+# CI downloads the url below, checks it against this sha256, extracts, and runs
+# the inner binary. Bump via a normal reviewed PR.
+#
+# url:   https://github.com/jedisct1/minisign/releases/download/0.12/minisign-0.12-linux.tar.gz
+# inner: minisign-linux/x86_64/minisign
+9a599b48ba6eb7b1e80f12f36b94ceca7c00b7a5173c95c3efc88d9822957e73  minisign-0.12-linux.tar.gz

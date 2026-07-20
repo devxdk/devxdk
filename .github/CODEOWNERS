@@ -1,0 +1,10 @@
+# This repo holds only public, signed output and the signing/build machinery —
+# scripts, the pending/revocations queues, root manifests + signatures, app/,
+# config, state, keys, and workflows. A global owner cannot miss a future path.
+#
+# @devxdk/maintainers is a VISIBLE org team (a plain org like @devxdk is not a
+# valid CODEOWNERS owner). It must exist in the devxdk org with write access on
+# this repo and contain the maintainer account. The maintainer's own account is
+# the documented trusted exception (the signing-key holder no ruleset can bound);
+# the automation PAT is the one ruleset bypass actor.
+*    @devxdk/maintainers
