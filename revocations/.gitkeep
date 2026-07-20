@@ -1,0 +1,2 @@
+# Reviewed one-shot revocation records land here; apply_revocations consumes and
+# deletes them (see scripts/devxdk_manifest/revoke.py). Empty between runs.

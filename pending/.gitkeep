@@ -1,0 +1,2 @@
+# Build/adopt legs drop pending records here (<component>-<version>[-rN]-<goos>-<goarch>.json);
+# apply_pending folds and deletes them. Empty between runs.
