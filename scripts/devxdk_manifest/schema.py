@@ -17,6 +17,32 @@ import json
 RELEASE_FIELDS = ("version", "channel", "released_at", "platforms")
 ASSET_FIELDS = ("url", "sha256", "size_bytes")
 
+# Canonical platform ordering inside a release's "platforms" map. gen-manifest.py
+# emitted platforms in this order (NODE_PLATFORMS / GO_PLATFORMS), so recomposing
+# a manifest from state must reproduce it or every scrape would reorder platforms
+# and churn a diff.
+PLATFORM_ORDER = (
+    "windows/amd64",
+    "linux/amd64",
+    "darwin/amd64",
+    "darwin/arm64",
+    "darwin/universal",
+    "any",
+)
+
+
+def order_platforms(platforms: dict) -> dict:
+    """Return platforms reordered by the canonical PLATFORM_ORDER (unknown keys
+    appended in sorted order, so an unexpected key is deterministic, not lost)."""
+    ordered = {}
+    for k in PLATFORM_ORDER:
+        if k in platforms:
+            ordered[k] = platforms[k]
+    for k in sorted(platforms):
+        if k not in ordered:
+            ordered[k] = platforms[k]
+    return ordered
+
 
 def asset(url: str, sha256: str, size_bytes: int) -> dict:
     """Build one platform asset in canonical field order."""

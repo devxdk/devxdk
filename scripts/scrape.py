@@ -21,10 +21,11 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from devxdk_manifest import config, fetch, schema  # noqa: E402
+from devxdk_manifest import config, fetch, merge, schema  # noqa: E402
 from devxdk_manifest.sources import go, node  # noqa: E402
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
+STATE_FILE = REPO_ROOT / "state" / "scrape-versions.json"
 
 # Component name -> builder. Only scrape sources that reproduce their manifest
 # byte-for-byte live here; the rest arrive with Phase 2.
@@ -41,6 +42,7 @@ def main(argv=None):
 
     cfg = config.load()
     fetcher = fetch.Fetcher()
+    state = merge.ScrapeState.load(STATE_FILE)
 
     # Only components declared scrape in the config AND with an implemented
     # source are regenerated; this keeps the config the single source of truth.
@@ -49,27 +51,30 @@ def main(argv=None):
     rc = 0
     for name in sorted(scrape_components & SOURCES.keys()):
         try:
-            data = fetcher_build(SOURCES[name], fetcher)
+            candidate = SOURCES[name](fetcher)
+            # The monotonic guard admits/evicts against committed state, rejecting
+            # a feed rollback or a silent republish of a released version.
+            _state, manifest, actions = merge.scrape_reconcile(state, cfg, candidate)
         except Exception as e:  # noqa: BLE001 - report and continue other components
             sys.stderr.write(f"ERROR scraping {name}: {e}\n")
             rc = 1
             continue
-        rel = data["releases"][0]
-        path = REPO_ROOT / f"{name}.json"
-        if args.dry_run:
-            sys.stderr.write(f"[dry-run] {name}.json -> {rel['version']} ({rel.get('released_at', '')})\n")
-        else:
-            schema.write(path, data)
-            sys.stderr.write(f"{name}.json -> {rel['version']} ({rel.get('released_at', '')})\n")
+        rel = manifest["releases"][0]
+        moves = ", ".join(f"{a[3][0]} {a[3][1]}" for a in actions if a[3][0] in ("admit", "evict")) or "no change"
+        prefix = "[dry-run] " if args.dry_run else ""
+        sys.stderr.write(f"{prefix}{name}.json -> {rel['version']} ({rel.get('released_at', '')}) [{moves}]\n")
+        if not args.dry_run:
+            schema.write(REPO_ROOT / f"{name}.json", manifest)
+
+    if not args.dry_run:
+        # State + manifests are written together, committed in one scrape-and-sign
+        # commit; a no-change run re-writes identical bytes (zero diff).
+        state.save(STATE_FILE)
 
     skipped = sorted(scrape_components - SOURCES.keys())
     if skipped:
         sys.stderr.write(f"no scrape source implemented yet (left untouched): {', '.join(skipped)}\n")
     return rc
-
-
-def fetcher_build(builder, fetcher):
-    return builder(fetcher)
 
 
 if __name__ == "__main__":

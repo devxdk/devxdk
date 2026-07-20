@@ -1,0 +1,229 @@
+{
+  "records": {
+    "composer": {
+      "2": {
+        "any": {
+          "epoch": 1,
+          "floor_version": "2.10.2",
+          "provider": "getcomposer",
+          "revoked": [],
+          "status": "active",
+          "tuples": [
+            {
+              "channel": "stable",
+              "released_at": "",
+              "sha256": "5ee7125f8a30a34d246cefdc0bc85b8a783b28f2aec968994118512350d28027",
+              "size_bytes": 3639279,
+              "url": "https://getcomposer.org/download/2.10.2/composer.phar",
+              "version": "2.10.2"
+            }
+          ]
+        }
+      }
+    },
+    "go": {
+      "1": {
+        "darwin/amd64": {
+          "epoch": 1,
+          "floor_version": "1.26.4",
+          "provider": "golang",
+          "revoked": [],
+          "status": "active",
+          "tuples": [
+            {
+              "channel": "stable",
+              "released_at": "",
+              "sha256": "05dc9b5f9997744520aaebb3d5deaa7c755371aebbfb7f97c2511a9f3367538d",
+              "size_bytes": 67816160,
+              "url": "https://go.dev/dl/go1.26.4.darwin-amd64.tar.gz",
+              "version": "1.26.4"
+            }
+          ]
+        },
+        "darwin/arm64": {
+          "epoch": 1,
+          "floor_version": "1.26.4",
+          "provider": "golang",
+          "revoked": [],
+          "status": "active",
+          "tuples": [
+            {
+              "channel": "stable",
+              "released_at": "",
+              "sha256": "b62ad2b6d7d2464f12a5bcad7ff47f19d08325773b5efd21610e445a05a9bf53",
+              "size_bytes": 64723756,
+              "url": "https://go.dev/dl/go1.26.4.darwin-arm64.tar.gz",
+              "version": "1.26.4"
+            }
+          ]
+        },
+        "linux/amd64": {
+          "epoch": 1,
+          "floor_version": "1.26.4",
+          "provider": "golang",
+          "revoked": [],
+          "status": "active",
+          "tuples": [
+            {
+              "channel": "stable",
+              "released_at": "",
+              "sha256": "1153d3d50e0ac764b447adfe05c2bcf08e889d42a02e0fe0259bd47f6733ad7f",
+              "size_bytes": 66861266,
+              "url": "https://go.dev/dl/go1.26.4.linux-amd64.tar.gz",
+              "version": "1.26.4"
+            }
+          ]
+        },
+        "windows/amd64": {
+          "epoch": 1,
+          "floor_version": "1.26.4",
+          "provider": "golang",
+          "revoked": [],
+          "status": "active",
+          "tuples": [
+            {
+              "channel": "stable",
+              "released_at": "",
+              "sha256": "3ca8fb4630b07c419cbdd51f754e31363cfcfb83b3a5354d9e895c90be2cc345",
+              "size_bytes": 74910419,
+              "url": "https://go.dev/dl/go1.26.4.windows-amd64.zip",
+              "version": "1.26.4"
+            }
+          ]
+        }
+      }
+    },
+    "mariadb": {
+      "11.8": {
+        "linux/amd64": {
+          "epoch": 1,
+          "floor_version": "11.8.8",
+          "provider": "mariadb",
+          "revoked": [],
+          "status": "active",
+          "tuples": [
+            {
+              "channel": "stable",
+              "released_at": "",
+              "sha256": "fbd4e8d05946c974b0560c94f01ce4c687291b6528074c2e001fb8f35c0d2762",
+              "size_bytes": 429017672,
+              "url": "https://archive.mariadb.org/mariadb-11.8.8/bintar-linux-systemd-x86_64/mariadb-11.8.8-linux-systemd-x86_64.tar.gz",
+              "version": "11.8.8"
+            }
+          ]
+        },
+        "windows/amd64": {
+          "epoch": 1,
+          "floor_version": "11.8.8",
+          "provider": "mariadb",
+          "revoked": [],
+          "status": "active",
+          "tuples": [
+            {
+              "channel": "stable",
+              "released_at": "",
+              "sha256": "20871a79964e1819ddaad9247b676b9d08c958c345e5e3d4748242b2b2965ff1",
+              "size_bytes": 96738552,
+              "url": "https://archive.mariadb.org/mariadb-11.8.8/winx64-packages/mariadb-11.8.8-winx64.zip",
+              "version": "11.8.8"
+            }
+          ]
+        }
+      }
+    },
+    "nginx": {
+      "1.30": {
+        "windows/amd64": {
+          "epoch": 1,
+          "floor_version": "1.30.4",
+          "provider": "nginx",
+          "revoked": [],
+          "status": "active",
+          "tuples": [
+            {
+              "channel": "stable",
+              "released_at": "",
+              "sha256": "159294214d403f34f0bb4ae598801ab1f6a0d8c8da707f8f08748e294a222a01",
+              "size_bytes": 2774788,
+              "url": "https://nginx.org/download/nginx-1.30.4.zip",
+              "version": "1.30.4"
+            }
+          ]
+        }
+      }
+    },
+    "node": {
+      "24": {
+        "darwin/amd64": {
+          "epoch": 1,
+          "floor_version": "24.17.0",
+          "provider": "nodejs",
+          "revoked": [],
+          "status": "active",
+          "tuples": [
+            {
+              "channel": "lts",
+              "released_at": "2026-06-17",
+              "sha256": "80da552fe037290cb130e9dea590f5eeeb7aa450636f0c89ab41415511c1ec27",
+              "size_bytes": 53067264,
+              "url": "https://nodejs.org/dist/v24.17.0/node-v24.17.0-darwin-x64.tar.gz",
+              "version": "24.17.0"
+            }
+          ]
+        },
+        "darwin/arm64": {
+          "epoch": 1,
+          "floor_version": "24.17.0",
+          "provider": "nodejs",
+          "revoked": [],
+          "status": "active",
+          "tuples": [
+            {
+              "channel": "lts",
+              "released_at": "2026-06-17",
+              "sha256": "4fc3266a3702eebc39cc37661cf4eeceeade307e242ab64e4d7ce7949197e11f",
+              "size_bytes": 51886390,
+              "url": "https://nodejs.org/dist/v24.17.0/node-v24.17.0-darwin-arm64.tar.gz",
+              "version": "24.17.0"
+            }
+          ]
+        },
+        "linux/amd64": {
+          "epoch": 1,
+          "floor_version": "24.17.0",
+          "provider": "nodejs",
+          "revoked": [],
+          "status": "active",
+          "tuples": [
+            {
+              "channel": "lts",
+              "released_at": "2026-06-17",
+              "sha256": "e0472427aa791ad80bdc426ff7cc73cdd28ed0f616d1ff9689a23a7f47f1265f",
+              "size_bytes": 57017543,
+              "url": "https://nodejs.org/dist/v24.17.0/node-v24.17.0-linux-x64.tar.gz",
+              "version": "24.17.0"
+            }
+          ]
+        },
+        "windows/amd64": {
+          "epoch": 1,
+          "floor_version": "24.17.0",
+          "provider": "nodejs",
+          "revoked": [],
+          "status": "active",
+          "tuples": [
+            {
+              "channel": "lts",
+              "released_at": "2026-06-17",
+              "sha256": "f2aa33b35b75aca5f3f7b85675a6f6423201053e9381911e64961f3bda2528ab",
+              "size_bytes": 36948900,
+              "url": "https://nodejs.org/dist/v24.17.0/node-v24.17.0-win-x64.zip",
+              "version": "24.17.0"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "schema": 1
+}
