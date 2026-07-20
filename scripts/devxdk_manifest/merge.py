@@ -322,6 +322,70 @@ def check_ledger_parity(cfg, ledger: LedgerState, repo_root) -> list:
     return errors
 
 
+def _check_snapshot_shape(where: str, version: str, snap) -> list:
+    """A stored release snapshot must be the complete release JSON for `version`."""
+    if not isinstance(snap, dict):
+        return [f"{where}: snapshot for {version} is not an object"]
+    errs = []
+    if snap.get("version") != version:
+        errs.append(f"{where}: snapshot version {snap.get('version')!r} != key {version!r}")
+    for k in schema.RELEASE_FIELDS:  # version, channel, released_at, platforms
+        if k not in snap:
+            errs.append(f"{where}: snapshot for {version} is missing {k!r}")
+    return errs
+
+
+def check_snapshot_consistency(scrape_state: ScrapeState, ledger: LedgerState) -> list:
+    """Validate the release snapshots retirement stores, across BOTH state files.
+
+    A snapshot is the complete removed-release JSON a retirement records so a later
+    reactivation can rebuild the release exactly. It is REQUIRED on a tombstone and
+    FORBIDDEN on an active record. And because one retired release spans several
+    platform-keyed scrape records and may also live in the ledger, EVERY snapshot
+    copy for a given (component, version) must be IDENTICAL — a divergent copy would
+    make reactivation depend on which record it happened to read. Fails closed."""
+    errors = []
+    copies = {}  # (component, version) -> list[(source_label, snapshot)]
+
+    # Scrape side: release_snapshots is keyed by version; its keys must equal the
+    # record's retained tuple versions, and it is empty on an active record.
+    for c, l, p, rec in scrape_state.iter_records():
+        where = f"scrape record {(c, l, p)}"
+        if rec.status == "tombstone":
+            tuple_versions = {t.version for t in rec.tuples}
+            snap_versions = set(rec.release_snapshots)
+            for missing in sorted(tuple_versions - snap_versions):
+                errors.append(f"tombstoned {where} has no snapshot for retained version {missing}")
+            for stray in sorted(snap_versions - tuple_versions):
+                errors.append(f"tombstoned {where} snapshots non-retained version {stray}")
+            for ver, snap in rec.release_snapshots.items():
+                errors.extend(_check_snapshot_shape(where, ver, snap))
+                copies.setdefault((c, ver), []).append((f"scrape {l}/{p}", snap))
+        elif rec.release_snapshots:
+            errors.append(f"active {where} must not carry release_snapshots")
+
+    # Ledger side: release_snapshot is a single release; forbidden on active.
+    for c, v, p, lr in ledger.iter_records():
+        where = f"ledger entry {(c, v, p)}"
+        if lr.status == "tombstone":
+            if lr.release_snapshot is None:
+                errors.append(f"tombstoned {where} has no release_snapshot")
+            else:
+                errors.extend(_check_snapshot_shape(where, v, lr.release_snapshot))
+                copies.setdefault((c, v), []).append((f"ledger {p}", lr.release_snapshot))
+        elif lr.release_snapshot is not None:
+            errors.append(f"active {where} must not carry a release_snapshot")
+
+    # Cross-consistency: all copies for one (component, version) are identical.
+    for (c, ver), items in sorted(copies.items()):
+        first_src, first = items[0]
+        for src, snap in items[1:]:
+            if snap != first:
+                errors.append(f"{c} {ver}: release snapshot differs between {first_src} and {src}")
+                break
+    return errors
+
+
 # -- helpers ---------------------------------------------------------------
 
 def _tuples_equal(a: Tuple, b: Tuple) -> bool:

@@ -16,7 +16,10 @@ Checks:
   * no duplicate versions, and no two versions that compare EQUAL but differ as
     raw strings (the alias guard — the client looks releases up by raw string);
   * the scrape-versions and asset-revisions state files bind bidirectionally to
-    the committed manifests (merge.check_scrape_parity / check_ledger_parity).
+    the committed manifests (merge.check_scrape_parity / check_ledger_parity);
+  * retirement snapshots are consistent (merge.check_snapshot_consistency): a
+    tombstone carries a snapshot, an active record does not, and every snapshot
+    copy for one (component, version) across both state files is identical.
 
 The download allowlist is read from the pinned app-src checkout when present
 (--allowlist-go), else the vendored copy. Standard library only. Run from the
@@ -57,6 +60,7 @@ def validate(repo_root=REPO_ROOT, allowlist_go=None) -> list:
 
     # State-file binding (both directions). These fail closed so deleting a
     # record or entry can never silently reset a monotonic guard.
+    scrape_state = ledger = None
     try:
         scrape_state = merge.ScrapeState.load(repo_root / "state" / "scrape-versions.json")
         errors.extend(merge.check_scrape_parity(cfg, scrape_state, repo_root))
@@ -67,6 +71,12 @@ def validate(repo_root=REPO_ROOT, allowlist_go=None) -> list:
         errors.extend(merge.check_ledger_parity(cfg, ledger, repo_root))
     except (OSError, merge.GuardError) as e:
         errors.append(f"asset-revisions.json: {e}")
+
+    # Retirement snapshots span both state files, so this cross-check needs both
+    # loaded: a tombstone must carry a snapshot, an active record must not, and
+    # every snapshot copy for one (component, version) must be identical.
+    if scrape_state is not None and ledger is not None:
+        errors.extend(merge.check_snapshot_consistency(scrape_state, ledger))
 
     return errors
 

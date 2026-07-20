@@ -83,6 +83,17 @@ class TestScraped(unittest.TestCase):
         self.assertEqual(manifest["releases"][0]["version"], "24.17.0")
         self.assertEqual(set(manifest["releases"][0]["platforms"]), {"windows/amd64", "linux/amd64"})
 
+    def test_retire_produces_consistent_snapshots(self):
+        # The two-platform scraped tombstone retire_line produces must pass the
+        # validator's snapshot cross-consistency check (both records share the
+        # same release JSON); reactivation clears the snapshots cleanly too.
+        st = _node_state()
+        led = merge.LedgerState()
+        lifecycle.retire_line(st, led, "node", "24", _node_manifest())
+        self.assertEqual(merge.check_snapshot_consistency(st, led), [])
+        lifecycle.reactivate_line(self.cfg, st, led, "node", "24")
+        self.assertEqual(merge.check_snapshot_consistency(st, led), [])
+
 
 class TestManaged(unittest.TestCase):
     def test_retire_managed(self):

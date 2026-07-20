@@ -156,5 +156,108 @@ class TestReconcileRecompose(unittest.TestCase):
         self.assertEqual(state.get("node", "24", "windows/amd64").floor_version, "24.18.0")
 
 
+def _snap(v, channel="stable", released="2026-01-01", platforms=None):
+    return {
+        "version": v,
+        "channel": channel,
+        "released_at": released,
+        "platforms": platforms or {"windows/amd64": {"url": f"https://x/{v}", "sha256": "a" * 64, "size_bytes": 1}},
+    }
+
+
+def _ledger_rec(v, status="active", snapshot=None, revoked=False):
+    return merge.LedgerRecord(
+        kind="built", line="8", provider="devxdk-redis-msys2", epoch=1, key="1",
+        source_version=v, url=f"https://github.com/devxdk/devxdk/releases/download/redis-{v}/x.zip",
+        sha256="a" * 64, size_bytes=1, channel="stable", released_at="2026-01-01",
+        status=status, revoked=revoked, release_snapshot=snapshot,
+    )
+
+
+class TestSnapshotConsistency(unittest.TestCase):
+    def _tomb_scrape(self, versions, snapshots, plat="windows/amd64"):
+        st = merge.ScrapeState()
+        st.put("node", "24", plat, merge.ScrapeRecord(
+            provider="nodejs", epoch=1, status="tombstone", floor_version=versions[-1],
+            tuples=[_tup(v) for v in versions], release_snapshots=snapshots,
+        ))
+        return st
+
+    def test_committed_state_is_clean(self):
+        # The committed state carries no tombstones, so the cross-check is a no-op.
+        scrape = merge.ScrapeState.load(REPO_ROOT / "state" / "scrape-versions.json")
+        ledger = merge.LedgerState.load(REPO_ROOT / "state" / "asset-revisions.json")
+        self.assertEqual(merge.check_snapshot_consistency(scrape, ledger), [])
+
+    def test_tombstone_with_matching_snapshot_ok(self):
+        st = self._tomb_scrape(["24.17.0"], {"24.17.0": _snap("24.17.0")})
+        self.assertEqual(merge.check_snapshot_consistency(st, merge.LedgerState()), [])
+
+    def test_active_scrape_record_with_snapshots_rejected(self):
+        st = merge.ScrapeState()
+        st.put("node", "24", "windows/amd64", merge.ScrapeRecord(
+            provider="nodejs", epoch=1, tuples=[_tup("24.17.0")],
+            release_snapshots={"24.17.0": _snap("24.17.0")}))
+        errors = merge.check_snapshot_consistency(st, merge.LedgerState())
+        self.assertTrue(any("must not carry release_snapshots" in e for e in errors))
+
+    def test_tombstone_missing_snapshot_rejected(self):
+        st = self._tomb_scrape(["24.17.0"], {})
+        errors = merge.check_snapshot_consistency(st, merge.LedgerState())
+        self.assertTrue(any("no snapshot for retained version 24.17.0" in e for e in errors))
+
+    def test_tombstone_stray_snapshot_rejected(self):
+        st = self._tomb_scrape(["24.17.0"], {"24.17.0": _snap("24.17.0"), "99.0.0": _snap("99.0.0")})
+        errors = merge.check_snapshot_consistency(st, merge.LedgerState())
+        self.assertTrue(any("non-retained version 99.0.0" in e for e in errors))
+
+    def test_ledger_active_with_snapshot_rejected(self):
+        led = merge.LedgerState()
+        led.put("redis", "8.8.0", "windows/amd64", _ledger_rec("8.8.0", snapshot=_snap("8.8.0")))
+        errors = merge.check_snapshot_consistency(merge.ScrapeState(), led)
+        self.assertTrue(any("must not carry a release_snapshot" in e for e in errors))
+
+    def test_ledger_tombstone_without_snapshot_rejected(self):
+        led = merge.LedgerState()
+        led.put("redis", "8.8.0", "windows/amd64", _ledger_rec("8.8.0", status="tombstone"))
+        errors = merge.check_snapshot_consistency(merge.ScrapeState(), led)
+        self.assertTrue(any("has no release_snapshot" in e for e in errors))
+
+    def test_divergent_two_platform_scraped_tombstone(self):
+        # The plan's pinned case: one retired scraped release across two platform
+        # records whose snapshot copies diverge.
+        st = merge.ScrapeState()
+        for plat, released in (("windows/amd64", "2026-06-17"), ("linux/amd64", "2026-01-01")):
+            st.put("node", "24", plat, merge.ScrapeRecord(
+                provider="nodejs", epoch=1, status="tombstone", floor_version="24.17.0",
+                tuples=[_tup("24.17.0")],
+                release_snapshots={"24.17.0": _snap("24.17.0", released=released)}))
+        errors = merge.check_snapshot_consistency(st, merge.LedgerState())
+        self.assertTrue(any("snapshot differs" in e for e in errors))
+
+    def test_mixed_scrape_and_ledger_identical_then_divergent(self):
+        snap = _snap("8.8.0")
+        st = merge.ScrapeState()
+        st.put("redis", "8", "linux/amd64", merge.ScrapeRecord(
+            provider="redisio", epoch=1, status="tombstone", floor_version="8.8.0",
+            tuples=[_tup("8.8.0")], release_snapshots={"8.8.0": dict(snap)}))
+        led = merge.LedgerState()
+        led.put("redis", "8.8.0", "windows/amd64", _ledger_rec("8.8.0", status="tombstone", snapshot=dict(snap)))
+        self.assertEqual(merge.check_snapshot_consistency(st, led), [])
+        led.get("redis", "8.8.0", "windows/amd64").release_snapshot = _snap("8.8.0", channel="lts")
+        errors = merge.check_snapshot_consistency(st, led)
+        self.assertTrue(any("snapshot differs" in e for e in errors))
+
+    def test_snapshot_shape_version_mismatch(self):
+        st = self._tomb_scrape(["24.17.0"], {"24.17.0": _snap("24.99.0")})
+        errors = merge.check_snapshot_consistency(st, merge.LedgerState())
+        self.assertTrue(any("snapshot version" in e for e in errors))
+
+    def test_snapshot_shape_missing_platforms(self):
+        st = self._tomb_scrape(["24.17.0"], {"24.17.0": {"version": "24.17.0", "channel": "stable", "released_at": ""}})
+        errors = merge.check_snapshot_consistency(st, merge.LedgerState())
+        self.assertTrue(any("missing 'platforms'" in e for e in errors))
+
+
 if __name__ == "__main__":
     unittest.main()
