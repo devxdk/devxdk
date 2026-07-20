@@ -169,6 +169,159 @@ class ScrapeState:
         return st
 
 
+LEDGER_SCHEMA = 1
+LEDGER_FIELDS = (
+    "kind", "line", "provider", "epoch", "key", "source_version",
+    "url", "sha256", "size_bytes", "channel", "released_at",
+)
+
+
+@dataclass
+class LedgerRecord:
+    """One ordering-ledger entry for a managed (built/adopted) asset.
+
+    Binds a manifest platform tuple to its ordering identity so a same-hash URL
+    or size mutation, or a silent channel flip, cannot slip past. The transition
+    rules (epoch supersession, tombstone, revocation) land in a later slice; this
+    model only needs to load, bind, and round-trip."""
+
+    kind: str                 # built | adopted
+    line: str
+    provider: str
+    epoch: int
+    key: str                  # ordering key (built: integer revision; adopted: source version)
+    source_version: str
+    url: str
+    sha256: str
+    size_bytes: int
+    channel: str
+    released_at: str
+    status: str = "active"    # active | tombstone
+    revoked: bool = False
+    release_snapshot: dict | None = None  # tombstone only
+
+    def as_dict(self) -> dict:
+        out = {k: getattr(self, k) for k in LEDGER_FIELDS}
+        out["status"] = self.status
+        out["revoked"] = self.revoked
+        if self.release_snapshot is not None:
+            out["release_snapshot"] = self.release_snapshot
+        return out
+
+    @staticmethod
+    def from_dict(d: dict) -> "LedgerRecord":
+        missing = [k for k in LEDGER_FIELDS if k not in d]
+        if missing:
+            raise GuardError(f"ledger record missing fields {missing}: {d}")
+        return LedgerRecord(
+            kind=d["kind"], line=d["line"], provider=d["provider"], epoch=d["epoch"],
+            key=d["key"], source_version=d["source_version"], url=d["url"],
+            sha256=d["sha256"], size_bytes=d["size_bytes"], channel=d["channel"],
+            released_at=d["released_at"], status=d.get("status", "active"),
+            revoked=d.get("revoked", False), release_snapshot=d.get("release_snapshot"),
+        )
+
+
+@dataclass
+class LedgerState:
+    schema: int = LEDGER_SCHEMA
+    # entries[component][version][platform] -> LedgerRecord
+    entries: dict = field(default_factory=dict)
+
+    def get(self, component: str, version: str, platform: str):
+        return self.entries.get(component, {}).get(version, {}).get(platform)
+
+    def put(self, component: str, version: str, platform: str, record: LedgerRecord):
+        self.entries.setdefault(component, {}).setdefault(version, {})[platform] = record
+
+    def iter_records(self):
+        for c, vers in self.entries.items():
+            for v, plats in vers.items():
+                for p, rec in plats.items():
+                    yield c, v, p, rec
+
+    def as_dict(self) -> dict:
+        out = {}
+        for c in sorted(self.entries):
+            out[c] = {}
+            for v in sorted(self.entries[c]):
+                out[c][v] = {}
+                for p in sorted(self.entries[c][v]):
+                    out[c][v][p] = self.entries[c][v][p].as_dict()
+        return {"entries": out, "schema": self.schema}
+
+    def dump_str(self) -> str:
+        return json.dumps(self.as_dict(), indent=2, sort_keys=True) + "\n"
+
+    def save(self, path) -> None:
+        with open(path, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(self.dump_str())
+
+    @staticmethod
+    def load(path) -> "LedgerState":
+        with open(path, encoding="utf-8") as fh:
+            raw = json.load(fh)
+        if raw.get("schema") != LEDGER_SCHEMA:
+            raise GuardError(f"asset-revisions schema = {raw.get('schema')!r}, want {LEDGER_SCHEMA}")
+        st = LedgerState(schema=LEDGER_SCHEMA)
+        for c, vers in raw.get("entries", {}).items():
+            for v, plats in vers.items():
+                for p, rec in plats.items():
+                    st.put(c, v, p, LedgerRecord.from_dict(rec))
+        return st
+
+
+def check_ledger_parity(cfg, ledger: LedgerState, repo_root) -> list:
+    """Bind managed (built/adopted) manifest tuples to the ordering ledger in
+    both directions. A missing entry would silently disable the monotonic guard;
+    an orphan active entry would block ever re-adding the platform. Tombstoned
+    and revoked entries are exempt from live-manifest binding."""
+    import pathlib
+
+    from .config import ConfigError
+
+    repo_root = pathlib.Path(repo_root)
+    errors = []
+
+    managed = {}  # (component, version, platform) -> (asset, release)
+    for cname in sorted({c for c, _l, _p, _ in cfg.managed_keys()}):
+        mpath = repo_root / f"{cname}.json"
+        if not mpath.exists():
+            continue
+        data = schema.load(mpath)
+        for rel in data.get("releases", []):
+            ver = rel["version"]
+            lid = line_for(cfg, cname, ver)
+            for pkey, asset in rel.get("platforms", {}).items():
+                if lid is None:
+                    continue
+                try:
+                    plat = cfg.find_platform(cname, lid, pkey)
+                except ConfigError:
+                    continue
+                if not plat.managed:
+                    continue
+                managed[(cname, ver, pkey)] = (asset, rel)
+
+    for (c, v, p), (asset, rel) in sorted(managed.items()):
+        rec = ledger.get(c, v, p)
+        if rec is None or rec.status == "tombstone" or rec.revoked:
+            errors.append(f"managed manifest {c} {v} {p} has no active ledger entry")
+            continue
+        if (rec.url != asset["url"] or rec.sha256 != asset["sha256"]
+                or rec.size_bytes != asset["size_bytes"]
+                or rec.channel != rel["channel"]
+                or rec.released_at != rel.get("released_at", "")):
+            errors.append(f"ledger entry {c} {v} {p} tuple differs from manifest")
+
+    for c, v, p, rec in ledger.iter_records():
+        if rec.status == "tombstone" or rec.revoked:
+            continue
+        if (c, v, p) not in managed:
+            errors.append(f"active ledger entry {c} {v} {p} points at no live manifest tuple")
+    return errors
+
+
 # -- helpers ---------------------------------------------------------------
 
 def _tuples_equal(a: Tuple, b: Tuple) -> bool:
