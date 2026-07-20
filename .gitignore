@@ -2,6 +2,7 @@
 # it must never be committed back into the manifest repo.
 /app-src/
 
-# Local Python tooling cruft (scripts/gen-manifest.py).
+# Local Python tooling cruft (scripts/devxdk_manifest).
 __pycache__/
 *.pyc
+.pytest_cache/

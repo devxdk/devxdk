@@ -36,9 +36,10 @@ downloading.
 
 `.github/workflows/scrape-and-sign.yml` runs daily (and on demand):
 
-1. `scripts/gen-manifest.py` refreshes `node.json` and `go.json` from official
-   upstream metadata (nodejs.org, go.dev) so the pinned SHA256 hashes never go
-   stale by hand.
+1. `scripts/scrape.py` (the `devxdk_manifest` package) refreshes `node.json` and
+   `go.json` from official upstream metadata (nodejs.org, go.dev) so the pinned
+   SHA256 hashes never go stale by hand. The component/line/platform set it
+   regenerates is driven by `config/tracked-versions.toml`.
 2. Only **component** manifests are signed — a file with a top-level `"kind"` and
    `"releases"`. Each `*.json` is shape-checked first, and a stray root JSON is
    skipped so it can never receive a trusted signature. Each component manifest is
