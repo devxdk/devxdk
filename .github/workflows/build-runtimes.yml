@@ -1,58 +1,296 @@
-# Scaffold — the real bundle build pipeline is future work
-# (see docs/runtimes-and-services.md#php-extensions).
+# Build the DevXDK-built/adopted bundles that have no usable upstream binary and
+# publish them to this repo's Releases, then queue a pending record so
+# scrape-and-sign folds them into the signed manifests.
 #
-# This workflow will eventually build the components that have no usable
-# per-platform upstream binary and must be produced reproducibly by DevXDK:
-#   - PHP, as a version-matched bundle with its baseline extensions (built from
-#     source on Linux/macOS; the Windows build repackaged with PECL DLLs + a
-#     default php.ini).
-#   - Python, where no upstream binary exists for a target (e.g. Linux).
+# Four stages: plan resolves the leg map; STATIC per-(component, platform) leg
+# jobs (parity-checked against tracked-versions.toml by scripts/plan_builds.py)
+# build + smoke + hand off by immutable artifact id; publish reconciles the
+# Releases and emits the verified-legs handoff; finalize writes the pending
+# records and dispatches scrape-and-sign. The per-component recipes land with
+# Phase 1/3 — until then a planned leg fails loudly (recipes/leg.sh).
 #
-# Eventual flow per (component, os):
-#   1. Build the version-matched bundle (PHP locked to its minor's extension set).
-#   2. Compute the SHA256 of each produced archive.
-#   3. Upload the archives to a GitHub Release in this repo.
-#   4. A follow-up step adds the release entry (version, per-platform url + sha256
-#      + size_bytes) to the matching component JSON, then triggers
-#      scrape-and-sign.yml so every JSON is re-signed with minisign.
-#
-# Today every step is a placeholder echo so the matrix shape and intent are
-# reviewable; nothing is built or published yet.
+# permissions: {} at the workflow level; each job takes only what it needs.
+# All Release/tag/pending mutation rides DEVXDK_MANIFEST_PUSH_TOKEN from the
+# main-only manifest-push environment (W3), never GITHUB_TOKEN.
 
 name: build-runtimes
 
 on:
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Plan, build, and smoke only — no Release/pending mutation"
+        type: boolean
+        default: true
+  schedule:
+    - cron: "0 3 * * 1" # Mon 03:00 UTC, before the 06:00 scrape
 
-# Least privilege: the placeholder steps read only. The future upload-to-Release
-# step will escalate to contents: write on its own job when implemented (M-13).
-permissions:
-  contents: read
+permissions: {}
+
+concurrency:
+  group: build-runtimes
+  cancel-in-progress: false
 
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        component: [php, python]
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+  plan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      legs: ${{ steps.plan.outputs.legs }}
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-
-      - name: Build bundle (TODO)
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - name: Resolve the leg map
+        id: plan
         run: |
-          echo "TODO build ${{ matrix.component }} bundle for ${{ matrix.os }}"
+          # Phase 1/3 resolves the newest version per line per source and checks
+          # existing Release/manifest/ledger state to pick each leg's revision.
+          # Phase 0 emits the full static leg id list so the parity check and the
+          # per-leg membership gates are wired end to end.
+          echo "legs=$(python3 scripts/plan_builds.py --leg-ids-json)" >> "$GITHUB_OUTPUT"
 
-      - name: Compute SHA256 (TODO)
-        run: |
-          echo "TODO compute SHA256 for ${{ matrix.component }} on ${{ matrix.os }}"
+  leg-nginx-darwin-amd64:
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'nginx-darwin-amd64') }}
+    uses: ./.github/workflows/build-runtime-leg.yml
+    with:
+      leg: nginx-darwin-amd64
+      runner: macos-15-intel
 
-      - name: Upload to GitHub Releases (TODO)
-        run: |
-          echo "TODO upload ${{ matrix.component }} bundle to a GitHub Release"
+  leg-nginx-darwin-arm64:
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'nginx-darwin-arm64') }}
+    uses: ./.github/workflows/build-runtime-leg.yml
+    with:
+      leg: nginx-darwin-arm64
+      runner: macos-15
 
-      - name: Update component JSON + trigger re-sign (TODO)
+  leg-nginx-linux-amd64:
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'nginx-linux-amd64') }}
+    uses: ./.github/workflows/build-runtime-leg.yml
+    with:
+      leg: nginx-linux-amd64
+      runner: ubuntu-22.04
+
+  leg-php-darwin-amd64:
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'php-darwin-amd64') }}
+    uses: ./.github/workflows/build-runtime-leg.yml
+    with:
+      leg: php-darwin-amd64
+      runner: macos-15-intel
+
+  leg-php-darwin-arm64:
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'php-darwin-arm64') }}
+    uses: ./.github/workflows/build-runtime-leg.yml
+    with:
+      leg: php-darwin-arm64
+      runner: macos-15
+
+  leg-php-linux-amd64:
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'php-linux-amd64') }}
+    uses: ./.github/workflows/build-runtime-leg.yml
+    with:
+      leg: php-linux-amd64
+      runner: ubuntu-22.04
+
+  leg-php-windows-amd64:
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'php-windows-amd64') }}
+    uses: ./.github/workflows/build-runtime-leg.yml
+    with:
+      leg: php-windows-amd64
+      runner: windows-2022
+
+  leg-postgres-darwin-amd64:
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'postgres-darwin-amd64') }}
+    uses: ./.github/workflows/build-runtime-leg.yml
+    with:
+      leg: postgres-darwin-amd64
+      runner: macos-15-intel
+
+  leg-postgres-darwin-arm64:
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'postgres-darwin-arm64') }}
+    uses: ./.github/workflows/build-runtime-leg.yml
+    with:
+      leg: postgres-darwin-arm64
+      runner: macos-15
+
+  leg-postgres-linux-amd64:
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'postgres-linux-amd64') }}
+    uses: ./.github/workflows/build-runtime-leg.yml
+    with:
+      leg: postgres-linux-amd64
+      runner: ubuntu-22.04
+
+  leg-postgres-windows-amd64:
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'postgres-windows-amd64') }}
+    uses: ./.github/workflows/build-runtime-leg.yml
+    with:
+      leg: postgres-windows-amd64
+      runner: windows-2022
+
+  leg-python-darwin-amd64:
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'python-darwin-amd64') }}
+    uses: ./.github/workflows/build-runtime-leg.yml
+    with:
+      leg: python-darwin-amd64
+      runner: macos-15-intel
+
+  leg-python-darwin-arm64:
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'python-darwin-arm64') }}
+    uses: ./.github/workflows/build-runtime-leg.yml
+    with:
+      leg: python-darwin-arm64
+      runner: macos-15
+
+  leg-python-linux-amd64:
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'python-linux-amd64') }}
+    uses: ./.github/workflows/build-runtime-leg.yml
+    with:
+      leg: python-linux-amd64
+      runner: ubuntu-22.04
+
+  leg-python-windows-amd64:
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'python-windows-amd64') }}
+    uses: ./.github/workflows/build-runtime-leg.yml
+    with:
+      leg: python-windows-amd64
+      runner: windows-2022
+
+  leg-redis-darwin-amd64:
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'redis-darwin-amd64') }}
+    uses: ./.github/workflows/build-runtime-leg.yml
+    with:
+      leg: redis-darwin-amd64
+      runner: macos-15-intel
+
+  leg-redis-darwin-arm64:
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'redis-darwin-arm64') }}
+    uses: ./.github/workflows/build-runtime-leg.yml
+    with:
+      leg: redis-darwin-arm64
+      runner: macos-15
+
+  leg-redis-linux-amd64:
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'redis-linux-amd64') }}
+    uses: ./.github/workflows/build-runtime-leg.yml
+    with:
+      leg: redis-linux-amd64
+      runner: ubuntu-22.04
+
+  leg-redis-windows-amd64:
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'redis-windows-amd64') }}
+    uses: ./.github/workflows/build-runtime-leg.yml
+    with:
+      leg: redis-windows-amd64
+      runner: windows-2022
+
+  leg-valkey-darwin-amd64:
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'valkey-darwin-amd64') }}
+    uses: ./.github/workflows/build-runtime-leg.yml
+    with:
+      leg: valkey-darwin-amd64
+      runner: macos-15-intel
+
+  leg-valkey-darwin-arm64:
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'valkey-darwin-arm64') }}
+    uses: ./.github/workflows/build-runtime-leg.yml
+    with:
+      leg: valkey-darwin-arm64
+      runner: macos-15
+
+  leg-valkey-linux-amd64:
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'valkey-linux-amd64') }}
+    uses: ./.github/workflows/build-runtime-leg.yml
+    with:
+      leg: valkey-linux-amd64
+      runner: ubuntu-22.04
+
+  leg-valkey-windows-amd64:
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'valkey-windows-amd64') }}
+    uses: ./.github/workflows/build-runtime-leg.yml
+    with:
+      leg: valkey-windows-amd64
+      runner: windows-2022
+
+  publish:
+    needs:
+      - plan
+      - leg-nginx-darwin-amd64
+      - leg-nginx-darwin-arm64
+      - leg-nginx-linux-amd64
+      - leg-php-darwin-amd64
+      - leg-php-darwin-arm64
+      - leg-php-linux-amd64
+      - leg-php-windows-amd64
+      - leg-postgres-darwin-amd64
+      - leg-postgres-darwin-arm64
+      - leg-postgres-linux-amd64
+      - leg-postgres-windows-amd64
+      - leg-python-darwin-amd64
+      - leg-python-darwin-arm64
+      - leg-python-linux-amd64
+      - leg-python-windows-amd64
+      - leg-redis-darwin-amd64
+      - leg-redis-darwin-arm64
+      - leg-redis-linux-amd64
+      - leg-redis-windows-amd64
+      - leg-valkey-darwin-amd64
+      - leg-valkey-darwin-arm64
+      - leg-valkey-linux-amd64
+      - leg-valkey-windows-amd64
+    if: ${{ !cancelled() && needs.plan.result == 'success' && (github.event_name != 'workflow_dispatch' || !inputs.dry_run) }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    environment: manifest-push
+    outputs:
+      finalizable_artifact_id: ${{ steps.publish.outputs.finalizable_artifact_id }}
+    steps:
+      - name: Reconcile Releases and emit the verified-legs handoff
+        id: publish
         run: |
-          echo "TODO add release entry to ${{ matrix.component }}.json and trigger scrape-and-sign"
+          # Phase 1/3: download each success leg by immutable id, verify the
+          # member-digest manifest, reconcile the component Release assets
+          # (source-before-object-code for copyleft), and upload finalizable-metas.
+          echo "publish is implemented with the Phase 1/3 recipes" >&2
+          echo "finalizable_artifact_id=" >> "$GITHUB_OUTPUT"
+
+  finalize:
+    needs: publish
+    if: ${{ !cancelled() && needs.publish.outputs.finalizable_artifact_id != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    environment: manifest-push
+    steps:
+      - name: Write pending records and dispatch scrape-and-sign
+        run: |
+          # Phase 1/3: download the verified-legs artifact, run add_built_release
+          # per leg, commit pending/, and `gh workflow run scrape-and-sign.yml`.
+          echo "finalize is implemented with the Phase 1/3 recipes" >&2

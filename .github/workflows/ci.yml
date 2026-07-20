@@ -39,6 +39,8 @@ jobs:
         run: python -m unittest discover -s devxdk_manifest/tests -p 'test_*.py' -v
       - name: Validate manifests + state
         run: python scripts/validate_manifests.py
+      - name: Check build-runtimes static-job / config parity
+        run: python scripts/plan_builds.py --check-parity .github/workflows/build-runtimes.yml
 
   signatures:
     runs-on: ubuntu-latest

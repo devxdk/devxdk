@@ -1,0 +1,53 @@
+# Reusable build leg — one (component, platform) pair, called by build-runtimes.
+#
+# A leg builds/adopts every tracked line for its pair (e.g. php builds 8.4 and
+# 8.5 sequentially), layout-checks and smoke-tests each on the target OS, writes
+# a .meta.json carrying the ordering identity, and uploads ONE artifact named by
+# its static leg id. build-runtimes' publish job consumes it by immutable id.
+#
+# The per-component recipes land with Phase 1 (php-windows-repack, redis-msys2)
+# and Phase 3 (php-spc, redis/valkey-unix, nginx-unix); until then a leg fails
+# loudly (recipes/leg.sh) rather than publishing nothing. secretless: contents: read.
+
+name: build-runtime-leg
+
+on:
+  workflow_call:
+    inputs:
+      leg:
+        description: "Static leg id, e.g. redis-windows-amd64"
+        required: true
+        type: string
+      runner:
+        required: true
+        type: string
+      items:
+        description: "JSON array of the plan's per-line items for this leg"
+        required: false
+        type: string
+        default: "[]"
+
+permissions:
+  contents: read
+
+jobs:
+  leg:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - name: Build, layout-check, smoke, and write .meta.json
+        env:
+          LEG_ITEMS: ${{ inputs.items }}
+        run: bash recipes/leg.sh "${{ inputs.leg }}"
+      - name: Upload the leg artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ inputs.leg }}-build
+          path: build/${{ inputs.leg }}/
+          if-no-files-found: error
+          overwrite: true
