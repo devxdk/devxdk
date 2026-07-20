@@ -1,0 +1,84 @@
+# Secretless PR / push-to-main validation for the manifest repo.
+#
+# Holds NO secrets: it only reads the committed state and verifies it. The daily
+# signing lives in scrape-and-sign.yml (which alone holds the trust-root secret).
+# This gate is what W3's main ruleset marks a REQUIRED status check — CODEOWNERS
+# decides who approves; this decides whether the guards hold.
+#
+# Checks:
+#   * the devxdk_manifest Python unit tests (comparator/config/scrape guard/
+#     validator/allowlist/byte-identity/ci-verify) — byte-stability of the
+#     scrapers is covered there against frozen fixtures, never a live feed;
+#   * validate_manifests.py over the committed manifests + both state files;
+#   * reference-minisign verification of every root manifest (and app/update.json
+#     when present) plus the key-immutability + never-existed-seed rules;
+#   * actionlint over the repo's workflows.
+
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - name: Unit tests
+        working-directory: scripts
+        run: python -m unittest discover -s devxdk_manifest/tests -p 'test_*.py' -v
+      - name: Validate manifests + state
+        run: python scripts/validate_manifests.py
+
+  signatures:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history for the key-immutability proof)
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - name: Fetch + verify the pinned reference minisign
+        id: minisign
+        run: |
+          set -euo pipefail
+          url=$(grep '# url:' keys/minisign.sha256 | sed 's/.*url:[[:space:]]*//')
+          inner=$(grep '# inner:' keys/minisign.sha256 | sed 's/.*inner:[[:space:]]*//')
+          curl -sSfL -o "$(grep -v '^#' keys/minisign.sha256 | awk '{print $2}')" "$url"
+          grep -v '^#' keys/minisign.sha256 | sha256sum -c -
+          tar xzf "$(grep -v '^#' keys/minisign.sha256 | awk '{print $2}')"
+          echo "bin=$PWD/$inner" >> "$GITHUB_OUTPUT"
+      - name: Verify manifest signatures
+        run: python scripts/ci_verify.py verify-signatures --minisign "${{ steps.minisign.outputs.bin }}"
+      - name: Enforce key immutability
+        env:
+          EVENT: ${{ github.event_name }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = "push" ]; then CMP="$PUSH_BEFORE"; else CMP="$PR_BASE"; fi
+          python scripts/ci_verify.py check-keys --event "$EVENT" --cmp-sha "$CMP" --minisign "${{ steps.minisign.outputs.bin }}"
+
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: actionlint
+        uses: docker://rhysd/actionlint:1.7.7
+        with:
+          args: -color
