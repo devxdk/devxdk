@@ -51,6 +51,7 @@ for attempt in 1 2 3 4 5; do
   git fetch origin main
   git reset --hard FETCH_HEAD
 
+  python3 scripts/apply_lifecycle.py
   python3 scripts/apply_revocations.py
   python3 scripts/apply_pending.py
   python3 scripts/scrape.py

@@ -486,8 +486,8 @@ def recompose(name: str, display_name: str, kind: str, cfg, state: ScrapeState, 
     version, newest-first, with canonical field/platform order."""
     by_version = {}
     for cname, _lid, pkey, rec in state.iter_records():
-        if cname != name:
-            continue
+        if cname != name or rec.status == "tombstone":
+            continue  # a tombstoned (retired) line is not in the manifest
         for t in rec.tuples:
             _merge_platform(by_version, name, t.version, t.channel, t.released_at, pkey,
                             schema.asset(t.url, t.sha256, t.size_bytes))
