@@ -68,7 +68,7 @@ if ! msys 'pacman -S --noconfirm --needed base-devel gcc openssl-devel pkgconf' 
 fi
 
 hashes_file="$outdir/.hashes-$component"
-curl -fsSL --retry 3 --max-time 60 -o "$hashes_file" \
+curl -fsSL --retry 6 --retry-max-time 300 --max-time 60 -o "$hashes_file" \
   "https://raw.githubusercontent.com/$hashes_repo/$ref/README"
 
 items_json="${LEG_ITEMS:?LEG_ITEMS must carry the per-line plan items}"
@@ -91,7 +91,7 @@ for i in $(seq 0 $((count - 1))); do
 
   work="$outdir/work-$version"
   rm -rf "$work" && mkdir -p "$work"
-  curl -fsSL --retry 3 --max-time 300 -o "$work/src.tar.gz" "$src_url"
+  curl -fsSL --retry 6 --retry-max-time 300 --max-time 300 -o "$work/src.tar.gz" "$src_url"
   echo "$src_sha  $work/src.tar.gz" | sha256sum -c -
   tar xzf "$work/src.tar.gz" -C "$work"
   srcdir=$(find "$work" -maxdepth 1 -mindepth 1 -type d | head -1)

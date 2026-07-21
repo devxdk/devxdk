@@ -31,7 +31,7 @@ PECL_URL="https://downloads.php.net/~windows/pecl/releases/redis"
 BASELINE="mbstring curl fileinfo openssl pdo_mysql mysqli pdo_sqlite sqlite3 redis sodium intl zip exif sockets gd soap"
 
 releases_json="$outdir/.releases.json"
-curl -fsSL --retry 3 --max-time 60 -o "$releases_json" "$RELEASES_URL/releases.json"
+curl -fsSL --retry 6 --retry-max-time 300 --max-time 60 -o "$releases_json" "$RELEASES_URL/releases.json"
 
 pecl_version=$(python3 -c "
 import tomllib
@@ -85,11 +85,11 @@ EOF
   stage="$outdir/stage-$version"
   rm -rf "$work" "$stage" && mkdir -p "$work" "$stage"
 
-  curl -fsSL --retry 3 --max-time 300 -o "$work/php.zip" "$RELEASES_URL/$zip_path"
+  curl -fsSL --retry 6 --retry-max-time 300 --max-time 300 -o "$work/php.zip" "$RELEASES_URL/$zip_path"
   echo "$zip_sha  $work/php.zip" | sha256sum -c -
   python3 -c "import sys,zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])" "$work/php.zip" "$stage"
 
-  curl -fsSL --retry 3 --max-time 120 -o "$work/redis-dll.zip" "$PECL_URL/$pecl_version/$dll_file"
+  curl -fsSL --retry 6 --retry-max-time 300 --max-time 120 -o "$work/redis-dll.zip" "$PECL_URL/$pecl_version/$dll_file"
   echo "$dll_sha  $work/redis-dll.zip" | sha256sum -c -
   python3 -c "import sys,zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])" "$work/redis-dll.zip" "$work/redis-dll"
   find "$work/redis-dll" -name 'php_redis.dll' -exec cp {} "$stage/ext/" \;
