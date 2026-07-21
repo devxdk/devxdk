@@ -117,6 +117,7 @@ for i in $(seq 0 $((count - 1))); do
   dlls=$(msys "ldd '$srcdir_msys/src/${component}-server.exe'" | awk '$1 ~ /^msys-.*\.dll$/{print $1}' | sort -u)
   [ -n "$dlls" ] || { echo "::error::ldd reported no msys DLLs — not an MSYS build?" >&2; exit 1; }
   pacman_prov=""
+  src_bases=""   # unique "<pkgbase> <version>" of every shipped package (for the source offer)
   for dll in $dlls; do
     [ -f "/c/msys64/usr/bin/$dll" ] || { echo "::error::$dll not in /c/msys64/usr/bin" >&2; exit 1; }
     cp "/c/msys64/usr/bin/$dll" "$stage/"
@@ -135,6 +136,21 @@ for i in $(seq 0 $((count - 1))); do
       [ -f "/c/msys64$lf" ] && cp "/c/msys64$lf" "$stage/licenses/$pkg/"
     done
     [ -n "$(ls -A "$stage/licenses/$pkg")" ] || { echo "::error::license files for $pkg listed but not present on disk" >&2; exit 1; }
+    # Source-offer decision: attach a package's source ONLY when it carries a
+    # genuine copyleft SOURCE obligation — a GPL/LGPL license with NO exception.
+    # This EMITS msys2-runtime (Cygwin GPL-3.0, for msys-2.0.dll) and SKIPS
+    # gcc-libs (its GCC-exception-3.1 runtime exception permits shipping libgcc
+    # without GCC source when built with unmodified GCC — which MSYS2's is) and
+    # openssl (Apache-2.0, permissive). The license notices for ALL shipped
+    # packages already ship in the bundle above regardless.
+    lic=$(awk '/^%LICENSE%/{getline; print; exit}' "/c/msys64/var/lib/pacman/local/${pkg}-${pkgver}/desc" 2>/dev/null)
+    if echo "$lic" | grep -qiE 'GPL' && ! echo "$lic" | grep -qi 'exception'; then
+      # The SOURCE package name (%BASE%) differs from the binary for split
+      # packages (libopenssl -> openssl), so read it from the local pacman DB.
+      base=$(awk '/^%BASE%/{getline; print; exit}' "/c/msys64/var/lib/pacman/local/${pkg}-${pkgver}/desc" 2>/dev/null)
+      base=${base:-$pkg}
+      case " $src_bases " in *" $base $pkgver "*) ;; *) src_bases="$src_bases$base $pkgver"$'\n' ;; esac
+    fi
   done
   copied_any=0
   for lf in $license_files; do
@@ -173,6 +189,26 @@ for i in $(seq 0 $((count - 1))); do
   "$smoke/$component-cli.exe" -p "$smoke_port" shutdown nosave 2>/dev/null || true
   echo "smoke: $component $source_version PONG + SET/GET + shutdown OK"
 
+  # --- corresponding source (the copyleft offer) --------------------------
+  # Object code must never be public without its source, so the Release carries
+  # every shipped component's exact source as a first-class asset (uploaded
+  # BEFORE the object code by publish): the verified upstream tarball, plus each
+  # shipped MSYS2 package's source package from the official mirror (msys-2.0.dll
+  # is GPLv3 Cygwin; the mirror publishes .src.tar.zst). Assets are self-hashed;
+  # a missing mirror source FAILS the leg — we never ship code without its source.
+  src_assets=""   # newline-separated "<name>\t<sha256>"
+  upstream_src="$component-$source_version-src.tar.gz"
+  cp "$work/src.tar.gz" "$outdir/$upstream_src"
+  src_assets="${upstream_src}"$'\t'"$(sha256sum "$outdir/$upstream_src" | awk '{print $1}')"$'\n'
+  while IFS=' ' read -r base bver; do
+    [ -n "$base" ] || continue
+    sname="${base}-${bver}.src.tar.zst"
+    curl -fsSL --retry 6 --retry-max-time 300 --max-time 300 -o "$outdir/$sname" \
+      "https://repo.msys2.org/msys/sources/$sname" \
+      || { echo "::error::MSYS2 source package $sname unavailable (copyleft source offer)" >&2; exit 1; }
+    src_assets="${src_assets}${sname}"$'\t'"$(sha256sum "$outdir/$sname" | awk '{print $1}')"$'\n'
+  done <<< "$src_bases"
+
   # --- archive + meta ------------------------------------------------------
   suffix=""; [ "$revision" -ge 2 ] && suffix="-r$revision"
   archive="$component-$version$suffix-windows-amd64.zip"
@@ -185,9 +221,19 @@ for i in $(seq 0 $((count - 1))); do
   SOURCE_VERSION="$source_version" ZIP_SHA="$zip_sha" ZIP_SIZE="$zip_size" \
   SRC_URL="$src_url" SRC_SHA="$src_sha" HASHES_REF="$ref" \
   PACMAN_PROV="$(echo $pacman_prov | tr ' ' '\n' | sort -u | tr '\n' ' ')" \
-  DLLS="$(echo $dlls | tr '\n' ' ')" \
+  DLLS="$(echo $dlls | tr '\n' ' ')" SRC_ASSETS="$src_assets" \
   python3 - "$outdir/$archive.meta.json" <<'EOF'
 import json, os, sys
+# release_assets is the ordered upload set: every corresponding-source asset
+# (object_code false) first, the object-code archive last. build_members sorts
+# by the flag, and the reconciler re-asserts source-before-object-code.
+release_assets = []
+for line in os.environ.get("SRC_ASSETS", "").splitlines():
+    if not line.strip():
+        continue
+    name, sha = line.split("\t")
+    release_assets.append({"name": name, "sha256": sha, "object_code": False})
+release_assets.append({"name": os.environ["ARCHIVE"], "sha256": os.environ["ZIP_SHA"], "object_code": True})
 meta = {
     "component": os.environ["COMPONENT"],
     "version": os.environ["VERSION"],
@@ -201,6 +247,7 @@ meta = {
     "archive": os.environ["ARCHIVE"],
     "sha256": os.environ["ZIP_SHA"],
     "size_bytes": int(os.environ["ZIP_SIZE"]),
+    "release_assets": release_assets,
     "provenance": {
         "recipe": f"{os.environ['COMPONENT']}-msys2",
         "source_url": os.environ["SRC_URL"],
