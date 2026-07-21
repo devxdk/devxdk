@@ -26,7 +26,9 @@ extension=sockets
 extension=gd
 extension=soap
 
-; OPcache is a Zend extension.
+; OPcache is a Zend extension. PHP 8.5+ compiles it IN (no php_opcache.dll
+; ships), so the repack strips this line there — leaving it would warn on
+; every invocation; 8.4 still loads the DLL and keeps it.
 zend_extension=opcache
 opcache.enable=1
 opcache.enable_cli=0
