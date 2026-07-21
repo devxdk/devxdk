@@ -86,6 +86,8 @@ jobs:
 
   leg-nginx-darwin-amd64:
     needs: plan
+    permissions:
+      contents: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'nginx-darwin-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -95,6 +97,8 @@ jobs:
 
   leg-nginx-darwin-arm64:
     needs: plan
+    permissions:
+      contents: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'nginx-darwin-arm64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -104,6 +108,8 @@ jobs:
 
   leg-nginx-linux-amd64:
     needs: plan
+    permissions:
+      contents: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'nginx-linux-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -113,6 +119,8 @@ jobs:
 
   leg-php-darwin-amd64:
     needs: plan
+    permissions:
+      contents: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'php-darwin-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -122,6 +130,8 @@ jobs:
 
   leg-php-darwin-arm64:
     needs: plan
+    permissions:
+      contents: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'php-darwin-arm64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -131,6 +141,8 @@ jobs:
 
   leg-php-linux-amd64:
     needs: plan
+    permissions:
+      contents: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'php-linux-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -140,6 +152,8 @@ jobs:
 
   leg-php-windows-amd64:
     needs: plan
+    permissions:
+      contents: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'php-windows-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -149,6 +163,8 @@ jobs:
 
   leg-postgres-darwin-amd64:
     needs: plan
+    permissions:
+      contents: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'postgres-darwin-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -158,6 +174,8 @@ jobs:
 
   leg-postgres-darwin-arm64:
     needs: plan
+    permissions:
+      contents: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'postgres-darwin-arm64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -167,6 +185,8 @@ jobs:
 
   leg-postgres-linux-amd64:
     needs: plan
+    permissions:
+      contents: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'postgres-linux-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -176,6 +196,8 @@ jobs:
 
   leg-postgres-windows-amd64:
     needs: plan
+    permissions:
+      contents: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'postgres-windows-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -185,6 +207,8 @@ jobs:
 
   leg-python-darwin-amd64:
     needs: plan
+    permissions:
+      contents: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'python-darwin-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -194,6 +218,8 @@ jobs:
 
   leg-python-darwin-arm64:
     needs: plan
+    permissions:
+      contents: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'python-darwin-arm64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -203,6 +229,8 @@ jobs:
 
   leg-python-linux-amd64:
     needs: plan
+    permissions:
+      contents: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'python-linux-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -212,6 +240,8 @@ jobs:
 
   leg-python-windows-amd64:
     needs: plan
+    permissions:
+      contents: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'python-windows-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -221,6 +251,8 @@ jobs:
 
   leg-redis-darwin-amd64:
     needs: plan
+    permissions:
+      contents: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'redis-darwin-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -230,6 +262,8 @@ jobs:
 
   leg-redis-darwin-arm64:
     needs: plan
+    permissions:
+      contents: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'redis-darwin-arm64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -239,6 +273,8 @@ jobs:
 
   leg-redis-linux-amd64:
     needs: plan
+    permissions:
+      contents: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'redis-linux-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -248,6 +284,8 @@ jobs:
 
   leg-redis-windows-amd64:
     needs: plan
+    permissions:
+      contents: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'redis-windows-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -257,6 +295,8 @@ jobs:
 
   leg-valkey-darwin-amd64:
     needs: plan
+    permissions:
+      contents: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'valkey-darwin-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -266,6 +306,8 @@ jobs:
 
   leg-valkey-darwin-arm64:
     needs: plan
+    permissions:
+      contents: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'valkey-darwin-arm64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -275,6 +317,8 @@ jobs:
 
   leg-valkey-linux-amd64:
     needs: plan
+    permissions:
+      contents: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'valkey-linux-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -284,6 +328,8 @@ jobs:
 
   leg-valkey-windows-amd64:
     needs: plan
+    permissions:
+      contents: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'valkey-windows-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
