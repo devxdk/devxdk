@@ -144,16 +144,20 @@ class TestReconcileRecompose(unittest.TestCase):
     def test_scrape_reconcile_admits_newer(self):
         state = merge.ScrapeState.load(STATE_FILE)
         node = schema.load(REPO_ROOT / "node.json")
-        # Bump the candidate to a newer patch on every platform.
+        # Bump the candidate one patch past the COMMITTED version (derived, not
+        # hardcoded — the daily scrape advances node.json and must not rot this test).
         rel = node["releases"][0]
-        rel["version"] = "24.18.0"
+        old = rel["version"]
+        major, minor, patch = old.split(".")
+        new = f"{major}.{minor}.{int(patch) + 1}"
+        rel["version"] = new
         for pkey, a in rel["platforms"].items():
-            a["url"] = a["url"].replace("24.17.0", "24.18.0")
+            a["url"] = a["url"].replace(old, new)
         _st, manifest, actions = merge.scrape_reconcile(state, self.cfg, node)
-        self.assertEqual(manifest["releases"][0]["version"], "24.18.0")
-        self.assertTrue(any(a[3] == ("admit", "24.18.0") for a in actions))
-        # retain_per_line = 1 -> 24.17.0 evicted, floor advanced.
-        self.assertEqual(state.get("node", "24", "windows/amd64").floor_version, "24.18.0")
+        self.assertEqual(manifest["releases"][0]["version"], new)
+        self.assertTrue(any(a[3] == ("admit", new) for a in actions))
+        # retain_per_line = 1 -> the old version evicted, floor advanced.
+        self.assertEqual(state.get("node", "24", "windows/amd64").floor_version, new)
 
 
 def _snap(v, channel="stable", released="2026-01-01", platforms=None):
