@@ -18,6 +18,22 @@ name: build-runtimes
 on:
   workflow_dispatch:
     inputs:
+      components:
+        description: "Comma-separated component filter (empty = all enabled)"
+        type: string
+        default: ""
+      platforms:
+        description: "Comma-separated platform filter, e.g. windows/amd64"
+        type: string
+        default: ""
+      version:
+        description: "Pin this version instead of resolving newest (single-component dispatches)"
+        type: string
+        default: ""
+      force:
+        description: "Rebuild at the next unused -rN revision even when up to date"
+        type: boolean
+        default: false
       dry_run:
         description: "Plan, build, and smoke only — no Release/pending mutation"
         type: boolean
@@ -38,6 +54,7 @@ jobs:
       contents: read
     outputs:
       legs: ${{ steps.plan.outputs.legs }}
+      map: ${{ steps.plan.outputs.map }}
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -47,12 +64,25 @@ jobs:
           python-version: "3.12"
       - name: Resolve the leg map
         id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMPONENTS: ${{ inputs.components }}
+          PLATFORMS: ${{ inputs.platforms }}
+          VERSION: ${{ inputs.version }}
+          FORCE: ${{ inputs.force }}
         run: |
-          # Phase 1/3 resolves the newest version per line per source and checks
-          # existing Release/manifest/ledger state to pick each leg's revision.
-          # Phase 0 emits the full static leg id list so the parity check and the
-          # per-leg membership gates are wired end to end.
-          echo "legs=$(python3 scripts/plan_builds.py --leg-ids-json)" >> "$GITHUB_OUTPUT"
+          # Static-job parity re-asserted at run time: never emit a leg no
+          # caller job would consume (a silent gap under success-only reads).
+          python3 scripts/plan_builds.py --check-parity .github/workflows/build-runtimes.yml
+          ARGS=(--leg-map-json)
+          [ -n "$COMPONENTS" ] && ARGS+=(--components "$COMPONENTS")
+          [ -n "$PLATFORMS" ] && ARGS+=(--platforms "$PLATFORMS")
+          [ -n "$VERSION" ] && ARGS+=(--version "$VERSION")
+          [ "$FORCE" = "true" ] && ARGS+=(--force)
+          map=$(python3 scripts/plan_builds.py "${ARGS[@]}")
+          echo "map=$map" >> "$GITHUB_OUTPUT"
+          echo "legs=$(printf '%s' "$map" | python3 -c 'import json,sys;print(json.dumps(sorted(json.load(sys.stdin))))')" >> "$GITHUB_OUTPUT"
+          printf '%s' "$map" | python3 -m json.tool
 
   leg-nginx-darwin-amd64:
     needs: plan
@@ -61,6 +91,7 @@ jobs:
     with:
       leg: nginx-darwin-amd64
       runner: macos-15-intel
+      items: ${{ toJSON(fromJSON(needs.plan.outputs.map)['nginx-darwin-amd64']) }}
 
   leg-nginx-darwin-arm64:
     needs: plan
@@ -69,6 +100,7 @@ jobs:
     with:
       leg: nginx-darwin-arm64
       runner: macos-15
+      items: ${{ toJSON(fromJSON(needs.plan.outputs.map)['nginx-darwin-arm64']) }}
 
   leg-nginx-linux-amd64:
     needs: plan
@@ -77,6 +109,7 @@ jobs:
     with:
       leg: nginx-linux-amd64
       runner: ubuntu-22.04
+      items: ${{ toJSON(fromJSON(needs.plan.outputs.map)['nginx-linux-amd64']) }}
 
   leg-php-darwin-amd64:
     needs: plan
@@ -85,6 +118,7 @@ jobs:
     with:
       leg: php-darwin-amd64
       runner: macos-15-intel
+      items: ${{ toJSON(fromJSON(needs.plan.outputs.map)['php-darwin-amd64']) }}
 
   leg-php-darwin-arm64:
     needs: plan
@@ -93,6 +127,7 @@ jobs:
     with:
       leg: php-darwin-arm64
       runner: macos-15
+      items: ${{ toJSON(fromJSON(needs.plan.outputs.map)['php-darwin-arm64']) }}
 
   leg-php-linux-amd64:
     needs: plan
@@ -101,6 +136,7 @@ jobs:
     with:
       leg: php-linux-amd64
       runner: ubuntu-22.04
+      items: ${{ toJSON(fromJSON(needs.plan.outputs.map)['php-linux-amd64']) }}
 
   leg-php-windows-amd64:
     needs: plan
@@ -109,6 +145,7 @@ jobs:
     with:
       leg: php-windows-amd64
       runner: windows-2022
+      items: ${{ toJSON(fromJSON(needs.plan.outputs.map)['php-windows-amd64']) }}
 
   leg-postgres-darwin-amd64:
     needs: plan
@@ -117,6 +154,7 @@ jobs:
     with:
       leg: postgres-darwin-amd64
       runner: macos-15-intel
+      items: ${{ toJSON(fromJSON(needs.plan.outputs.map)['postgres-darwin-amd64']) }}
 
   leg-postgres-darwin-arm64:
     needs: plan
@@ -125,6 +163,7 @@ jobs:
     with:
       leg: postgres-darwin-arm64
       runner: macos-15
+      items: ${{ toJSON(fromJSON(needs.plan.outputs.map)['postgres-darwin-arm64']) }}
 
   leg-postgres-linux-amd64:
     needs: plan
@@ -133,6 +172,7 @@ jobs:
     with:
       leg: postgres-linux-amd64
       runner: ubuntu-22.04
+      items: ${{ toJSON(fromJSON(needs.plan.outputs.map)['postgres-linux-amd64']) }}
 
   leg-postgres-windows-amd64:
     needs: plan
@@ -141,6 +181,7 @@ jobs:
     with:
       leg: postgres-windows-amd64
       runner: windows-2022
+      items: ${{ toJSON(fromJSON(needs.plan.outputs.map)['postgres-windows-amd64']) }}
 
   leg-python-darwin-amd64:
     needs: plan
@@ -149,6 +190,7 @@ jobs:
     with:
       leg: python-darwin-amd64
       runner: macos-15-intel
+      items: ${{ toJSON(fromJSON(needs.plan.outputs.map)['python-darwin-amd64']) }}
 
   leg-python-darwin-arm64:
     needs: plan
@@ -157,6 +199,7 @@ jobs:
     with:
       leg: python-darwin-arm64
       runner: macos-15
+      items: ${{ toJSON(fromJSON(needs.plan.outputs.map)['python-darwin-arm64']) }}
 
   leg-python-linux-amd64:
     needs: plan
@@ -165,6 +208,7 @@ jobs:
     with:
       leg: python-linux-amd64
       runner: ubuntu-22.04
+      items: ${{ toJSON(fromJSON(needs.plan.outputs.map)['python-linux-amd64']) }}
 
   leg-python-windows-amd64:
     needs: plan
@@ -173,6 +217,7 @@ jobs:
     with:
       leg: python-windows-amd64
       runner: windows-2022
+      items: ${{ toJSON(fromJSON(needs.plan.outputs.map)['python-windows-amd64']) }}
 
   leg-redis-darwin-amd64:
     needs: plan
@@ -181,6 +226,7 @@ jobs:
     with:
       leg: redis-darwin-amd64
       runner: macos-15-intel
+      items: ${{ toJSON(fromJSON(needs.plan.outputs.map)['redis-darwin-amd64']) }}
 
   leg-redis-darwin-arm64:
     needs: plan
@@ -189,6 +235,7 @@ jobs:
     with:
       leg: redis-darwin-arm64
       runner: macos-15
+      items: ${{ toJSON(fromJSON(needs.plan.outputs.map)['redis-darwin-arm64']) }}
 
   leg-redis-linux-amd64:
     needs: plan
@@ -197,6 +244,7 @@ jobs:
     with:
       leg: redis-linux-amd64
       runner: ubuntu-22.04
+      items: ${{ toJSON(fromJSON(needs.plan.outputs.map)['redis-linux-amd64']) }}
 
   leg-redis-windows-amd64:
     needs: plan
@@ -205,6 +253,7 @@ jobs:
     with:
       leg: redis-windows-amd64
       runner: windows-2022
+      items: ${{ toJSON(fromJSON(needs.plan.outputs.map)['redis-windows-amd64']) }}
 
   leg-valkey-darwin-amd64:
     needs: plan
@@ -213,6 +262,7 @@ jobs:
     with:
       leg: valkey-darwin-amd64
       runner: macos-15-intel
+      items: ${{ toJSON(fromJSON(needs.plan.outputs.map)['valkey-darwin-amd64']) }}
 
   leg-valkey-darwin-arm64:
     needs: plan
@@ -221,6 +271,7 @@ jobs:
     with:
       leg: valkey-darwin-arm64
       runner: macos-15
+      items: ${{ toJSON(fromJSON(needs.plan.outputs.map)['valkey-darwin-arm64']) }}
 
   leg-valkey-linux-amd64:
     needs: plan
@@ -229,6 +280,7 @@ jobs:
     with:
       leg: valkey-linux-amd64
       runner: ubuntu-22.04
+      items: ${{ toJSON(fromJSON(needs.plan.outputs.map)['valkey-linux-amd64']) }}
 
   leg-valkey-windows-amd64:
     needs: plan
@@ -237,6 +289,7 @@ jobs:
     with:
       leg: valkey-windows-amd64
       runner: windows-2022
+      items: ${{ toJSON(fromJSON(needs.plan.outputs.map)['valkey-windows-amd64']) }}
 
   publish:
     needs:

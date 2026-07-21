@@ -26,6 +26,16 @@ on:
         required: false
         type: string
         default: "[]"
+    # A reusable workflow exports NOTHING without this mapping — the leg job's
+    # outputs alone are invisible to callers, and publish consumes each leg by
+    # exactly these two values (immutable artifact id + member-digest hash).
+    outputs:
+      artifact_id:
+        description: "Immutable id of the uploaded leg artifact"
+        value: ${{ jobs.leg.outputs.artifact_id }}
+      manifest_sha256:
+        description: "SHA256 of the leg's member-digest manifest.json"
+        value: ${{ jobs.leg.outputs.manifest_sha256 }}
 
 permissions:
   contents: read
