@@ -6,3 +6,6 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# Local recipe-run outputs (CI legs upload these as workflow artifacts).
+build/
