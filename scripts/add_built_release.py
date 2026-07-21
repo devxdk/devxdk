@@ -82,7 +82,11 @@ def main(argv=None):
     out = PENDING_DIR / pending_filename(rec.component, rec.version, rec.revision, rec.platform)
     with open(out, "w", encoding="utf-8", newline="\n") as fh:
         fh.write(json.dumps(data, indent=2, sort_keys=True) + "\n")
-    sys.stderr.write(f"wrote {out.relative_to(REPO_ROOT)}\n")
+    try:
+        shown = out.relative_to(REPO_ROOT)
+    except ValueError:
+        shown = out  # PENDING_DIR redirected (tests) — show the absolute path
+    sys.stderr.write(f"wrote {shown}\n")
     return 0
 
 

@@ -369,31 +369,76 @@ jobs:
       contents: read
     environment: manifest-push
     outputs:
-      finalizable_artifact_id: ${{ steps.publish.outputs.finalizable_artifact_id }}
+      finalizable_artifact_id: ${{ steps.upload.outputs.artifact-id }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      # Reconcile every success leg's component Release, then emit the verified
+      # metas. publish_legs downloads each leg BY its immutable artifact id,
+      # authenticates it (handoff.verify), and reconciles source-before-object-code
+      # immutably. The metas are written BEFORE any red exit so finalize still
+      # gets the partial success list; the fail-if-errors gate runs LAST.
       - name: Reconcile Releases and emit the verified-legs handoff
         id: publish
+        env:
+          GH_TOKEN: ${{ secrets.DEVXDK_MANIFEST_PUSH_TOKEN }}
+          NEEDS_JSON: ${{ toJSON(needs) }}
         run: |
-          # Phase 1/3: for each success leg, download BY its immutable id
-          # (needs.leg-<id>.outputs.artifact_id) into its own fresh directory,
-          # run `python3 scripts/handoff.py verify <dir> --expect <manifest_sha256>`
-          # (the leg's other job output) to authenticate every member, then
-          # reconcile the component Release assets (source-before-object-code for
-          # copyleft) and upload finalizable-metas. The leg-side handoff is wired;
-          # this body lands with the recipes that produce real bundles.
-          echo "publish is implemented with the Phase 1/3 recipes" >&2
-          echo "finalizable_artifact_id=" >> "$GITHUB_OUTPUT"
+          python3 scripts/publish_legs.py \
+            --needs "$NEEDS_JSON" \
+            --workdir "$RUNNER_TEMP/legs" \
+            --out "$RUNNER_TEMP/finalizable-metas" \
+            --github-output "$GITHUB_OUTPUT"
+      - name: Upload the finalizable-metas handoff
+        id: upload
+        if: steps.publish.outputs.has_metas == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: finalizable-metas-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/finalizable-metas/
+          if-no-files-found: error
+      - name: Fail the job on any collected per-leg error
+        if: steps.publish.outputs.has_errors == 'true'
+        run: |
+          echo "::error::publish collected per-leg reconciliation errors (a red, re-runnable job that still handed finalize its partial success list)" >&2
+          exit 1
 
   finalize:
     needs: publish
+    # Gate on the nonempty artifact-id ALONE (not publish success): publish goes
+    # red on a per-leg error while still emitting a valid partial handoff, and
+    # those verified legs must still finalize. An empty/absent id (crash or
+    # zero-verified publish) skips finalize at the job level, before it enters
+    # the privileged environment.
     if: ${{ !cancelled() && needs.publish.outputs.finalizable_artifact_id != '' }}
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       actions: write
     environment: manifest-push
     steps:
-      - name: Write pending records and dispatch scrape-and-sign
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - name: Download the finalizable-metas handoff by id
+        env:
+          GH_TOKEN: ${{ secrets.DEVXDK_MANIFEST_PUSH_TOKEN }}
         run: |
-          # Phase 1/3: download the verified-legs artifact, run add_built_release
-          # per leg, commit pending/, and `gh workflow run scrape-and-sign.yml`.
-          echo "finalize is implemented with the Phase 1/3 recipes" >&2
+          gh api "repos/devxdk/devxdk/actions/artifacts/${{ needs.publish.outputs.finalizable_artifact_id }}/zip" > "$RUNNER_TEMP/metas.zip"
+          mkdir -p "$RUNNER_TEMP/finalizable-metas"
+          python3 -c "import sys,zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])" "$RUNNER_TEMP/metas.zip" "$RUNNER_TEMP/finalizable-metas"
+      - name: Write pending records, commit, and dispatch scrape-and-sign
+        env:
+          GH_TOKEN: ${{ secrets.DEVXDK_MANIFEST_PUSH_TOKEN }}
+        run: |
+          git config user.name "devxdk-bot"
+          git config user.email "bot@devxdk.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/devxdk/devxdk.git"
+          python3 scripts/finalize_builds.py --metas "$RUNNER_TEMP/finalizable-metas"
