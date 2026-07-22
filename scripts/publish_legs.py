@@ -75,17 +75,21 @@ class GhReleaseAPI:
                  "url": a["url"]} for a in out]
 
     def create_release(self, tag, *, prerelease):
-        # Component releases never become the repo's "latest" (the app release
-        # owns that pointer); always draft, prerelease per the version class.
-        args = ["release", "create", tag, "--repo", REPO, "--draft",
-                "--title", tag, "--notes", "Automated DevXDK build.", "--latest=false"]
+        # Create via the API POST so the RESPONSE carries the new release's id
+        # directly. `gh release create` + a re-fetch races GitHub's list
+        # eventual-consistency — the just-created draft is briefly absent from
+        # GET /releases, and absent from GET /releases/tags/{tag} until published
+        # — so neither re-fetch is reliable immediately after create. Component
+        # releases are always drafts and never the repo "latest" (make_latest is
+        # the string enum "false", not a bool).
+        args = ["-X", "POST", f"repos/{REPO}/releases",
+                "-f", f"tag_name={tag}", "-F", "draft=true",
+                "-f", f"name={tag}", "-f", "body=Automated DevXDK build.",
+                "-f", "make_latest=false"]
         if prerelease:
-            args.append("--prerelease")
-        self._gh(*args)
-        rel = self.get_release(tag)  # list-based — a fresh draft is not fetchable by tag
-        if rel is None:
-            raise releasepub.ReleaseError(f"release {tag} not found immediately after create")
-        return rel
+            args += ["-F", "prerelease=true"]
+        data = json.loads(self._api(*args).stdout)
+        return {"id": data["id"], "draft": data["draft"], "assets": []}
 
     def upload_asset(self, release_id, name, path):
         self._gh("release", "upload", self._tag_for(release_id), path, "--repo", REPO, "--clobber")
