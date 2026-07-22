@@ -28,6 +28,7 @@ ENABLED_PROVIDERS = {
     "devxdk-redis-unix",     # redis linux/macOS source build (recipes/lib/rediscache-unix.sh)
     "devxdk-valkey-unix",    # valkey linux/macOS source build (same lib; only Linux valkey source)
     "devxdk-nginx-unix",     # nginx linux/macOS static source build (recipes/nginx.sh)
+    "devxdk-php-spc",        # php linux/macOS static build (recipes/lib/php-spc.sh)
     "devxdk-php-windows",
     "astral",    # python adopt (recipes/python.sh)
     "theseus",   # postgres adopt on every platform (recipes/postgres.sh)
@@ -282,6 +283,33 @@ def nginx_newest(fetcher, line_id: str) -> dict:
     }
 
 
+# php-spc unix build: the newest patch of a tracked branch from php.net's own
+# releases JSON (the canonical SOURCE feed — windows.php.net is binaries-only).
+# The two php providers (windows repack + unix spc) track php.net's coordinated
+# source+binary release, so both resolve the same patch and merge into one
+# release; a brief divergence just yields platform-partial releases until the
+# lagging platform catches up (safe under the platform-availability gating).
+PHP_RELEASES_URL = "https://www.php.net/releases/?json&version={}&max=1"
+
+
+def php_spc_newest(fetcher, line_id: str) -> dict:
+    """Newest PHP patch of a branch (line_id = major.minor) from php.net.
+
+    Build provider: the recipe re-fetches + GPG-verifies the same source, so this
+    only resolves the plannable version. releases JSON keys are versions, newest
+    first with max=1, so the single key is the newest patch."""
+    data = fetcher.get_json(PHP_RELEASES_URL.format(line_id))
+    if not isinstance(data, dict) or not data:
+        raise ResolveError(f"php.net releases JSON empty for branch {line_id}")
+    version = next(iter(data))
+    if not _in_line(version, line_id):
+        raise ResolveError(f"php.net newest {version} is not in branch {line_id}")
+    return {
+        "source_version": version,
+        "source_url": f"https://www.php.net/distributions/php-{version}.tar.gz",
+    }
+
+
 def resolve(provider: str, cfg, component: str, line_id: str, fetcher) -> dict:
     """Dispatch to the provider's resolver. Callers gate on ENABLED_PROVIDERS
     first; an unknown-but-enabled provider is a hard error (config/gate drift)."""
@@ -299,4 +327,6 @@ def resolve(provider: str, cfg, component: str, line_id: str, fetcher) -> dict:
         return theseus_newest(fetcher, line_id)
     if provider == "devxdk-nginx-unix":
         return nginx_newest(fetcher, line_id)
+    if provider == "devxdk-php-spc":
+        return php_spc_newest(fetcher, line_id)
     raise ResolveError(f"no resolver for provider {provider!r}")

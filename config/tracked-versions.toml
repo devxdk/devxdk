@@ -182,6 +182,17 @@ fingerprints = [
   "13C82A63B603576156E30A4EA0EA981B66B0D967", # Konstantin Pavlov (thresh.key)
 ]
 
+# PHP release-manager GPG public keys. php.net signs each source tarball with a
+# detached .asc AND publishes a sha256 in its releases JSON, so php-spc verifies
+# BOTH (sha256 from the JSON + gpg against these pinned keys). Each active branch
+# has its own RM: 8.4 = Calvin Buckley, 8.5 = Daniel Scherzer. A new RM for a
+# tracked branch means adding their key here (committed under keys/php/).
+[pins.php_keys]
+fingerprints = [
+  "9D7F99A0CB8F05C8A6958D6256A97AF7600A39A6", # Calvin Buckley  (calvinb.key) — PHP 8.4
+  "D95C03BC702BE9515344AE3374E44BC9067701A5", # Daniel Scherzer (daniels.key) — PHP 8.5
+]
+
 # Upstream hash-verification repos: the redis/valkey SOURCE tarballs the msys2 +
 # unix builds compile are checked against the sha256 published at this pinned ref.
 [pins.redis_hashes]

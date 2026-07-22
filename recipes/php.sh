@@ -4,7 +4,9 @@
 #   NTS x64 build with the pinned php_redis PECL DLL and the authored php.ini,
 #   flat at archive root (php.exe / php-cgi.exe / ext/ / php.ini) — the layout
 #   internal/runtimes/php and the php-fpm service def contract on.
-# linux/darwin -> php-spc static builds (Phase 3; fails loudly until they land).
+# linux/darwin -> php-spc static builds (recipes/lib/php-spc.sh): static-php-cli
+#   compiles the GPG-verified php source with the baseline extensions built in,
+#   assembling bin/php + sbin/php-fpm + php.ini flat at the archive root.
 #
 # A leg covers BOTH tracked lines (8.4 + 8.5) sequentially; each line's item in
 # LEG_ITEMS names the exact version the plan resolved from releases.json, and
@@ -14,8 +16,7 @@ set -euo pipefail
 leg="${1:?usage: php.sh <leg>}"
 case "$leg" in
   php-windows-amd64) ;;
-  php-linux-*|php-darwin-*)
-    echo "::error::recipe devxdk-php-spc for $leg lands with Phase 3" >&2; exit 1 ;;
+  php-linux-*|php-darwin-*) exec bash recipes/lib/php-spc.sh "$leg" ;;
   *) echo "::error::unexpected php leg '$leg'" >&2; exit 1 ;;
 esac
 

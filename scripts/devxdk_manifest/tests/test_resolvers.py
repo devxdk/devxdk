@@ -168,6 +168,11 @@ class TestBuildLegMap(unittest.TestCase):
             },
             jsons={
                 "https://downloads.php.net/~windows/releases/releases.json": PHP_RELEASES,
+                # php-spc unix resolver reads php.net's own releases JSON per branch.
+                "https://www.php.net/releases/?json&version=8.4&max=1": {"8.4.23": {"source": [
+                    {"filename": "php-8.4.23.tar.gz", "sha256": "aa" * 32}]}},
+                "https://www.php.net/releases/?json&version=8.5&max=1": {"8.5.8": {"source": [
+                    {"filename": "php-8.5.8.tar.gz", "sha256": "bb" * 32}]}},
                 ASTRAL_LATEST: {"id": 356187877, "tag_name": "20260718"},
                 THESEUS_RELEASES: [_theseus_release("18.4.0"), _theseus_release("18.3.0")],
             },
@@ -181,22 +186,27 @@ class TestBuildLegMap(unittest.TestCase):
 
     def test_fresh_state_plans_all_enabled_legs(self):
         legs = self._map()
-        # php stays windows-only (php-spc not yet enabled); redis/valkey are now
-        # built on every platform (msys2 on Windows, the unix source build on
-        # linux/macOS); nginx builds on the three unix platforms (windows nginx is
-        # scraped, not built); python + postgres (adopt) cover all four platforms.
+        # Every managed component now builds/adopts on all its platforms: php
+        # (windows repack + unix spc), redis/valkey (msys2 + unix), nginx (unix
+        # only — windows nginx is scraped), python + postgres (adopt, all four).
         self.assertEqual(set(legs), {
             "redis-windows-amd64", "redis-linux-amd64",
             "redis-darwin-amd64", "redis-darwin-arm64",
             "valkey-windows-amd64", "valkey-linux-amd64",
             "valkey-darwin-amd64", "valkey-darwin-arm64",
             "nginx-linux-amd64", "nginx-darwin-amd64", "nginx-darwin-arm64",
-            "php-windows-amd64",
+            "php-windows-amd64", "php-linux-amd64",
+            "php-darwin-amd64", "php-darwin-arm64",
             "python-windows-amd64", "python-linux-amd64",
             "python-darwin-amd64", "python-darwin-arm64",
             "postgres-windows-amd64", "postgres-linux-amd64",
             "postgres-darwin-amd64", "postgres-darwin-arm64"})  # theseus, all four
         self.assertEqual([i["version"] for i in legs["php-windows-amd64"]], ["8.4.23", "8.5.8"])
+        # php-spc unix leg: same versions (php.net source feed), spc recipe/runner.
+        pl = legs["php-linux-amd64"]
+        self.assertEqual([i["version"] for i in pl], ["8.4.23", "8.5.8"])
+        self.assertEqual((pl[0]["recipe"], pl[0]["provider"], pl[0]["runner"], pl[0]["mode"]),
+                         ("php-spc", "devxdk-php-spc", "ubuntu-22.04", "build"))
         # postgres: manifest version is MAJOR.MINOR while source_version is the
         # full theseus version (the adopt ordering key).
         pg = legs["postgres-darwin-arm64"][0]
@@ -228,8 +238,10 @@ class TestBuildLegMap(unittest.TestCase):
                          ("python", "3.14.6", "adopted", "astral", "build", "ubuntu-22.04"))
 
     def test_component_filter(self):
+        # php now builds on every platform (windows repack + unix spc).
         legs = self._map(components=["php"])
-        self.assertEqual(set(legs), {"php-windows-amd64"})
+        self.assertEqual(set(legs), {
+            "php-windows-amd64", "php-linux-amd64", "php-darwin-amd64", "php-darwin-arm64"})
 
     def test_version_override_targets_one_line(self):
         legs = self._map(components=["php"], version_override="8.4.23")
@@ -398,6 +410,27 @@ class TestNginxNewest(unittest.TestCase):
         listing = '<a href="nginx-1.29.5.tar.gz">x</a>\n<a href="nginx-1.28.0.tar.gz">x</a>\n'
         with self.assertRaises(resolvers.ResolveError):
             resolvers.nginx_newest(self._fetcher(listing), "1.30")
+
+
+class TestPhpSpcNewest(unittest.TestCase):
+    def _fetcher(self, minor, payload):
+        return FakeFetcher(jsons={resolvers.PHP_RELEASES_URL.format(minor): payload})
+
+    def test_newest_patch_from_releases_json(self):
+        f = self._fetcher("8.4", {"8.4.23": {"source": [{"filename": "php-8.4.23.tar.gz"}]}})
+        got = resolvers.php_spc_newest(f, "8.4")
+        self.assertEqual(got["source_version"], "8.4.23")
+        self.assertEqual(got["source_url"], "https://www.php.net/distributions/php-8.4.23.tar.gz")
+
+    def test_empty_releases_fails(self):
+        with self.assertRaises(resolvers.ResolveError):
+            resolvers.php_spc_newest(self._fetcher("8.5", {}), "8.5")
+
+    def test_wrong_branch_fails(self):
+        # A releases feed answering with a different branch is rejected, not adopted.
+        f = self._fetcher("8.5", {"8.4.23": {"source": []}})
+        with self.assertRaises(resolvers.ResolveError):
+            resolvers.php_spc_newest(f, "8.5")
 
 
 if __name__ == "__main__":
