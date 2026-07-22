@@ -184,12 +184,15 @@ class TestMariadbScrape(unittest.TestCase):
         ), line
 
     def test_reproduces_committed_11_8(self):
-        raw, data = _committed("mariadb.json")
-        self.assertEqual(len(data["releases"]), 1)
-        rel = data["releases"][0]
+        # The manifest carries several lines now; pick the 11.8 release and assert
+        # the adapter reproduces exactly that release (a single-line build) — a
+        # count-agnostic byte check that survives the manifest gaining lines.
+        _raw, data = _committed("mariadb.json")
+        rel = next(r for r in data["releases"] if r["version"].startswith("11.8."))
         fetcher, line = self._fixture_for(rel)
         out = schema.dump_str(mariadb.build(fetcher, lines={line: rel["channel"]}))
-        self.assertEqual(out, raw, "mariadb.build must reproduce the committed 11.8 release byte-for-byte")
+        expected = schema.dump_str(schema.component("mariadb", "MariaDB", "service", [rel]))
+        self.assertEqual(out, expected, "mariadb.build must reproduce the committed 11.8 release exactly")
 
     def test_lines_match_config(self):
         cfg = config.load()
