@@ -15,6 +15,8 @@ Standard library only; network goes through the injectable Fetcher.
 
 from __future__ import annotations
 
+import functools
+import os
 import re
 
 from . import versions
@@ -99,6 +101,86 @@ def php_windows_newest(fetcher, line_id: str) -> dict:
     }
 
 
+# astral python-build-standalone: install_only asset triples per manifest platform.
+ASTRAL_REPO = "astral-sh/python-build-standalone"
+_ASTRAL_TRIPLES = {
+    "windows/amd64": "x86_64-pc-windows-msvc",
+    "linux/amd64": "x86_64-unknown-linux-gnu",
+    "darwin/amd64": "x86_64-apple-darwin",
+    "darwin/arm64": "aarch64-apple-darwin",
+}
+_ASTRAL_ASSET = re.compile(r"^cpython-(\d+\.\d+\.\d+)\+\w+-(.+)-install_only\.tar\.gz$")
+
+
+def _gh_headers() -> dict:
+    """GitHub API headers; authenticate when a token is in the environment so the
+    paginated asset listing doesn't exhaust the 60/hr anonymous limit (the plan
+    job carries GITHUB_TOKEN)."""
+    headers = {"Accept": "application/vnd.github+json"}
+    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
+
+
+def _astral_digest_sha256(asset: dict) -> str:
+    """The published sha256 from an asset's ``digest`` field ("sha256:<hex>"),
+    fail-closed on any other/absent algorithm (astral ships no .sha256 sidecar,
+    so this is the only authenticated hash)."""
+    digest = (asset.get("digest") or "").strip().lower()
+    prefix = "sha256:"
+    if not digest.startswith(prefix):
+        raise ResolveError(f"astral asset {asset.get('name')!r} has no sha256 digest")
+    sha = digest[len(prefix):]
+    if len(sha) != 64 or any(c not in "0123456789abcdef" for c in sha):
+        raise ResolveError(f"astral asset {asset.get('name')!r} has a malformed sha256 digest")
+    return sha
+
+
+def astral_newest(fetcher, line_id: str) -> dict:
+    """Newest CPython in the tracked line from astral's python-build-standalone.
+
+    Adopt provider: the manifest references the upstream install_only asset
+    directly, verified by the API's published ``digest``. Returns source_version,
+    the date-based release_tag, and per-platform {url, sha256, size} for the four
+    install_only assets. The release lists hundreds of assets, so the listing is
+    paginated to exhaustion, and only a version present on ALL four platforms is
+    plannable (a partial upload must never yield a platform-incomplete release)."""
+    headers = _gh_headers()
+    release = fetcher.get_json(
+        f"https://api.github.com/repos/{ASTRAL_REPO}/releases/latest", headers)
+    tag = release["tag_name"]
+    assets = fetcher.get_json_paginated(
+        f"https://api.github.com/repos/{ASTRAL_REPO}/releases/{release['id']}/assets", headers)
+
+    triple_to_key = {v: k for k, v in _ASTRAL_TRIPLES.items()}
+    by_version: dict = {}
+    for asset in assets:
+        m = _ASTRAL_ASSET.match(asset.get("name", ""))
+        if not m:
+            continue
+        ver, triple = m.group(1), m.group(2)
+        pkey = triple_to_key.get(triple)
+        if pkey is None or not _in_line(ver, line_id):
+            continue
+        by_version.setdefault(ver, {})[pkey] = asset
+
+    complete = [v for v, plats in by_version.items() if set(plats) == set(_ASTRAL_TRIPLES)]
+    if not complete:
+        raise ResolveError(
+            f"no complete 4-platform cpython {line_id}.x in astral release {tag}")
+    version = max(complete, key=functools.cmp_to_key(versions.compare_str))
+
+    platforms = {}
+    for pkey, asset in by_version[version].items():
+        platforms[pkey] = {
+            "url": asset["browser_download_url"],
+            "sha256": _astral_digest_sha256(asset),
+            "size": asset["size"],
+        }
+    return {"source_version": version, "release_tag": tag, "platforms": platforms}
+
+
 def resolve(provider: str, cfg, component: str, line_id: str, fetcher) -> dict:
     """Dispatch to the provider's resolver. Callers gate on ENABLED_PROVIDERS
     first; an unknown-but-enabled provider is a hard error (config/gate drift)."""
@@ -110,4 +192,6 @@ def resolve(provider: str, cfg, component: str, line_id: str, fetcher) -> dict:
                              cfg.pins["valkey_hashes"]["ref"], "valkey", line_id)
     if provider == "devxdk-php-windows":
         return php_windows_newest(fetcher, line_id)
+    if provider == "astral":
+        return astral_newest(fetcher, line_id)
     raise ResolveError(f"no resolver for provider {provider!r}")

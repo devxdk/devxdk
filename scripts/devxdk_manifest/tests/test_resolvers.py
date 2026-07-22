@@ -31,14 +31,18 @@ PHP_RELEASES = {
 
 
 class FakeFetcher:
-    def __init__(self, texts=None, jsons=None):
+    def __init__(self, texts=None, jsons=None, paginated=None):
         self.texts, self.jsons = texts or {}, jsons or {}
+        self.paginated = paginated or {}
 
     def get_text(self, url, headers=None):
         return self.texts[url]
 
     def get_json(self, url, headers=None):
         return self.jsons[url]
+
+    def get_json_paginated(self, url, headers=None):
+        return self.paginated[url]
 
 
 def _hashes_fetcher(ref="deadbeef"):
@@ -197,6 +201,65 @@ class TestBuildLegMap(unittest.TestCase):
                            {"windows/amd64": schema.asset("https://x/y.zip", "a" * 64, 1)})]))
         with self.assertRaises(plan.PlanError):
             self._map(components=["redis"])
+
+
+def _astral_asset(ver, triple, sha, size, digest=True):
+    a = {
+        "name": f"cpython-{ver}+20260718-{triple}-install_only.tar.gz",
+        "browser_download_url": f"https://github.com/astral-sh/python-build-standalone/"
+                                f"releases/download/20260718/cpython-{ver}+20260718-{triple}-install_only.tar.gz",
+        "size": size,
+    }
+    if digest:
+        a["digest"] = f"sha256:{sha}"
+    return a
+
+
+ASTRAL_LATEST = "https://api.github.com/repos/astral-sh/python-build-standalone/releases/latest"
+ASTRAL_ASSETS = "https://api.github.com/repos/astral-sh/python-build-standalone/releases/356187877/assets"
+_TRIPLES = {
+    "windows/amd64": "x86_64-pc-windows-msvc",
+    "linux/amd64": "x86_64-unknown-linux-gnu",
+    "darwin/amd64": "x86_64-apple-darwin",
+    "darwin/arm64": "aarch64-apple-darwin",
+}
+
+
+class TestAstralNewest(unittest.TestCase):
+    def _fetcher(self, assets):
+        return FakeFetcher(
+            jsons={ASTRAL_LATEST: {"id": 356187877, "tag_name": "20260718"}},
+            paginated={ASTRAL_ASSETS: assets},
+        )
+
+    def _full(self, ver, start=1):
+        return [_astral_asset(ver, t, f"{i:064d}", 100 + i) for i, t in enumerate(_TRIPLES.values(), start)]
+
+    def test_picks_newest_complete_four_platform(self):
+        assets = (
+            self._full("3.14.6")
+            + self._full("3.14.5", start=10)
+            + [_astral_asset("3.14.7", "x86_64-pc-windows-msvc", "a" * 64, 1)]  # 3.14.7 only 1 platform → incomplete
+            + [_astral_asset("3.13.9", t, "b" * 64, 1) for t in _TRIPLES.values()]  # wrong line
+            + [{"name": "cpython-3.14.6+20260718-x86_64-pc-windows-msvc-debug-full.tar.zst", "size": 1}]  # not install_only
+        )
+        got = resolvers.astral_newest(self._fetcher(assets), "3.14")
+        self.assertEqual(got["source_version"], "3.14.6")  # not 3.14.7 (incomplete), not 3.14.5
+        self.assertEqual(got["release_tag"], "20260718")
+        self.assertEqual(set(got["platforms"]), set(_TRIPLES))
+        self.assertEqual(got["platforms"]["windows/amd64"]["sha256"], f"{1:064d}")
+        self.assertTrue(got["platforms"]["linux/amd64"]["url"].startswith("https://github.com/astral-sh/"))
+
+    def test_missing_digest_fails_closed(self):
+        assets = self._full("3.14.6")
+        assets[0] = _astral_asset("3.14.6", _TRIPLES["windows/amd64"], "0" * 64, 1, digest=False)
+        with self.assertRaises(resolvers.ResolveError):
+            resolvers.astral_newest(self._fetcher(assets), "3.14")
+
+    def test_incomplete_line_raises(self):
+        assets = self._full("3.14.6")[:3]  # only 3 of 4 platforms
+        with self.assertRaises(resolvers.ResolveError):
+            resolvers.astral_newest(self._fetcher(assets), "3.14")
 
 
 if __name__ == "__main__":
