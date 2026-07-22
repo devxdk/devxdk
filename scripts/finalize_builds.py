@@ -61,21 +61,26 @@ def _git(*args, check=True):
     return subprocess.run(["git", *args], cwd=REPO_ROOT, capture_output=True, text=True, check=check)
 
 
-def commit_and_push(attempts=5):
-    """Commit pending/ and push with a full rebase-retry: on rejection reset to
-    the freshly fetched tip and RE-WRITE the pending records against it, so a
-    concurrently committed scrape/publish never clobbers or is clobbered."""
+def commit_and_push(metas_dir, attempts=5):
+    """Write pending/ records, commit, and push with a full rebase-retry: on
+    rejection reset to the freshly fetched tip and RE-WRITE the records against
+    it, so a concurrently committed scrape/publish never clobbers or is
+    clobbered. write_pending is INSIDE the loop because `reset --hard` discards
+    the just-committed records — re-deriving them from the metas each attempt is
+    what makes the retry correct (idempotent: apply_pending later discards any
+    record whose version already landed)."""
     for attempt in range(1, attempts + 1):
+        write_pending(metas_dir)
         _git("add", "pending")
-        if not _git("diff", "--cached", "--quiet", check=False).returncode:
-            sys.stderr.write("finalize: no pending changes to commit\n")
+        if _git("diff", "--cached", "--quiet", check=False).returncode == 0:
+            sys.stderr.write("finalize: pending records already applied — nothing to commit\n")
             return True
         _git("commit", "-m", "chore: queue built-runtime pending records")
         push = _git("push", "origin", "HEAD:main", check=False)
         if push.returncode == 0:
             sys.stderr.write(f"finalize: pushed on attempt {attempt}\n")
             return True
-        sys.stderr.write(f"finalize: push rejected (attempt {attempt}); rebasing\n")
+        sys.stderr.write(f"finalize: push rejected (attempt {attempt}); rebasing\n{push.stderr.strip()}\n")
         _git("fetch", "origin", "main")
         _git("reset", "--hard", "FETCH_HEAD")
     return False
@@ -87,11 +92,11 @@ def main(argv=None):
     ap.add_argument("--no-dispatch", action="store_true", help="write+commit only (tests/local)")
     args = ap.parse_args(argv)
 
-    written = write_pending(args.metas)
-    if not written:
+    import pathlib
+    if not sorted(pathlib.Path(args.metas).glob("*.meta.json")):
         sys.stderr.write("finalize: no metas to finalize\n")
         return 0
-    if not commit_and_push():
+    if not commit_and_push(args.metas):
         sys.stderr.write("finalize: exhausted push retries\n")
         return 1
     if not args.no_dispatch:
