@@ -79,7 +79,17 @@ done
 echo "php keyring: pinned release-manager fingerprints present"
 
 # --- ensure the toolchain spc needs (idempotent on the CI images) ----------
-"$SPC" doctor --auto-fix >"$outdir/doctor.log" 2>&1 || { echo "::error::spc doctor failed"; tail -30 "$outdir/doctor.log" >&2; exit 1; }
+# Pre-install the build tools with a FRESH apt index rather than leaning on spc
+# doctor's --auto-fix, whose bare `apt-get install` hits 503s on a stale index
+# (re2c/autopoint are the two the ubuntu image lacks). apt-get update is retried
+# for a transient mirror blip; then doctor --auto-fix finds everything present.
+if [ "$os" = Linux ]; then
+  for _ in 1 2 3; do sudo apt-get update -y >>"$outdir/apt.log" 2>&1 && break; sleep 5; done
+  sudo apt-get install -y --no-install-recommends \
+    re2c gettext autoconf automake libtool pkg-config bison flex build-essential \
+    >>"$outdir/apt.log" 2>&1 || { echo "::error::apt-get install of the spc toolchain failed"; tail -30 "$outdir/apt.log" >&2; exit 1; }
+fi
+"$SPC" doctor --auto-fix >"$outdir/doctor.log" 2>&1 || { echo "::error::spc doctor failed"; tail -40 "$outdir/doctor.log" >&2; exit 1; }
 
 # --- loopback source server: spc compiles ONLY our GPG-verified bytes -------
 srcserve="$outdir/srcserve"; rm -rf "$srcserve"; mkdir -p "$srcserve"
