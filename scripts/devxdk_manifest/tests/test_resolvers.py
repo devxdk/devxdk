@@ -29,6 +29,16 @@ PHP_RELEASES = {
             "nts-vs17-x64": {"zip": {"path": "php-8.5.8-nts-Win32-vs17-x64.zip", "sha256": "bb" * 32}}},
 }
 
+# nginx.org autoindex snippet: mainline (1.29.x) and old-stable (1.28.x) interleave
+# with the tracked 1.30 line, and 1.30.4 is NOT last — the resolver must version-sort.
+NGINX_LISTING = """\
+<a href="nginx-1.28.0.tar.gz">nginx-1.28.0.tar.gz</a>
+<a href="nginx-1.30.0.tar.gz">nginx-1.30.0.tar.gz</a>
+<a href="nginx-1.30.4.tar.gz">nginx-1.30.4.tar.gz</a>
+<a href="nginx-1.30.2.tar.gz">nginx-1.30.2.tar.gz</a>
+<a href="nginx-1.29.5.tar.gz">nginx-1.29.5.tar.gz</a>
+"""
+
 
 class FakeFetcher:
     def __init__(self, texts=None, jsons=None, paginated=None):
@@ -153,6 +163,8 @@ class TestBuildLegMap(unittest.TestCase):
                 hashes_redis: HASHES,
                 hashes_valkey: HASHES.replace("redis", "valkey").replace("8.8.0", "9.1.0")
                                      .replace("8.2.7", "9.0.4").replace("7.4.9", "8.1.8"),
+                # nginx-unix build provider resolves the newest 1.30.x from the index.
+                resolvers.NGINX_DOWNLOAD: NGINX_LISTING,
             },
             jsons={
                 "https://downloads.php.net/~windows/releases/releases.json": PHP_RELEASES,
@@ -171,12 +183,14 @@ class TestBuildLegMap(unittest.TestCase):
         legs = self._map()
         # php stays windows-only (php-spc not yet enabled); redis/valkey are now
         # built on every platform (msys2 on Windows, the unix source build on
-        # linux/macOS); python + postgres (adopt) cover all four platforms.
+        # linux/macOS); nginx builds on the three unix platforms (windows nginx is
+        # scraped, not built); python + postgres (adopt) cover all four platforms.
         self.assertEqual(set(legs), {
             "redis-windows-amd64", "redis-linux-amd64",
             "redis-darwin-amd64", "redis-darwin-arm64",
             "valkey-windows-amd64", "valkey-linux-amd64",
             "valkey-darwin-amd64", "valkey-darwin-arm64",
+            "nginx-linux-amd64", "nginx-darwin-amd64", "nginx-darwin-arm64",
             "php-windows-amd64",
             "python-windows-amd64", "python-linux-amd64",
             "python-darwin-amd64", "python-darwin-arm64",
@@ -202,6 +216,11 @@ class TestBuildLegMap(unittest.TestCase):
         vd = legs["valkey-darwin-arm64"][0]
         self.assertEqual((vd["recipe"], vd["provider"], vd["runner"], vd["version"]),
                          ("valkey-unix", "devxdk-valkey-unix", "macos-15", "9.1.0"))
+        # nginx: newest 1.30.x (version-sorted, not the listing's tail), unix-only.
+        nl = legs["nginx-linux-amd64"][0]
+        self.assertEqual((nl["recipe"], nl["provider"], nl["version"], nl["source_version"], nl["line"]),
+                         ("nginx-unix", "devxdk-nginx-unix", "1.30.4", "1.30.4", "1.30"))
+        self.assertNotIn("nginx-windows-amd64", legs)  # windows nginx is scraped, no build leg
         # An adopt leg carries ordering_kind "adopted" and the astral provider.
         py = legs["python-linux-amd64"][0]
         self.assertEqual((py["component"], py["version"], py["ordering_kind"],
@@ -356,6 +375,29 @@ class TestTheseusNewest(unittest.TestCase):
         f = FakeFetcher(jsons={THESEUS_RELEASES: [rel]})
         with self.assertRaises(resolvers.ResolveError):
             resolvers.theseus_newest(f, "18")
+
+
+class TestNginxNewest(unittest.TestCase):
+    def _fetcher(self, listing):
+        return FakeFetcher(texts={resolvers.NGINX_DOWNLOAD: listing})
+
+    def test_picks_newest_in_line_not_tail(self):
+        got = resolvers.nginx_newest(self._fetcher(NGINX_LISTING), "1.30")
+        self.assertEqual(got["source_version"], "1.30.4")  # not 1.30.2 (the listing tail)
+        self.assertEqual(got["source_url"],
+                         "https://nginx.org/download/nginx-1.30.4.tar.gz")
+
+    def test_natural_order_beats_lexical(self):
+        # 1.30.10 must sort ABOVE 1.30.9 (lexical would pick 1.30.9).
+        listing = ('<a href="nginx-1.30.9.tar.gz">x</a>\n'
+                   '<a href="nginx-1.30.10.tar.gz">x</a>\n')
+        got = resolvers.nginx_newest(self._fetcher(listing), "1.30")
+        self.assertEqual(got["source_version"], "1.30.10")
+
+    def test_other_lines_excluded(self):
+        listing = '<a href="nginx-1.29.5.tar.gz">x</a>\n<a href="nginx-1.28.0.tar.gz">x</a>\n'
+        with self.assertRaises(resolvers.ResolveError):
+            resolvers.nginx_newest(self._fetcher(listing), "1.30")
 
 
 if __name__ == "__main__":

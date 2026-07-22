@@ -169,6 +169,19 @@ sha256 = "c08ae2388ef333e8403e670ad70c0a11f1eed021fd88308d7e02f596fcd9dc16"
 version = "1.3.1"
 sha256 = "9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23"
 
+# nginx release-manager GPG public keys. nginx.org publishes a detached .asc per
+# source tarball (no .sha256), so the nginx-unix recipe imports the committed
+# scripts/devxdk_manifest/keys/nginx/*.key into an ISOLATED keyring, asserts the
+# keyring holds EXACTLY these fingerprints, and gpg-verifies the tarball's .asc.
+# All four current F5/nginx engineers are pinned — any may sign a 1.30.x patch.
+[pins.nginx_keys]
+fingerprints = [
+  "43387825DDB1BB97EC36BA5D007C8D7C15D87369", # Roman Arutyunyan  (arut.key)
+  "D6786CE303D9A9022998DC6CC8464D549AF75C0A", # Sergey Kandaurov  (pluknet.key)
+  "7338973069ED3F443F4D37DFA64FD5B17ADB39A8", # Sergey Budnevitch (sb.key)
+  "13C82A63B603576156E30A4EA0EA981B66B0D967", # Konstantin Pavlov (thresh.key)
+]
+
 # Upstream hash-verification repos: the redis/valkey SOURCE tarballs the msys2 +
 # unix builds compile are checked against the sha256 published at this pinned ref.
 [pins.redis_hashes]

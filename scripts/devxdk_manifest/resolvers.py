@@ -27,6 +27,7 @@ ENABLED_PROVIDERS = {
     "devxdk-valkey-msys2",
     "devxdk-redis-unix",     # redis linux/macOS source build (recipes/lib/rediscache-unix.sh)
     "devxdk-valkey-unix",    # valkey linux/macOS source build (same lib; only Linux valkey source)
+    "devxdk-nginx-unix",     # nginx linux/macOS static source build (recipes/nginx.sh)
     "devxdk-php-windows",
     "astral",    # python adopt (recipes/python.sh)
     "theseus",   # postgres adopt on every platform (recipes/postgres.sh)
@@ -250,6 +251,37 @@ def theseus_newest(fetcher, line_id: str) -> dict:
     }
 
 
+# nginx source build: the newest patch of a stable line from nginx.org's download
+# index. nginx.org publishes a detached .asc per tarball (no .sha256), so the
+# recipe GPG-verifies the source against the pinned release-manager keys; the
+# resolver only answers "what is the newest 1.30.x" from the same download index.
+NGINX_DOWNLOAD = "https://nginx.org/download/"
+_NGINX_TARBALL = re.compile(r"nginx-(\d+\.\d+\.\d+)\.tar\.gz")
+
+
+def nginx_newest(fetcher, line_id: str) -> dict:
+    """Newest nginx in the tracked line from nginx.org's download index.
+
+    Build provider: the manifest points at a DevXDK-built static bundle, so this
+    only resolves the plannable version (the recipe re-downloads + GPG-verifies
+    the same source). The autoindex lists every tarball; version-sort within the
+    line and never `tail` (mainline and stable interleave in the listing)."""
+    text = fetcher.get_text(NGINX_DOWNLOAD)
+    best = None
+    for m in _NGINX_TARBALL.finditer(text):
+        ver = m.group(1)
+        if not _in_line(ver, line_id) or versions.parse(ver).is_prerelease():
+            continue
+        if best is None or versions.compare_str(ver, best) > 0:
+            best = ver
+    if best is None:
+        raise ResolveError(f"no nginx release for line {line_id} at {NGINX_DOWNLOAD}")
+    return {
+        "source_version": best,
+        "source_url": f"{NGINX_DOWNLOAD}nginx-{best}.tar.gz",
+    }
+
+
 def resolve(provider: str, cfg, component: str, line_id: str, fetcher) -> dict:
     """Dispatch to the provider's resolver. Callers gate on ENABLED_PROVIDERS
     first; an unknown-but-enabled provider is a hard error (config/gate drift)."""
@@ -265,4 +297,6 @@ def resolve(provider: str, cfg, component: str, line_id: str, fetcher) -> dict:
         return astral_newest(fetcher, line_id)
     if provider == "theseus":
         return theseus_newest(fetcher, line_id)
+    if provider == "devxdk-nginx-unix":
+        return nginx_newest(fetcher, line_id)
     raise ResolveError(f"no resolver for provider {provider!r}")
