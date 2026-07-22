@@ -2,5 +2,18 @@
   "name": "postgres",
   "display_name": "PostgreSQL",
   "kind": "service",
-  "releases": []
+  "releases": [
+    {
+      "version": "18.4",
+      "channel": "stable",
+      "released_at": "2026-07-22",
+      "platforms": {
+        "linux/amd64": {
+          "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.4.0/postgresql-18.4.0-x86_64-unknown-linux-gnu.tar.gz",
+          "sha256": "65c06cf318b9a57525d842d658d6d18cd461d12b3a89b57d6d8ed7cccbe2db53",
+          "size_bytes": 12155442
+        }
+      }
+    }
+  ]
 }
