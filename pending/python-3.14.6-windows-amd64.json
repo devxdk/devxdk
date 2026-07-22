@@ -1,0 +1,14 @@
+{
+  "component": "python",
+  "epoch": 1,
+  "line": "3.14",
+  "ordering_kind": "adopted",
+  "platform": "windows/amd64",
+  "provider": "astral",
+  "revision": 1,
+  "sha256": "97c01acd70108234ff042699996f3f4163c791f1d6e35de898475936b86ec3b2",
+  "size_bytes": 49307251,
+  "source_version": "3.14.6",
+  "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260718/cpython-3.14.6%2B20260718-x86_64-pc-windows-msvc-install_only.tar.gz",
+  "version": "3.14.6"
+}

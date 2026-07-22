@@ -1,0 +1,14 @@
+{
+  "component": "python",
+  "epoch": 1,
+  "line": "3.14",
+  "ordering_kind": "adopted",
+  "platform": "linux/amd64",
+  "provider": "astral",
+  "revision": 1,
+  "sha256": "b442fb93903c6f3392b2430961d4725354ae0da7558c785a908d714264309b28",
+  "size_bytes": 125501055,
+  "source_version": "3.14.6",
+  "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260718/cpython-3.14.6%2B20260718-x86_64-unknown-linux-gnu-install_only.tar.gz",
+  "version": "3.14.6"
+}
