@@ -116,9 +116,6 @@ for i in $(seq 0 $((count - 1))); do
   ( cd "$nginx_src" && make -j"$jobs" >"$work/build.log" 2>&1 ) || { tail -60 "$work/build.log" >&2; exit 1; }
   ( cd "$nginx_src" && make install >"$work/install.log" 2>&1 ) || { tail -40 "$work/install.log" >&2; exit 1; }
 
-  # make install also creates logs/ (runtime state) — the app owns logs; drop it.
-  rm -rf "$prefix/logs"
-
   # --- layout check (nginx-<ver>/ wrapper, ArchiveStrip=1) ----------------
   for f in "sbin/nginx" "conf/mime.types" "conf/fastcgi_params"; do
     [ -e "$prefix/$f" ] || { echo "::error::layout: nginx-$version/$f missing" >&2; exit 1; }
@@ -151,6 +148,11 @@ for i in $(seq 0 $((count - 1))); do
   "$prefix/sbin/nginx" -p "$prefix" -c conf/nginx.conf -t >"$work/nginx-t.log" 2>&1 \
     || { echo "::error::smoke: nginx -t failed" >&2; cat "$work/nginx-t.log" >&2; exit 1; }
   echo "smoke: nginx $source_version -V(6 modules)/static-link/-t OK"
+
+  # The app owns logs at runtime (its config template points error_log/pid at an
+  # absolute app-managed dir), and `nginx -t` just wrote a test error.log here —
+  # drop logs/ so the bundle ships none (make install created it; the smoke used it).
+  rm -rf "$prefix/logs"
 
   # --- corresponding source (provenance; nginx is BSD-2, no offer required) -
   upstream_src="nginx-$source_version-src.tar.gz"
