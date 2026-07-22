@@ -437,6 +437,7 @@ def seed(cfg, repo_root) -> ScrapeState:
     for cname, lid, pkey, plat in cfg.scrape_keys():
         state.put(cname, lid, pkey, ScrapeRecord(provider=plat.provider, epoch=plat.epoch))
 
+    managed = {(c, l, p) for c, l, p, _plat in cfg.managed_keys()}
     for cname in {c for c, _l, _p, _plat in cfg.scrape_keys()}:
         mpath = repo_root / f"{cname}.json"
         if not mpath.exists():
@@ -450,7 +451,12 @@ def seed(cfg, repo_root) -> ScrapeState:
             for pkey, asset in rel.get("platforms", {}).items():
                 rec = state.get(cname, lid, pkey)
                 if rec is None:
-                    # Manifest carries a platform the config does not track as scrape.
+                    # A MIXED release (e.g. nginx: scrape windows + built unix) can
+                    # carry built/adopt platforms beside the scrape ones — those are
+                    # owned by the asset ledger, not the scrape state, so skip them.
+                    # A platform tracked as NEITHER scrape nor managed is a real error.
+                    if (cname, lid, pkey) in managed:
+                        continue
                     raise GuardError(f"{cname}.json release {ver} platform {pkey} is not a configured scrape key")
                 rec.tuples.append(Tuple(
                     version=ver, url=asset["url"], sha256=asset["sha256"],

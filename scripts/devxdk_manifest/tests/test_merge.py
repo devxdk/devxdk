@@ -123,10 +123,14 @@ class TestReconcileRecompose(unittest.TestCase):
         self.cfg = config.load()
 
     def test_recompose_reproduces_committed_manifest(self):
+        # nginx is a MIXED release (scrape windows + built unix), so recompose must
+        # be fed BOTH sources of truth — the scrape state AND the asset ledger — to
+        # reproduce it (a scrape-only recompose would drop the built platforms).
         state = merge.ScrapeState.load(STATE_FILE)
+        ledger = merge.LedgerState.load(REPO_ROOT / "state" / "asset-revisions.json")
         for name in ("node", "go", "mariadb", "nginx", "composer"):
             comp = schema.load(REPO_ROOT / f"{name}.json")
-            rebuilt = merge.recompose(name, comp["display_name"], comp["kind"], self.cfg, state)
+            rebuilt = merge.recompose(name, comp["display_name"], comp["kind"], self.cfg, state, ledger)
             self.assertEqual(
                 schema.dump_str(rebuilt),
                 (REPO_ROOT / f"{name}.json").read_text(encoding="utf-8"),
