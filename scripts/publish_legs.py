@@ -45,13 +45,22 @@ class GhReleaseAPI:
         return self._gh("api", "-H", "Accept: application/vnd.github+json", *args, check=check)
 
     def get_release(self, tag):
-        proc = self._api(f"repos/{REPO}/releases/tags/{tag}", check=False)
-        if proc.returncode != 0:
-            if "Not Found" in proc.stderr or "404" in proc.stderr:
-                return None
-            raise releasepub.ReleaseError(f"gh get release {tag}: {proc.stderr.strip()}")
-        rel = json.loads(proc.stdout)
-        return {"id": rel["id"], "draft": rel["draft"], "assets": self._assets(rel["id"])}
+        # GET /releases/tags/{tag} returns 404 for DRAFT releases (a draft has no
+        # tag ref until published), so a draft we created on a prior attempt would
+        # be invisible and re-created endlessly. List releases instead — the list
+        # endpoint includes drafts for an authenticated token — and match by
+        # tag_name, so draft resumption works.
+        for rel in self._list_releases():
+            if rel.get("tag_name") == tag:
+                return {"id": rel["id"], "draft": rel["draft"], "assets": self._assets(rel["id"])}
+        return None
+
+    def _list_releases(self):
+        proc = self._api("--paginate", f"repos/{REPO}/releases?per_page=100")
+        out = []
+        for chunk in _split_json_arrays(proc.stdout):
+            out.extend(chunk)
+        return out
 
     def _assets(self, release_id):
         # Paginate to exhaustion — a multi-platform, multi-source release can
@@ -73,9 +82,10 @@ class GhReleaseAPI:
         if prerelease:
             args.append("--prerelease")
         self._gh(*args)
-        rel = self._api(f"repos/{REPO}/releases/tags/{tag}")
-        data = json.loads(rel.stdout)
-        return {"id": data["id"], "draft": True, "assets": []}
+        rel = self.get_release(tag)  # list-based — a fresh draft is not fetchable by tag
+        if rel is None:
+            raise releasepub.ReleaseError(f"release {tag} not found immediately after create")
+        return rel
 
     def upload_asset(self, release_id, name, path):
         self._gh("release", "upload", self._tag_for(release_id), path, "--repo", REPO, "--clobber")
