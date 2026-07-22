@@ -205,6 +205,7 @@ PY
   done
   printf '%s\n' "$mods" | grep -q "Zend OPcache" || { echo "::error::smoke: Zend OPcache missing from php -m" >&2; exit 1; }
   ini_loaded=$("$stage/bin/php" -c "$stage/php.ini" --ini 2>/dev/null | sed -n 's/^Loaded Configuration File:[[:space:]]*//p')
+  ini_loaded="${ini_loaded%\"}"; ini_loaded="${ini_loaded#\"}"   # PHP 8.5 quotes the path
   [ "$ini_loaded" = "$stage/php.ini" ] || { echo "::error::smoke: php --ini loaded '$ini_loaded', want '$stage/php.ini'" >&2; exit 1; }
   "$stage/sbin/php-fpm" -v 2>&1 | grep -q "PHP $source_version" \
     || { echo "::error::smoke: php-fpm -v does not report $source_version" >&2; exit 1; }
@@ -223,6 +224,7 @@ CONF
   "$stage/sbin/php-fpm" -c "$stage/php.ini" -y "$fpmconf" -t >"$outdir/fpm-t-$version.log" 2>&1 \
     || { echo "::error::smoke: php-fpm -t failed"; cat "$outdir/fpm-t-$version.log" >&2; exit 1; }
   fpm_ini=$("$stage/sbin/php-fpm" -c "$stage/php.ini" -y "$fpmconf" -i 2>/dev/null | sed -n 's/^Loaded Configuration File => //p' | head -1)
+  fpm_ini="${fpm_ini%\"}"; fpm_ini="${fpm_ini#\"}"   # PHP 8.5 quotes the path
   [ "$fpm_ini" = "$stage/php.ini" ] || { echo "::error::smoke: php-fpm loaded ini '$fpm_ini', want '$stage/php.ini'" >&2; exit 1; }
   echo "smoke: php $source_version -v/-m(baseline $(echo $BASELINE | wc -w)+opcache)/--ini + php-fpm -v/-t/loaded-config OK"
 
