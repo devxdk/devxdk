@@ -1,4 +1,24 @@
 {
-  "entries": {},
+  "entries": {
+    "redis": {
+      "8.8.0": {
+        "windows/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "8",
+          "provider": "devxdk-redis-msys2",
+          "released_at": "2026-07-22",
+          "revoked": false,
+          "sha256": "80044b270ba7ab7fee7664f13bb28ba597c2fc15e938af1f1847d86b847df50a",
+          "size_bytes": 20539735,
+          "source_version": "8.8.0",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/redis-8.8.0/redis-8.8.0-windows-amd64.zip"
+        }
+      }
+    }
+  },
   "schema": 1
 }

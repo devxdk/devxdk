@@ -2,5 +2,18 @@
   "name": "redis",
   "display_name": "Redis",
   "kind": "service",
-  "releases": []
+  "releases": [
+    {
+      "version": "8.8.0",
+      "channel": "stable",
+      "released_at": "2026-07-22",
+      "platforms": {
+        "windows/amd64": {
+          "url": "https://github.com/devxdk/devxdk/releases/download/redis-8.8.0/redis-8.8.0-windows-amd64.zip",
+          "sha256": "80044b270ba7ab7fee7664f13bb28ba597c2fc15e938af1f1847d86b847df50a",
+          "size_bytes": 20539735
+        }
+      }
+    }
+  ]
 }
