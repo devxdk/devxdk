@@ -1,0 +1,14 @@
+{
+  "component": "nginx",
+  "epoch": 1,
+  "line": "1.30",
+  "ordering_kind": "built",
+  "platform": "darwin/arm64",
+  "provider": "devxdk-nginx-unix",
+  "revision": 1,
+  "sha256": "f1a3bc2a29620ef786e26961419e9fbd0714c317cde76543ab3be96c19e0a2dd",
+  "size_bytes": 3243065,
+  "source_version": "1.30.4",
+  "url": "https://github.com/devxdk/devxdk/releases/download/nginx-1.30.4/nginx-1.30.4-darwin-arm64.tar.gz",
+  "version": "1.30.4"
+}
