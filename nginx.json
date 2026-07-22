@@ -12,6 +12,21 @@
           "url": "https://nginx.org/download/nginx-1.30.4.zip",
           "sha256": "159294214d403f34f0bb4ae598801ab1f6a0d8c8da707f8f08748e294a222a01",
           "size_bytes": 2774788
+        },
+        "linux/amd64": {
+          "url": "https://github.com/devxdk/devxdk/releases/download/nginx-1.30.4/nginx-1.30.4-linux-amd64.tar.gz",
+          "sha256": "24022ea04bfca0b048b59fb9e0b7bc99ba022d75c9324994f5cdeb48ce905378",
+          "size_bytes": 5687555
+        },
+        "darwin/amd64": {
+          "url": "https://github.com/devxdk/devxdk/releases/download/nginx-1.30.4/nginx-1.30.4-darwin-amd64.tar.gz",
+          "sha256": "0a4235f838badd48a19e81b6e6b5f1ea0048172ccf6c36e6c05ee7141130d7c2",
+          "size_bytes": 2973582
+        },
+        "darwin/arm64": {
+          "url": "https://github.com/devxdk/devxdk/releases/download/nginx-1.30.4/nginx-1.30.4-darwin-arm64.tar.gz",
+          "sha256": "f1a3bc2a29620ef786e26961419e9fbd0714c317cde76543ab3be96c19e0a2dd",
+          "size_bytes": 3243065
         }
       }
     }
