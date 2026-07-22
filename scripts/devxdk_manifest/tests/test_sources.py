@@ -12,7 +12,7 @@ import pathlib
 import unittest
 
 from devxdk_manifest import schema
-from devxdk_manifest.sources import go, node
+from devxdk_manifest.sources import composer, go, node
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[3]
 
@@ -114,6 +114,57 @@ class TestGoByteIdentity(unittest.TestCase):
         ]})
         out = go.build(fetcher)
         self.assertEqual(out["releases"][0]["version"], "1.26.10")
+
+
+class TestComposerByteIdentity(unittest.TestCase):
+    def test_reproduces_committed(self):
+        raw, data = _committed("composer.json")
+        self.assertEqual(len(data["releases"]), 1)
+        rel = data["releases"][0]
+        ver = rel["version"]
+        asset = rel["platforms"]["any"]
+        url = asset["url"]
+        path = "/" + url.split("/", 3)[3]  # strip the https://getcomposer.org origin
+
+        fetcher = FakeFetcher(
+            json_map={composer.VERSIONS_URL: {"stable": [{"version": ver, "path": path}]}},
+            text_map={url + ".sha256sum": f"{asset['sha256']}  composer.phar\n"},
+            size_map={url: asset["size_bytes"]},
+        )
+        out = schema.dump_str(composer.build(fetcher))
+        self.assertEqual(out, raw, "composer.build output must be byte-identical to committed composer.json")
+
+    def test_selects_newest_in_line(self):
+        # A 3.x is skipped for the newest 2.x; the newest-first order is respected.
+        url = "https://getcomposer.org/download/2.10.2/composer.phar"
+        fetcher = FakeFetcher(
+            json_map={composer.VERSIONS_URL: {"stable": [
+                {"version": "3.0.0", "path": "/download/3.0.0/composer.phar"},
+                {"version": "2.10.2", "path": "/download/2.10.2/composer.phar"},
+                {"version": "2.10.1", "path": "/download/2.10.1/composer.phar"},
+            ]}},
+            text_map={url + ".sha256sum": f"{'a' * 64}  composer.phar\n"},
+            size_map={url: 1},
+        )
+        out = composer.build(fetcher)
+        self.assertEqual(out["releases"][0]["version"], "2.10.2")
+
+    def test_malformed_checksum_raises(self):
+        url = "https://getcomposer.org/download/2.10.2/composer.phar"
+        fetcher = FakeFetcher(
+            json_map={composer.VERSIONS_URL: {"stable": [
+                {"version": "2.10.2", "path": "/download/2.10.2/composer.phar"},
+            ]}},
+            text_map={url + ".sha256sum": "not-a-valid-digest  composer.phar\n"},
+            size_map={url: 1},
+        )
+        with self.assertRaises(RuntimeError):
+            composer.build(fetcher)
+
+    def test_no_stable_raises(self):
+        fetcher = FakeFetcher(json_map={composer.VERSIONS_URL: {"preview": []}})
+        with self.assertRaises(RuntimeError):
+            composer.build(fetcher)
 
 
 class TestDeterminism(unittest.TestCase):
