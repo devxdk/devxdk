@@ -1,0 +1,14 @@
+{
+  "component": "valkey",
+  "epoch": 1,
+  "line": "9",
+  "ordering_kind": "built",
+  "platform": "linux/amd64",
+  "provider": "devxdk-valkey-unix",
+  "revision": 1,
+  "sha256": "b44bab7f6169f809d46f3a298216778d4e1e67e3ac01e8172bf8245c809662e5",
+  "size_bytes": 21707654,
+  "source_version": "9.1.0",
+  "url": "https://github.com/devxdk/devxdk/releases/download/valkey-9.1.0/valkey-9.1.0-linux-amd64.tar.gz",
+  "version": "9.1.0"
+}

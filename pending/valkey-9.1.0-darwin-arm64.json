@@ -1,0 +1,14 @@
+{
+  "component": "valkey",
+  "epoch": 1,
+  "line": "9",
+  "ordering_kind": "built",
+  "platform": "darwin/arm64",
+  "provider": "devxdk-valkey-unix",
+  "revision": 1,
+  "sha256": "be1051e5e6329cbf1c6a7fa918d12f23cefed7e91e4bf2abcb0d563f81040656",
+  "size_bytes": 14260297,
+  "source_version": "9.1.0",
+  "url": "https://github.com/devxdk/devxdk/releases/download/valkey-9.1.0/valkey-9.1.0-darwin-arm64.tar.gz",
+  "version": "9.1.0"
+}
