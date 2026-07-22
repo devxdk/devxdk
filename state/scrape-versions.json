@@ -237,6 +237,24 @@
             }
           ]
         }
+      },
+      "12.3": {
+        "linux/amd64": {
+          "epoch": 1,
+          "floor_version": null,
+          "provider": "mariadb",
+          "revoked": [],
+          "status": "active",
+          "tuples": []
+        },
+        "windows/amd64": {
+          "epoch": 1,
+          "floor_version": null,
+          "provider": "mariadb",
+          "revoked": [],
+          "status": "active",
+          "tuples": []
+        }
       }
     },
     "nginx": {

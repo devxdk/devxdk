@@ -1,0 +1,23 @@
+{
+  "scope": "scraped",
+  "component": "mariadb",
+  "line": "11.8",
+  "platform": "linux/amd64",
+  "version": "11.8.8",
+  "op": "replace",
+  "expected": {
+    "url": "https://archive.mariadb.org/mariadb-11.8.8/bintar-linux-systemd-x86_64/mariadb-11.8.8-linux-systemd-x86_64.tar.gz",
+    "sha256": "fbd4e8d05946c974b0560c94f01ce4c687291b6528074c2e001fb8f35c0d2762",
+    "size_bytes": 429017672,
+    "channel": "stable",
+    "released_at": ""
+  },
+  "replacement": {
+    "url": "https://archive.mariadb.org/mariadb-11.8.8/bintar-linux-systemd-x86_64/mariadb-11.8.8-linux-systemd-x86_64.tar.gz",
+    "sha256": "fbd4e8d05946c974b0560c94f01ce4c687291b6528074c2e001fb8f35c0d2762",
+    "size_bytes": 429017672,
+    "channel": "lts",
+    "released_at": ""
+  },
+  "reason": "Promote the 11.8 LTS default to the lts channel so it stays the RecommendedPreset default once the newer rolling 12.x line is added."
+}

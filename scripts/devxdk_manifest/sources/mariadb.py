@@ -19,18 +19,16 @@ from .. import schema
 REST_BASE = "https://downloads.mariadb.org/rest-api/mariadb"
 ARCHIVE_BASE = "https://archive.mariadb.org"
 
-# Tracked major.minor lines -> manifest channel. Every line is "stable": 11.8.8
-# was hand-seeded as stable, and the equal-version immutability guard forbids
-# re-channeling a published tuple, so 11.8 must stay stable here. 11.8 is the
-# preset default purely by being the newest stable line — which is why the newer
-# 12.x line is deliberately NOT tracked yet: adding a stable line above 11.8 would
-# flip RecommendedPreset's newest-stable fallback (mariadb has no lts-channel
-# release to prefer) from 11.8 to 12.x. Promoting 11.8 to the lts channel (via a
-# revocation record) so the default survives a 12.x addition is a tracked
-# follow-up; until then only the older 11.4/10.11/10.6 LTS lines are added, all
-# older than 11.8 so the default is unchanged.
+# Tracked major.minor lines -> manifest channel. 11.8 is the lts channel so it
+# stays the RecommendedPreset default (the app prefers the newest lts release);
+# 11.8.8 was seeded stable and promoted to lts by a one-shot revocation record,
+# so the adapter now emits lts to match. 12.3 is the rolling stable line — safe
+# to add above 11.8 precisely because 11.8 is lts, so the newer stable 12.x never
+# wins the preset default. The older 11.4/10.11/10.6 stay stable (installable,
+# never the default).
 LINES = {
-    "11.8": "stable",
+    "12.3": "stable",
+    "11.8": "lts",
     "11.4": "stable",
     "10.11": "stable",
     "10.6": "stable",
