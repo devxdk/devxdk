@@ -19,6 +19,57 @@
           "size_bytes": 429017672
         }
       }
+    },
+    {
+      "version": "11.4.12",
+      "channel": "stable",
+      "released_at": "",
+      "platforms": {
+        "windows/amd64": {
+          "url": "https://archive.mariadb.org/mariadb-11.4.12/winx64-packages/mariadb-11.4.12-winx64.zip",
+          "sha256": "4db7f8003d4a64ac8042b771c6d34ed04c7ffae8cf52775275b72f2bd4dd17a9",
+          "size_bytes": 94906278
+        },
+        "linux/amd64": {
+          "url": "https://archive.mariadb.org/mariadb-11.4.12/bintar-linux-systemd-x86_64/mariadb-11.4.12-linux-systemd-x86_64.tar.gz",
+          "sha256": "afb81282f977c599ecbb0390588b0005b304b4e87d64615a2649ecd2bd1dc16f",
+          "size_bytes": 377926973
+        }
+      }
+    },
+    {
+      "version": "10.11.18",
+      "channel": "stable",
+      "released_at": "",
+      "platforms": {
+        "windows/amd64": {
+          "url": "https://archive.mariadb.org/mariadb-10.11.18/winx64-packages/mariadb-10.11.18-winx64.zip",
+          "sha256": "1e36bb0834718e56fd53e150978b55429e5da921a97c07c16b41086c0c61099c",
+          "size_bytes": 93293639
+        },
+        "linux/amd64": {
+          "url": "https://archive.mariadb.org/mariadb-10.11.18/bintar-linux-systemd-x86_64/mariadb-10.11.18-linux-systemd-x86_64.tar.gz",
+          "sha256": "6766e45500266d8fba2253fcf99da5aad0338cba4bf1f13a0ee03da5407b3d71",
+          "size_bytes": 376249181
+        }
+      }
+    },
+    {
+      "version": "10.6.27",
+      "channel": "stable",
+      "released_at": "",
+      "platforms": {
+        "windows/amd64": {
+          "url": "https://archive.mariadb.org/mariadb-10.6.27/winx64-packages/mariadb-10.6.27-winx64.zip",
+          "sha256": "cc18bc6a0d42df6990ed91d1d7695e893b15168779272df43adf45dd75705a50",
+          "size_bytes": 87898518
+        },
+        "linux/amd64": {
+          "url": "https://archive.mariadb.org/mariadb-10.6.27/bintar-linux-systemd-x86_64/mariadb-10.6.27-linux-systemd-x86_64.tar.gz",
+          "sha256": "dd5dd6b7d123a95db5bbd929ab66d18bd6d9c12d5ec85bd9577c03dd33ef8900",
+          "size_bytes": 345904324
+        }
+      }
     }
   ]
 }
