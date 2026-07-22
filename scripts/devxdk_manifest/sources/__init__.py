@@ -7,6 +7,6 @@ Phase-0 hand-seed into real scraping; the remaining sources land with the rest o
 the Phase-2 scrape-breadth work.
 """
 
-from . import composer, go, node
+from . import composer, go, mariadb, node
 
-__all__ = ["node", "go", "composer"]
+__all__ = ["node", "go", "composer", "mariadb"]

@@ -94,6 +94,60 @@
       }
     },
     "mariadb": {
+      "10.11": {
+        "linux/amd64": {
+          "epoch": 1,
+          "floor_version": null,
+          "provider": "mariadb",
+          "revoked": [],
+          "status": "active",
+          "tuples": []
+        },
+        "windows/amd64": {
+          "epoch": 1,
+          "floor_version": null,
+          "provider": "mariadb",
+          "revoked": [],
+          "status": "active",
+          "tuples": []
+        }
+      },
+      "10.6": {
+        "linux/amd64": {
+          "epoch": 1,
+          "floor_version": null,
+          "provider": "mariadb",
+          "revoked": [],
+          "status": "active",
+          "tuples": []
+        },
+        "windows/amd64": {
+          "epoch": 1,
+          "floor_version": null,
+          "provider": "mariadb",
+          "revoked": [],
+          "status": "active",
+          "tuples": []
+        }
+      },
+      "11.4": {
+        "linux/amd64": {
+          "epoch": 1,
+          "floor_version": null,
+          "provider": "mariadb",
+          "revoked": [],
+          "status": "active",
+          "tuples": []
+        },
+        "windows/amd64": {
+          "epoch": 1,
+          "floor_version": null,
+          "provider": "mariadb",
+          "revoked": [],
+          "status": "active",
+          "tuples": []
+        }
+      },
       "11.8": {
         "linux/amd64": {
           "epoch": 1,

@@ -22,7 +22,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 from devxdk_manifest import config, fetch, merge, schema  # noqa: E402
-from devxdk_manifest.sources import composer, go, node  # noqa: E402
+from devxdk_manifest.sources import composer, go, mariadb, node  # noqa: E402
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 STATE_FILE = REPO_ROOT / "state" / "scrape-versions.json"
@@ -34,6 +34,7 @@ SOURCES = {
     "node": node.build,
     "go": go.build,
     "composer": composer.build,
+    "mariadb": mariadb.build,
 }
 
 

@@ -11,8 +11,8 @@ import json
 import pathlib
 import unittest
 
-from devxdk_manifest import schema
-from devxdk_manifest.sources import composer, go, node
+from devxdk_manifest import config, schema
+from devxdk_manifest.sources import composer, go, mariadb, node
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[3]
 
@@ -165,6 +165,66 @@ class TestComposerByteIdentity(unittest.TestCase):
         fetcher = FakeFetcher(json_map={composer.VERSIONS_URL: {"preview": []}})
         with self.assertRaises(RuntimeError):
             composer.build(fetcher)
+
+
+class TestMariadbScrape(unittest.TestCase):
+    def _fixture_for(self, rel):
+        """Reconstruct the REST + size responses from a committed release dict."""
+        ver = rel["version"]
+        files, sizes = [], {}
+        for pkey, (suffix, subdir) in mariadb.PLATFORMS.items():
+            asset = rel["platforms"][pkey]
+            fname = f"mariadb-{ver}-{suffix}"
+            files.append({"file_name": fname, "checksum": {"sha256sum": asset["sha256"]}})
+            sizes[asset["url"]] = asset["size_bytes"]
+        line = ".".join(ver.split(".")[:2])
+        return FakeFetcher(
+            json_map={f"{mariadb.REST_BASE}/{line}/": {"releases": {ver: {"files": files}}}},
+            size_map=sizes,
+        ), line
+
+    def test_reproduces_committed_11_8(self):
+        raw, data = _committed("mariadb.json")
+        self.assertEqual(len(data["releases"]), 1)
+        rel = data["releases"][0]
+        fetcher, line = self._fixture_for(rel)
+        out = schema.dump_str(mariadb.build(fetcher, lines={line: rel["channel"]}))
+        self.assertEqual(out, raw, "mariadb.build must reproduce the committed 11.8 release byte-for-byte")
+
+    def test_lines_match_config(self):
+        cfg = config.load()
+        configured = {l for c, l, _p, _plat in cfg.scrape_keys() if c == "mariadb"}
+        self.assertEqual(set(mariadb.LINES), configured,
+                         "sources/mariadb.py LINES must match the tracked-versions.toml mariadb lines")
+
+    def test_newest_release_is_numeric(self):
+        # 11.8.10 beats 11.8.9 numerically (a lexical sort would pick 11.8.9).
+        self.assertEqual(mariadb._newest_release({"11.8.9": {}, "11.8.10": {}, "11.8.8": {}}), "11.8.10")
+
+    def test_missing_checksum_raises(self):
+        fetcher = FakeFetcher(
+            json_map={f"{mariadb.REST_BASE}/11.8/": {"releases": {"11.8.8": {"files": [
+                {"file_name": "mariadb-11.8.8-winx64.zip", "checksum": {}},
+                {"file_name": "mariadb-11.8.8-linux-systemd-x86_64.tar.gz", "checksum": {"sha256sum": "a" * 64}},
+            ]}}}},
+            size_map={},
+        )
+        with self.assertRaises(RuntimeError):
+            mariadb.build(fetcher, lines={"11.8": "lts"})
+
+    def test_missing_archive_file_raises(self):
+        # remote_size 0 (archive URL 404) is fail-closed — never a dead-URL manifest.
+        url_w = "https://archive.mariadb.org/mariadb-11.8.8/winx64-packages/mariadb-11.8.8-winx64.zip"
+        url_l = "https://archive.mariadb.org/mariadb-11.8.8/bintar-linux-systemd-x86_64/mariadb-11.8.8-linux-systemd-x86_64.tar.gz"
+        fetcher = FakeFetcher(
+            json_map={f"{mariadb.REST_BASE}/11.8/": {"releases": {"11.8.8": {"files": [
+                {"file_name": "mariadb-11.8.8-winx64.zip", "checksum": {"sha256sum": "a" * 64}},
+                {"file_name": "mariadb-11.8.8-linux-systemd-x86_64.tar.gz", "checksum": {"sha256sum": "b" * 64}},
+            ]}}}},
+            size_map={url_w: 0, url_l: 1},
+        )
+        with self.assertRaises(RuntimeError):
+            mariadb.build(fetcher, lines={"11.8": "lts"})
 
 
 class TestDeterminism(unittest.TestCase):

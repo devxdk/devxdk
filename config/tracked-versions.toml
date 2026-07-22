@@ -57,9 +57,27 @@ platforms = { "any" = { type = "scrape", provider = "getcomposer" } }
 
 [components.mariadb]
 kind = "service"
-# Phase 2 adds the 11.4, 10.11, 10.6, and 12 lines (downloads.mariadb.org REST).
+# Scraped from downloads.mariadb.org's REST API (publishes sha256); durable URLs
+# on archive.mariadb.org. Every line is channel = "stable": 11.8.8 was seeded
+# stable and the equal-version guard forbids re-channeling it, so 11.8 stays the
+# preset default by being the newest stable line. The newer 12.x line is
+# deliberately deferred (it would flip the default off 11.8); promoting 11.8 to
+# the lts channel via a revocation is the tracked follow-up. sources/mariadb.py's
+# LINES map is parity-checked against these entries.
 [components.mariadb.lines."11.8"]
-channel = "lts"
+channel = "stable"
+retain_per_line = 3
+platforms = { "windows/amd64" = { type = "scrape", provider = "mariadb" }, "linux/amd64" = { type = "scrape", provider = "mariadb" } }
+[components.mariadb.lines."11.4"]
+channel = "stable"
+retain_per_line = 3
+platforms = { "windows/amd64" = { type = "scrape", provider = "mariadb" }, "linux/amd64" = { type = "scrape", provider = "mariadb" } }
+[components.mariadb.lines."10.11"]
+channel = "stable"
+retain_per_line = 3
+platforms = { "windows/amd64" = { type = "scrape", provider = "mariadb" }, "linux/amd64" = { type = "scrape", provider = "mariadb" } }
+[components.mariadb.lines."10.6"]
+channel = "stable"
 retain_per_line = 3
 platforms = { "windows/amd64" = { type = "scrape", provider = "mariadb" }, "linux/amd64" = { type = "scrape", provider = "mariadb" } }
 
