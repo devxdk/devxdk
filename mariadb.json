@@ -4,8 +4,25 @@
   "kind": "service",
   "releases": [
     {
-      "version": "11.8.8",
+      "version": "12.3.2",
       "channel": "stable",
+      "released_at": "",
+      "platforms": {
+        "windows/amd64": {
+          "url": "https://archive.mariadb.org/mariadb-12.3.2/winx64-packages/mariadb-12.3.2-winx64.zip",
+          "sha256": "67347c129eb9c5923d002ea34fbfa27c60eb95d36dd73b85af2651cdeceecac5",
+          "size_bytes": 103730527
+        },
+        "linux/amd64": {
+          "url": "https://archive.mariadb.org/mariadb-12.3.2/bintar-linux-systemd-x86_64/mariadb-12.3.2-linux-systemd-x86_64.tar.gz",
+          "sha256": "4a18365541d7280bbe947762e341bab94bc49f3ed31e6b5caf4e21f26246e458",
+          "size_bytes": 471369650
+        }
+      }
+    },
+    {
+      "version": "11.8.8",
+      "channel": "lts",
       "released_at": "",
       "platforms": {
         "windows/amd64": {
