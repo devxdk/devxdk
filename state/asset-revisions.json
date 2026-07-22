@@ -166,6 +166,51 @@
     },
     "redis": {
       "8.8.0": {
+        "darwin/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "8",
+          "provider": "devxdk-redis-unix",
+          "released_at": "2026-07-22",
+          "revoked": false,
+          "sha256": "b39ef5fba30161094a4c1ac7714affba3919434aa739351b874bf83dbf1a042c",
+          "size_bytes": 11905016,
+          "source_version": "8.8.0",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/redis-8.8.0/redis-8.8.0-darwin-amd64.tar.gz"
+        },
+        "darwin/arm64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "8",
+          "provider": "devxdk-redis-unix",
+          "released_at": "2026-07-22",
+          "revoked": false,
+          "sha256": "b2b75362010627c2d6cb125195ba276e2d5b800fecb380425a220cb2bfa8eaff",
+          "size_bytes": 12824518,
+          "source_version": "8.8.0",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/redis-8.8.0/redis-8.8.0-darwin-arm64.tar.gz"
+        },
+        "linux/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "8",
+          "provider": "devxdk-redis-unix",
+          "released_at": "2026-07-22",
+          "revoked": false,
+          "sha256": "b4a4c15e8d8ea5c88f4e8763035b25bc78841ae92418b24542f78dc5931a2f7d",
+          "size_bytes": 22987906,
+          "source_version": "8.8.0",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/redis-8.8.0/redis-8.8.0-linux-amd64.tar.gz"
+        },
         "windows/amd64": {
           "channel": "stable",
           "epoch": 1,
@@ -185,6 +230,51 @@
     },
     "valkey": {
       "9.1.0": {
+        "darwin/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "9",
+          "provider": "devxdk-valkey-unix",
+          "released_at": "2026-07-22",
+          "revoked": false,
+          "sha256": "66730e104cc79f08a4eebfba26798127994840b21d68d82b9ee242c827b70da8",
+          "size_bytes": 13566962,
+          "source_version": "9.1.0",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/valkey-9.1.0/valkey-9.1.0-darwin-amd64.tar.gz"
+        },
+        "darwin/arm64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "9",
+          "provider": "devxdk-valkey-unix",
+          "released_at": "2026-07-22",
+          "revoked": false,
+          "sha256": "be1051e5e6329cbf1c6a7fa918d12f23cefed7e91e4bf2abcb0d563f81040656",
+          "size_bytes": 14260297,
+          "source_version": "9.1.0",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/valkey-9.1.0/valkey-9.1.0-darwin-arm64.tar.gz"
+        },
+        "linux/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "9",
+          "provider": "devxdk-valkey-unix",
+          "released_at": "2026-07-22",
+          "revoked": false,
+          "sha256": "b44bab7f6169f809d46f3a298216778d4e1e67e3ac01e8172bf8245c809662e5",
+          "size_bytes": 21707654,
+          "source_version": "9.1.0",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/valkey-9.1.0/valkey-9.1.0-linux-amd64.tar.gz"
+        },
         "windows/amd64": {
           "channel": "stable",
           "epoch": 1,

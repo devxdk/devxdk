@@ -12,6 +12,21 @@
           "url": "https://github.com/devxdk/devxdk/releases/download/valkey-9.1.0/valkey-9.1.0-windows-amd64.zip",
           "sha256": "1ae52d5616711879c3519f0b5f0e321711ff7dbc75c3d01d9bfd29138e30e5d7",
           "size_bytes": 18634994
+        },
+        "linux/amd64": {
+          "url": "https://github.com/devxdk/devxdk/releases/download/valkey-9.1.0/valkey-9.1.0-linux-amd64.tar.gz",
+          "sha256": "b44bab7f6169f809d46f3a298216778d4e1e67e3ac01e8172bf8245c809662e5",
+          "size_bytes": 21707654
+        },
+        "darwin/amd64": {
+          "url": "https://github.com/devxdk/devxdk/releases/download/valkey-9.1.0/valkey-9.1.0-darwin-amd64.tar.gz",
+          "sha256": "66730e104cc79f08a4eebfba26798127994840b21d68d82b9ee242c827b70da8",
+          "size_bytes": 13566962
+        },
+        "darwin/arm64": {
+          "url": "https://github.com/devxdk/devxdk/releases/download/valkey-9.1.0/valkey-9.1.0-darwin-arm64.tar.gz",
+          "sha256": "be1051e5e6329cbf1c6a7fa918d12f23cefed7e91e4bf2abcb0d563f81040656",
+          "size_bytes": 14260297
         }
       }
     }
