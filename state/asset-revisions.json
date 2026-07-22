@@ -36,6 +36,70 @@
         }
       }
     },
+    "python": {
+      "3.14.6": {
+        "darwin/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "3.14.6",
+          "kind": "adopted",
+          "line": "3.14",
+          "provider": "astral",
+          "released_at": "2026-07-22",
+          "revoked": false,
+          "sha256": "b3bc968180342cfffde185f2c6d1de22d4e6c38b5f0f02487e32ccac2b8766ee",
+          "size_bytes": 26111138,
+          "source_version": "3.14.6",
+          "status": "active",
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260718/cpython-3.14.6%2B20260718-x86_64-apple-darwin-install_only.tar.gz"
+        },
+        "darwin/arm64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "3.14.6",
+          "kind": "adopted",
+          "line": "3.14",
+          "provider": "astral",
+          "released_at": "2026-07-22",
+          "revoked": false,
+          "sha256": "5a234e405386bf486bab196018c01bc4577a4f0cc9fd5bc50f7a979fe4f5c59d",
+          "size_bytes": 26165004,
+          "source_version": "3.14.6",
+          "status": "active",
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260718/cpython-3.14.6%2B20260718-aarch64-apple-darwin-install_only.tar.gz"
+        },
+        "linux/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "3.14.6",
+          "kind": "adopted",
+          "line": "3.14",
+          "provider": "astral",
+          "released_at": "2026-07-22",
+          "revoked": false,
+          "sha256": "b442fb93903c6f3392b2430961d4725354ae0da7558c785a908d714264309b28",
+          "size_bytes": 125501055,
+          "source_version": "3.14.6",
+          "status": "active",
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260718/cpython-3.14.6%2B20260718-x86_64-unknown-linux-gnu-install_only.tar.gz"
+        },
+        "windows/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "3.14.6",
+          "kind": "adopted",
+          "line": "3.14",
+          "provider": "astral",
+          "released_at": "2026-07-22",
+          "revoked": false,
+          "sha256": "97c01acd70108234ff042699996f3f4163c791f1d6e35de898475936b86ec3b2",
+          "size_bytes": 49307251,
+          "source_version": "3.14.6",
+          "status": "active",
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260718/cpython-3.14.6%2B20260718-x86_64-pc-windows-msvc-install_only.tar.gz"
+        }
+      }
+    },
     "redis": {
       "8.8.0": {
         "windows/amd64": {
