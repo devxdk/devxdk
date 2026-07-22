@@ -169,10 +169,15 @@ class TestBuildLegMap(unittest.TestCase):
 
     def test_fresh_state_plans_all_enabled_legs(self):
         legs = self._map()
-        # redis/valkey/php are windows-only (their unix providers are not yet
-        # enabled); python (astral adopt) is enabled on all four platforms.
+        # php stays windows-only (php-spc not yet enabled); redis/valkey are now
+        # built on every platform (msys2 on Windows, the unix source build on
+        # linux/macOS); python + postgres (adopt) cover all four platforms.
         self.assertEqual(set(legs), {
-            "redis-windows-amd64", "valkey-windows-amd64", "php-windows-amd64",
+            "redis-windows-amd64", "redis-linux-amd64",
+            "redis-darwin-amd64", "redis-darwin-arm64",
+            "valkey-windows-amd64", "valkey-linux-amd64",
+            "valkey-darwin-amd64", "valkey-darwin-arm64",
+            "php-windows-amd64",
             "python-windows-amd64", "python-linux-amd64",
             "python-darwin-amd64", "python-darwin-arm64",
             "postgres-windows-amd64", "postgres-linux-amd64",
@@ -189,6 +194,14 @@ class TestBuildLegMap(unittest.TestCase):
             "platform": "windows/amd64", "runner": "windows-2022", "recipe": "redis-msys2",
             "mode": "build", "ordering_kind": "built", "provider": "devxdk-redis-msys2",
             "epoch": 1, "source_version": "8.8.0"})
+        # The unix legs carry the -unix recipe/provider and their native runner;
+        # redis 8.8.0 and valkey 9.1.0 resolve from the same pinned hashes repos.
+        rl = legs["redis-linux-amd64"][0]
+        self.assertEqual((rl["recipe"], rl["provider"], rl["runner"], rl["version"], rl["mode"]),
+                         ("redis-unix", "devxdk-redis-unix", "ubuntu-22.04", "8.8.0", "build"))
+        vd = legs["valkey-darwin-arm64"][0]
+        self.assertEqual((vd["recipe"], vd["provider"], vd["runner"], vd["version"]),
+                         ("valkey-unix", "devxdk-valkey-unix", "macos-15", "9.1.0"))
         # An adopt leg carries ordering_kind "adopted" and the astral provider.
         py = legs["python-linux-amd64"][0]
         self.assertEqual((py["component"], py["version"], py["ordering_kind"],
@@ -210,6 +223,9 @@ class TestBuildLegMap(unittest.TestCase):
         self.assertEqual(legs["redis-windows-amd64"][0]["mode"], "finalize-only")
 
     def test_revoked_ledger_entry_skips(self):
+        # Revocation is per-(component, version, platform): revoking the windows
+        # asset drops ONLY its leg — the unix legs (a different platform, no
+        # revoked entry) still plan.
         led = merge.LedgerState()
         led.put("redis", "8.8.0", "windows/amd64", merge.LedgerRecord(
             kind="built", line="8", provider="devxdk-redis-msys2", epoch=1, key="1",
@@ -217,7 +233,9 @@ class TestBuildLegMap(unittest.TestCase):
             size_bytes=1, channel="stable", released_at="2026-01-01", revoked=True))
         led.save(self.root / "state" / "asset-revisions.json")
         legs = self._map(components=["redis"])
-        self.assertEqual(legs, {})
+        self.assertNotIn("redis-windows-amd64", legs)
+        self.assertEqual(set(legs),
+                         {"redis-linux-amd64", "redis-darwin-amd64", "redis-darwin-arm64"})
 
     def test_manifest_without_ledger_raises(self):
         schema.write(self.root / "redis.json", schema.component("redis", "Redis", "service", [

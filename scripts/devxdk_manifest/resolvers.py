@@ -25,9 +25,11 @@ from . import versions
 ENABLED_PROVIDERS = {
     "devxdk-redis-msys2",
     "devxdk-valkey-msys2",
+    "devxdk-redis-unix",     # redis linux/macOS source build (recipes/lib/rediscache-unix.sh)
+    "devxdk-valkey-unix",    # valkey linux/macOS source build (same lib; only Linux valkey source)
     "devxdk-php-windows",
     "astral",    # python adopt (recipes/python.sh)
-    "theseus",   # postgres adopt on Linux (recipes/postgres.sh); EDB win/mac deferred
+    "theseus",   # postgres adopt on every platform (recipes/postgres.sh)
 }
 
 _HASH_LINE = re.compile(r"^hash (\S+)-(\d[\w.\-]*)\.tar\.gz sha256 ([0-9a-f]{64}) (\S+)$")
