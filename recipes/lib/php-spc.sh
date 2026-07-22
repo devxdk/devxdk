@@ -145,14 +145,22 @@ PY
   echo "php $source_version: sha256 (releases JSON) + GPG (pinned RM key) verified"
 
   # --- spc download (php-src from our loopback) + static build -------------
+  # pkg-config is a BUILD TOOL, not a library dependency of any extension, so
+  # --for-extensions does NOT resolve it — spc build then can't find its own
+  # buildroot/bin/pkg-config and fails. Name it explicitly in the positional
+  # sources (merged with the --for-extensions set); --retry rides transient
+  # mirror blips on the dep downloads.
   wd="$outdir/wd-$version"; rm -rf "$wd"; mkdir -p "$wd"
-  ( cd "$wd" && "$SPC" download --for-extensions="$EXTS" --with-php="$minor" \
-      -U "php-src:http://127.0.0.1:$port/$src_name" \
+  ( cd "$wd" && "$SPC" download "pkg-config" --for-extensions="$EXTS" --with-php="$minor" \
+      -U "php-src:http://127.0.0.1:$port/$src_name" --retry=3 \
       >"$outdir/spc-download-$version.log" 2>&1 ) \
     || { echo "::error::spc download failed"; tail -40 "$outdir/spc-download-$version.log" >&2; exit 1; }
   ( cd "$wd" && "$SPC" build "$EXTS" --build-cli --build-fpm \
       >"$outdir/spc-build-$version.log" 2>&1 ) \
-    || { echo "::error::spc build failed"; tail -60 "$outdir/spc-build-$version.log" >&2; exit 1; }
+    || { echo "::error::spc build failed"; tail -60 "$outdir/spc-build-$version.log" >&2;
+         echo "--- downloaded sources ---" >&2; ls "$wd/downloads" 2>/dev/null | head -40 >&2;
+         echo "--- buildroot/bin ---" >&2; ls "$wd/buildroot/bin" 2>/dev/null >&2;
+         echo "--- system pkg-config: $(command -v pkg-config || echo MISSING) ---" >&2; exit 1; }
 
   php_bin="$wd/buildroot/bin/php"
   fpm_bin="$wd/buildroot/bin/php-fpm"
