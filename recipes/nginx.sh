@@ -145,13 +145,29 @@ for i in $(seq 0 $((count - 1))); do
       otool -L "$prefix/sbin/nginx" >&2; exit 1
     fi
   fi
-  "$prefix/sbin/nginx" -p "$prefix" -c conf/nginx.conf -t >"$work/nginx-t.log" 2>&1 \
+  # `nginx -t` fully initializes the cycle and OPENS the configured listen
+  # sockets to validate them, so the default config's `listen 80` can't bind as
+  # the non-root runner. Test a minimal self-contained config instead (loopback
+  # high port, stderr log, pid in work) that still exercises config parsing, the
+  # http/server path, and mime.types inclusion (proving conf/ is intact).
+  cat > "$work/smoke.conf" <<CONF
+pid $work/smoke.pid;
+error_log stderr;
+events {}
+http {
+    include $prefix/conf/mime.types;
+    server {
+        listen 127.0.0.1:8899;
+        location / { return 200 "ok"; }
+    }
+}
+CONF
+  "$prefix/sbin/nginx" -p "$prefix" -c "$work/smoke.conf" -t >"$work/nginx-t.log" 2>&1 \
     || { echo "::error::smoke: nginx -t failed" >&2; cat "$work/nginx-t.log" >&2; exit 1; }
   echo "smoke: nginx $source_version -V(6 modules)/static-link/-t OK"
 
   # The app owns logs at runtime (its config template points error_log/pid at an
-  # absolute app-managed dir), and `nginx -t` just wrote a test error.log here —
-  # drop logs/ so the bundle ships none (make install created it; the smoke used it).
+  # absolute app-managed dir); drop the make-install logs/ so the bundle ships none.
   rm -rf "$prefix/logs"
 
   # --- corresponding source (provenance; nginx is BSD-2, no offer required) -
