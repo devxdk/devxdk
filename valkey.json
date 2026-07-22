@@ -2,5 +2,18 @@
   "name": "valkey",
   "display_name": "Valkey",
   "kind": "service",
-  "releases": []
+  "releases": [
+    {
+      "version": "9.1.0",
+      "channel": "stable",
+      "released_at": "2026-07-22",
+      "platforms": {
+        "windows/amd64": {
+          "url": "https://github.com/devxdk/devxdk/releases/download/valkey-9.1.0/valkey-9.1.0-windows-amd64.zip",
+          "sha256": "1ae52d5616711879c3519f0b5f0e321711ff7dbc75c3d01d9bfd29138e30e5d7",
+          "size_bytes": 18634994
+        }
+      }
+    }
+  ]
 }
