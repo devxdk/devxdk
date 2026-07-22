@@ -65,6 +65,10 @@ jobs:
         shell: bash
         env:
           LEG_ITEMS: ${{ inputs.items }}
+          # Adopt recipes (python/astral) query the GitHub API to resolve the
+          # upstream asset; the token lifts the 60/hr anonymous rate limit. Other
+          # recipes ignore it. Read-only (the job's contents: read GITHUB_TOKEN).
+          GITHUB_TOKEN: ${{ github.token }}
         run: bash recipes/leg.sh "${{ inputs.leg }}"
       - name: Write the member-digest manifest
         id: handoff

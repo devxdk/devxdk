@@ -186,6 +186,13 @@ def publish(needs_json, workdir, api=None, dry=False):
             continue
         for meta_path in sorted(legdir.glob("*.meta.json")):
             meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            if meta.get("ordering_kind") == "adopted":
+                # Adopt re-hosts nothing: no Release, no asset upload. The leg
+                # already self-hash-verified the upstream bytes; finalize writes a
+                # pending record pointing at the upstream URL. Pass it straight
+                # through to the finalizable set.
+                metas.append(meta)
+                continue
             tag = f"{meta['component']}-{meta['version']}" + (
                 "" if meta["revision"] <= 1 else f"-r{meta['revision']}")
             try:

@@ -26,6 +26,7 @@ ENABLED_PROVIDERS = {
     "devxdk-redis-msys2",
     "devxdk-valkey-msys2",
     "devxdk-php-windows",
+    "astral",  # python adopt (recipes/python.sh)
 }
 
 _HASH_LINE = re.compile(r"^hash (\S+)-(\d[\w.\-]*)\.tar\.gz sha256 ([0-9a-f]{64}) (\S+)$")

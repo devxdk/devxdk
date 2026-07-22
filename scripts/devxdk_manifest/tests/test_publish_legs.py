@@ -36,6 +36,21 @@ def _leg_dir(root, leg, component, version):
     return d, manifest_sha, meta
 
 
+def _adopt_leg_dir(root, leg, component, version, url):
+    """Materialize a verified ADOPT leg artifact dir: a meta only, no archive
+    (adopt references the upstream URL — nothing is rehosted)."""
+    d = pathlib.Path(root) / leg
+    d.mkdir(parents=True)
+    meta = {
+        "component": component, "version": version, "platform": "windows/amd64",
+        "line": version.rsplit(".", 1)[0], "ordering_kind": "adopted",
+        "provider": "astral", "epoch": 1, "revision": 1, "source_version": version,
+        "url": url, "sha256": "c" * 64, "size_bytes": 123,
+    }
+    (d / f"{component}-{version}-windows-amd64.meta.json").write_text(json.dumps(meta), encoding="utf-8")
+    return d, handoff.write(d), meta
+
+
 class TestSuccessLegs(unittest.TestCase):
     def test_selects_success_with_outputs(self):
         needs = json.dumps({
@@ -111,6 +126,21 @@ class TestPublish(unittest.TestCase):
         self.assertEqual(len(metas), 1)
         self.assertEqual(api.releases, {})  # nothing mutated
 
+    def test_adopt_leg_passes_through_without_release(self):
+        # An adopt leg re-hosts nothing: its meta is returned for finalize, but no
+        # Release is created or asset uploaded.
+        url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260718/x.tar.gz"
+        d, msha, _ = _adopt_leg_dir(self.root / "src", "a3-python-windows-amd64", "python", "3.14.6", url)
+        self.staged["a3"] = d
+        needs = {"leg-python-windows-amd64": {"result": "success",
+                 "outputs": {"artifact_id": "a3", "manifest_sha256": msha}}}
+        api = FakeAPI()
+        metas, errors = publish_legs.publish(json.dumps(needs), self.root / "work", api=api)
+        self.assertEqual(errors, [])
+        self.assertEqual([m["component"] for m in metas], ["python"])
+        self.assertEqual(metas[0]["url"], url)
+        self.assertEqual(api.releases, {})  # adopt created no Release
+
 
 class TestWritePending(unittest.TestCase):
     def test_writes_records_with_release_download_urls(self):
@@ -137,6 +167,29 @@ class TestWritePending(unittest.TestCase):
             self.assertEqual(rec["url"],
                 "https://github.com/devxdk/devxdk/releases/download/redis-8.8.0/redis-8.8.0-windows-amd64.zip")
             self.assertEqual(rec["sha256"], "a" * 64)
+
+    def test_adopt_pending_uses_upstream_url(self):
+        upstream = "https://github.com/astral-sh/python-build-standalone/releases/download/20260718/x.tar.gz"
+        with tempfile.TemporaryDirectory() as t:
+            metas = pathlib.Path(t) / "metas"
+            metas.mkdir()
+            meta = {
+                "component": "python", "version": "3.14.6", "platform": "windows/amd64",
+                "line": "3.14", "ordering_kind": "adopted", "provider": "astral",
+                "epoch": 1, "revision": 1, "source_version": "3.14.6",
+                "url": upstream, "sha256": "c" * 64, "size_bytes": 123,
+            }
+            (metas / "000-python-3.14.6.meta.json").write_text(json.dumps(meta), encoding="utf-8")
+            import add_built_release
+            orig = add_built_release.PENDING_DIR
+            add_built_release.PENDING_DIR = pathlib.Path(t) / "pending"
+            try:
+                finalize_builds.write_pending(metas)
+            finally:
+                add_built_release.PENDING_DIR = orig
+            rec = json.loads((pathlib.Path(t) / "pending" / "python-3.14.6-windows-amd64.json").read_text())
+            self.assertEqual(rec["url"], upstream)  # upstream, NOT a devxdk Release URL
+            self.assertEqual(rec["ordering_kind"], "adopted")
 
 
 if __name__ == "__main__":

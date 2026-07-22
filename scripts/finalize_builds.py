@@ -26,6 +26,8 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 
 def _download_url(meta):
+    if meta.get("ordering_kind") == "adopted":
+        return meta["url"]  # adopt references the upstream asset directly (no rehost)
     tag = f"{meta['component']}-{meta['version']}" + (
         "" if meta["revision"] <= 1 else f"-r{meta['revision']}")
     return f"https://github.com/{REPO}/releases/download/{tag}/{meta['archive']}"

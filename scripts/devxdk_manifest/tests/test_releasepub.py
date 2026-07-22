@@ -213,6 +213,13 @@ class TestBuildMembers(unittest.TestCase):
         self.assertEqual([m[0] for m in members],
                          ["redis-8.8.0-src.tar.gz", "redis-8.8.0-windows-amd64.zip"])
 
+    def test_adopt_has_no_members(self):
+        # An adopt meta re-hosts nothing (the manifest references the upstream
+        # URL), so it has no release members even though it carries a url/sha.
+        meta = {"ordering_kind": "adopted", "url": "https://x/y.tar.gz",
+                "sha256": "c" * 64, "size_bytes": 1}
+        self.assertEqual(releasepub.build_members(meta, self.d), [])
+
 
 class TestReferencedNames(unittest.TestCase):
     def test_extracts_download_urls_for_tag(self):

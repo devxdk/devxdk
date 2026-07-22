@@ -137,6 +137,8 @@ def build_members(meta, stage_dir):
     import pathlib
 
     stage_dir = pathlib.Path(stage_dir)
+    if meta.get("ordering_kind") == "adopted":
+        return []  # adopt references the upstream asset by URL — nothing to rehost
     declared = meta.get("release_assets")
     if declared:
         members = []

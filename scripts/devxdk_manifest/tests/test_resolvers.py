@@ -154,15 +154,26 @@ class TestBuildLegMap(unittest.TestCase):
                 hashes_valkey: HASHES.replace("redis", "valkey").replace("8.8.0", "9.1.0")
                                      .replace("8.2.7", "9.0.4").replace("7.4.9", "8.1.8"),
             },
-            jsons={"https://downloads.php.net/~windows/releases/releases.json": PHP_RELEASES},
+            jsons={
+                "https://downloads.php.net/~windows/releases/releases.json": PHP_RELEASES,
+                ASTRAL_LATEST: {"id": 356187877, "tag_name": "20260718"},
+            },
+            paginated={ASTRAL_ASSETS: [
+                _astral_asset("3.14.6", t, f"{i:064d}", 100 + i)
+                for i, t in enumerate(_TRIPLES.values(), 1)]},
         )
 
     def _map(self, **kw):
         return plan.build_leg_map(self.cfg, self.root, self.fetcher, lambda _t: None, **kw)
 
-    def test_fresh_state_plans_all_enabled_windows_legs(self):
+    def test_fresh_state_plans_all_enabled_legs(self):
         legs = self._map()
-        self.assertEqual(set(legs), {"redis-windows-amd64", "valkey-windows-amd64", "php-windows-amd64"})
+        # redis/valkey/php are windows-only (their unix providers are not yet
+        # enabled); python (astral adopt) is enabled on all four platforms.
+        self.assertEqual(set(legs), {
+            "redis-windows-amd64", "valkey-windows-amd64", "php-windows-amd64",
+            "python-windows-amd64", "python-linux-amd64",
+            "python-darwin-amd64", "python-darwin-arm64"})
         self.assertEqual([i["version"] for i in legs["php-windows-amd64"]], ["8.4.23", "8.5.8"])
         item = legs["redis-windows-amd64"][0]
         self.assertEqual(item, {
@@ -170,6 +181,11 @@ class TestBuildLegMap(unittest.TestCase):
             "platform": "windows/amd64", "runner": "windows-2022", "recipe": "redis-msys2",
             "mode": "build", "ordering_kind": "built", "provider": "devxdk-redis-msys2",
             "epoch": 1, "source_version": "8.8.0"})
+        # An adopt leg carries ordering_kind "adopted" and the astral provider.
+        py = legs["python-linux-amd64"][0]
+        self.assertEqual((py["component"], py["version"], py["ordering_kind"],
+                          py["provider"], py["mode"], py["runner"]),
+                         ("python", "3.14.6", "adopted", "astral", "build", "ubuntu-22.04"))
 
     def test_component_filter(self):
         legs = self._map(components=["php"])
