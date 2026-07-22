@@ -145,10 +145,11 @@ def classify(cfg, ledger: merge.LedgerState, rec: PendingRecord):
     return APPLY, None
 
 
-def apply_pending_records(cfg, ledger: merge.LedgerState, records, today: str):
+def apply_pending_records(cfg, ledger: merge.LedgerState, scrape_state, records, today: str):
     """Fold records into the ledger. Returns (applied, discarded, affected)
     where affected is the set of components whose manifest must be rebuilt.
-    Raises PendingError on the first corrupt record."""
+    Raises PendingError on the first corrupt record. scrape_state is consulted
+    only for released_at inheritance on a mixed scrape+built release."""
     applied, discarded, affected = [], [], set()
     for rec in records:
         outcome, reason = classify(cfg, ledger, rec)
@@ -156,7 +157,7 @@ def apply_pending_records(cfg, ledger: merge.LedgerState, records, today: str):
             discarded.append((rec, reason))
             continue
         channel = derive_channel(cfg, rec.component, rec.line, rec.version)
-        released_at = _released_at(ledger, rec, today)
+        released_at = _released_at(ledger, scrape_state, rec, today)
         ledger.put(rec.component, rec.version, rec.platform, merge.LedgerRecord(
             kind=rec.ordering_kind, line=rec.line, provider=rec.provider, epoch=rec.epoch,
             key=rec.key, source_version=rec.source_version, url=rec.url, sha256=rec.sha256,
@@ -167,10 +168,22 @@ def apply_pending_records(cfg, ledger: merge.LedgerState, records, today: str):
     return applied, discarded, affected
 
 
-def _released_at(ledger: merge.LedgerState, rec: PendingRecord, today: str) -> str:
-    """released_at is assigned once at a version's first publication: reuse any
-    existing platform's value for the same (component, version), else `today`."""
+def _released_at(ledger: merge.LedgerState, scrape_state, rec: PendingRecord, today: str) -> str:
+    """released_at is fixed at a version's FIRST publication and shared by every
+    later platform merge — so a built platform must inherit the existing release's
+    value, whether that first platform lives in the ledger (an all-built release)
+    OR in the scrape state (a MIXED scrape+built release, e.g. the seeded nginx
+    windows entry beside the built unix legs). Reuse the existing value from either
+    source (existence-based, so an empty seed date is inherited rather than
+    replaced with today — which would break recompose's per-release consistency);
+    only a genuinely new version gets `today`."""
     for _c, ver, _p, lr in ledger.iter_records():
-        if _c == rec.component and ver == rec.version and lr.released_at:
+        if _c == rec.component and ver == rec.version:
             return lr.released_at
+    if scrape_state is not None:
+        for _c, _lid, _p, srec in scrape_state.iter_records():
+            if _c == rec.component:
+                for t in srec.tuples:
+                    if t.version == rec.version:
+                        return t.released_at
     return today

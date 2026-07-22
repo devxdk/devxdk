@@ -46,7 +46,7 @@ def apply(repo_root=REPO_ROOT, today=None):
         return {"applied": [], "discarded": [], "affected": []}
 
     applied, discarded, affected = pending.apply_pending_records(
-        cfg, ledger, [r for r, _p in records], today
+        cfg, ledger, scrape_state, [r for r, _p in records], today
     )
 
     for comp in sorted(affected):

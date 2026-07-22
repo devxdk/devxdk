@@ -175,6 +175,35 @@ class TestApplyIntegration(unittest.TestCase):
         self.assertEqual(set(rel["platforms"]), {"windows/amd64", "linux/amd64"})
         self.assertEqual(rel["released_at"], "2026-07-20")  # first publication date reused
 
+    def test_mixed_scrape_build_inherits_released_at(self):
+        # A scrape-seeded windows tuple (nginx) fixes the release's released_at; a
+        # later BUILT unix platform for the same version must INHERIT it from the
+        # scrape state, not stamp today — else recompose rejects the mixed release
+        # for inconsistent per-platform dates (the real nginx-unix publish bug).
+        cfg = config.load()
+        scrape_state = merge.ScrapeState()
+        scrape_state.put("nginx", "1.30", "windows/amd64", merge.ScrapeRecord(
+            provider="nginx", epoch=1, floor_version="1.30.4",
+            tuples=[merge.Tuple(version="1.30.4", url="https://nginx.org/download/nginx-1.30.4.zip",
+                                sha256="a" * 64, size_bytes=100, channel="stable",
+                                released_at="2026-05-01")]))
+        ledger = merge.LedgerState()
+        rec = pending.PendingRecord.from_dict(dict(
+            component="nginx", version="1.30.4", platform="linux/amd64", line="1.30",
+            ordering_kind="built", provider="devxdk-nginx-unix", epoch=1, revision=1,
+            source_version="1.30.4",
+            url="https://github.com/devxdk/devxdk/releases/download/nginx-1.30.4/nginx-1.30.4-linux-amd64.tar.gz",
+            sha256="b" * 64, size_bytes=200))
+        applied, _discarded, _affected = pending.apply_pending_records(
+            cfg, ledger, scrape_state, [rec], "2026-09-09")
+        self.assertEqual([r.platform for r in applied], ["linux/amd64"])
+        self.assertEqual(ledger.get("nginx", "1.30.4", "linux/amd64").released_at,
+                         "2026-05-01")  # inherited from the scrape seed, not 2026-09-09
+        # recompose now yields ONE consistent mixed release (windows + linux).
+        rel = merge.recompose("nginx", "Nginx", "service", cfg, scrape_state, ledger)["releases"][0]
+        self.assertEqual(rel["released_at"], "2026-05-01")
+        self.assertEqual(set(rel["platforms"]), {"windows/amd64", "linux/amd64"})
+
     def tearDown(self):
         import shutil
         shutil.rmtree(self.tmp, ignore_errors=True)
