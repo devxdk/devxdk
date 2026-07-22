@@ -26,7 +26,8 @@ ENABLED_PROVIDERS = {
     "devxdk-redis-msys2",
     "devxdk-valkey-msys2",
     "devxdk-php-windows",
-    "astral",  # python adopt (recipes/python.sh)
+    "astral",    # python adopt (recipes/python.sh)
+    "theseus",   # postgres adopt on Linux (recipes/postgres.sh); EDB win/mac deferred
 }
 
 _HASH_LINE = re.compile(r"^hash (\S+)-(\d[\w.\-]*)\.tar\.gz sha256 ([0-9a-f]{64}) (\S+)$")
@@ -182,6 +183,57 @@ def astral_newest(fetcher, line_id: str) -> dict:
     return {"source_version": version, "release_tag": tag, "platforms": platforms}
 
 
+# theseus-rs postgres binaries: adopt provider for postgres on Linux. The macOS
+# and Windows platforms adopt EDB instead (not enabled yet — no discovery API).
+THESEUS_REPO = "theseus-rs/postgresql-binaries"
+_THESEUS_LINUX_TRIPLE = "x86_64-unknown-linux-gnu"
+
+
+def theseus_newest(fetcher, line_id: str) -> dict:
+    """Newest postgres in the tracked line from theseus-rs/postgresql-binaries.
+
+    Adopt provider (Linux): the manifest references the upstream tarball, verified
+    by the published .sha256 sidecar asset. theseus tags each release with the full
+    postgres version (e.g. 18.4.0); the manifest version is the MAJOR.MINOR the
+    validator requires, while the full version is the adopt ordering key (so a
+    later 18.4.x build supersedes an earlier one under the monotonic guard)."""
+    headers = _gh_headers()
+    # First page only: the GitHub releases list is newest-first and theseus has
+    # hundreds of releases across every postgres major, so the newest release in
+    # a currently-tracked line is always among the ~100 most recent — paginating
+    # to exhaustion would be hundreds of wasted calls into the rate limit.
+    releases = fetcher.get_json(
+        f"https://api.github.com/repos/{THESEUS_REPO}/releases?per_page=100", headers)
+
+    best_rel, best = None, None
+    for rel in releases:
+        full = rel.get("tag_name", "")
+        if not _in_line(full, line_id) or versions.parse(full).is_prerelease():
+            continue
+        if best is None or versions.compare_str(full, best) > 0:
+            best_rel, best = rel, full
+    if best is None:
+        raise ResolveError(f"no postgres release for line {line_id} in {THESEUS_REPO}")
+
+    assets = {a.get("name"): a for a in best_rel.get("assets", [])}
+    tarball = f"postgresql-{best}-{_THESEUS_LINUX_TRIPLE}.tar.gz"
+    asset = assets.get(tarball)
+    sidecar = assets.get(tarball + ".sha256")
+    if asset is None or sidecar is None:
+        raise ResolveError(f"theseus {best}: missing {tarball} or its .sha256 sidecar")
+    sha = fetcher.get_text(sidecar["browser_download_url"]).split()[0].strip().lower()
+    if len(sha) != 64 or any(c not in "0123456789abcdef" for c in sha):
+        raise ResolveError(f"theseus {best}: malformed sha256 in the sidecar")
+
+    return {
+        "source_version": best,                                    # 18.4.0 (ordering key)
+        "manifest_version": versions.parse(best).major_minor_string(),  # 18.4 (validator requires MAJOR.MINOR)
+        "release_tag": best,
+        "platforms": {"linux/amd64": {
+            "url": asset["browser_download_url"], "sha256": sha, "size": asset["size"]}},
+    }
+
+
 def resolve(provider: str, cfg, component: str, line_id: str, fetcher) -> dict:
     """Dispatch to the provider's resolver. Callers gate on ENABLED_PROVIDERS
     first; an unknown-but-enabled provider is a hard error (config/gate drift)."""
@@ -195,4 +247,6 @@ def resolve(provider: str, cfg, component: str, line_id: str, fetcher) -> dict:
         return php_windows_newest(fetcher, line_id)
     if provider == "astral":
         return astral_newest(fetcher, line_id)
+    if provider == "theseus":
+        return theseus_newest(fetcher, line_id)
     raise ResolveError(f"no resolver for provider {provider!r}")

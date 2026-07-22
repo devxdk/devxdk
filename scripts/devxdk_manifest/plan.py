@@ -167,7 +167,13 @@ def build_leg_map(cfg, repo_root, fetcher, release_assets, *,
             resolved_cache[cache_key] = resolvers.resolve(
                 plat.provider, cfg, component, line_id, fetcher)
         src = resolved_cache[cache_key]
-        version = version_override or src["source_version"]
+        # The manifest version can differ from the ordering key: postgres is
+        # MAJOR.MINOR in the manifest (validator-enforced) while its ordering key
+        # is the full upstream version (18.4.0), so a later 18.4.x build
+        # supersedes an earlier one. Providers that don't set manifest_version
+        # (redis/php/python) keep version == source_version unchanged.
+        version = version_override or src.get("manifest_version") or src["source_version"]
+        source_version = version if version_override else src["source_version"]
         if version_override and not _in_line_of(cfg, component, line_id, version):
             continue  # an override targets exactly one line; others skip
 
@@ -200,7 +206,7 @@ def build_leg_map(cfg, repo_root, fetcher, release_assets, *,
             "ordering_kind": plat.ordering_kind,
             "provider": plat.provider,
             "epoch": plat.epoch,
-            "source_version": src["source_version"] if not version_override else version,
+            "source_version": source_version,
         })
     return legs
 

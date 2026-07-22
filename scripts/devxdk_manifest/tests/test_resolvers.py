@@ -157,11 +157,13 @@ class TestBuildLegMap(unittest.TestCase):
             jsons={
                 "https://downloads.php.net/~windows/releases/releases.json": PHP_RELEASES,
                 ASTRAL_LATEST: {"id": 356187877, "tag_name": "20260718"},
+                THESEUS_RELEASES: [_theseus_release("18.4.0"), _theseus_release("18.3.0")],
             },
-            paginated={ASTRAL_ASSETS: [
-                _astral_asset("3.14.6", t, f"{i:064d}", 100 + i)
-                for i, t in enumerate(_TRIPLES.values(), 1)]},
+            paginated={ASTRAL_ASSETS: [_astral_asset("3.14.6", t, f"{i:064d}", 100 + i)
+                                       for i, t in enumerate(_TRIPLES.values(), 1)]},
         )
+        self.fetcher.texts["https://gh/postgresql-18.4.0-x86_64-unknown-linux-gnu.tar.gz.sha256"] = (
+            f"{'a' * 64}  postgresql-18.4.0-x86_64-unknown-linux-gnu.tar.gz\n")
 
     def _map(self, **kw):
         return plan.build_leg_map(self.cfg, self.root, self.fetcher, lambda _t: None, **kw)
@@ -173,8 +175,14 @@ class TestBuildLegMap(unittest.TestCase):
         self.assertEqual(set(legs), {
             "redis-windows-amd64", "valkey-windows-amd64", "php-windows-amd64",
             "python-windows-amd64", "python-linux-amd64",
-            "python-darwin-amd64", "python-darwin-arm64"})
+            "python-darwin-amd64", "python-darwin-arm64",
+            "postgres-linux-amd64"})  # theseus (linux); EDB win/mac not enabled
         self.assertEqual([i["version"] for i in legs["php-windows-amd64"]], ["8.4.23", "8.5.8"])
+        # postgres: manifest version is MAJOR.MINOR while source_version is the
+        # full theseus version (the adopt ordering key).
+        pg = legs["postgres-linux-amd64"][0]
+        self.assertEqual((pg["version"], pg["source_version"], pg["ordering_kind"], pg["provider"]),
+                         ("18.4", "18.4.0", "adopted", "theseus"))
         item = legs["redis-windows-amd64"][0]
         self.assertEqual(item, {
             "component": "redis", "version": "8.8.0", "revision": 1, "line": "8",
@@ -276,6 +284,43 @@ class TestAstralNewest(unittest.TestCase):
         assets = self._full("3.14.6")[:3]  # only 3 of 4 platforms
         with self.assertRaises(resolvers.ResolveError):
             resolvers.astral_newest(self._fetcher(assets), "3.14")
+
+
+THESEUS_RELEASES = "https://api.github.com/repos/theseus-rs/postgresql-binaries/releases?per_page=100"
+
+
+def _theseus_release(full, sha="a" * 64):
+    tb = f"postgresql-{full}-x86_64-unknown-linux-gnu.tar.gz"
+    return {"tag_name": full, "assets": [
+        {"name": tb, "browser_download_url": f"https://gh/{tb}", "size": 12000000},
+        {"name": tb + ".sha256", "browser_download_url": f"https://gh/{tb}.sha256"},
+    ]}
+
+
+def _theseus_fetcher():
+    return FakeFetcher(
+        jsons={THESEUS_RELEASES: [
+            _theseus_release("18.4.0"), _theseus_release("18.3.0"), _theseus_release("17.6.0")]},
+        texts={"https://gh/postgresql-18.4.0-x86_64-unknown-linux-gnu.tar.gz.sha256":
+               f"{'a' * 64}  postgresql-18.4.0-x86_64-unknown-linux-gnu.tar.gz\n"},
+    )
+
+
+class TestTheseusNewest(unittest.TestCase):
+    def test_newest_in_line_normalizes_manifest_version(self):
+        got = resolvers.theseus_newest(_theseus_fetcher(), "18")
+        self.assertEqual(got["source_version"], "18.4.0")   # full = ordering key
+        self.assertEqual(got["manifest_version"], "18.4")   # MAJOR.MINOR = manifest
+        a = got["platforms"]["linux/amd64"]
+        self.assertEqual(a["sha256"], "a" * 64)
+        self.assertTrue(a["url"].endswith("x86_64-unknown-linux-gnu.tar.gz"))
+
+    def test_missing_sidecar_raises(self):
+        f = FakeFetcher(jsons={THESEUS_RELEASES: [{"tag_name": "18.4.0", "assets": [
+            {"name": "postgresql-18.4.0-x86_64-unknown-linux-gnu.tar.gz",
+             "browser_download_url": "https://gh/x", "size": 1}]}]})
+        with self.assertRaises(resolvers.ResolveError):
+            resolvers.theseus_newest(f, "18")
 
 
 if __name__ == "__main__":
