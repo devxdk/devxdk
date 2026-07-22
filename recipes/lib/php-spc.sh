@@ -78,18 +78,18 @@ for fpr in $php_fprs; do
 done
 echo "php keyring: pinned release-manager fingerprints present"
 
-# --- ensure the toolchain spc needs (idempotent on the CI images) ----------
-# Pre-install the build tools with a FRESH apt index rather than leaning on spc
+# --- system build tools (CWD-independent) ----------------------------------
+# Pre-install the OS tools with a FRESH apt index rather than leaning on spc
 # doctor's --auto-fix, whose bare `apt-get install` hits 503s on a stale index
 # (re2c/autopoint are the two the ubuntu image lacks). apt-get update is retried
-# for a transient mirror blip; then doctor --auto-fix finds everything present.
+# for a transient mirror blip. `spc doctor` runs PER-VERSION below (its pkg-config
+# fix is CWD-relative — see the loop).
 if [ "$os" = Linux ]; then
   for _ in 1 2 3; do sudo apt-get update -y >>"$outdir/apt.log" 2>&1 && break; sleep 5; done
   sudo apt-get install -y --no-install-recommends \
-    re2c gettext autoconf automake libtool pkg-config bison flex build-essential \
+    re2c gettext autoconf automake libtool bison flex build-essential \
     >>"$outdir/apt.log" 2>&1 || { echo "::error::apt-get install of the spc toolchain failed"; tail -30 "$outdir/apt.log" >&2; exit 1; }
 fi
-"$SPC" doctor --auto-fix >"$outdir/doctor.log" 2>&1 || { echo "::error::spc doctor failed"; tail -40 "$outdir/doctor.log" >&2; exit 1; }
 
 # --- loopback source server: spc compiles ONLY our GPG-verified bytes -------
 srcserve="$outdir/srcserve"; rm -rf "$srcserve"; mkdir -p "$srcserve"
@@ -144,13 +144,19 @@ PY
   grep -q "Good signature" "$outdir/gpg-$version.out" || { echo "::error::no 'Good signature' for $src_name" >&2; cat "$outdir/gpg-$version.out" >&2; exit 1; }
   echo "php $source_version: sha256 (releases JSON) + GPG (pinned RM key) verified"
 
-  # --- spc download (php-src from our loopback) + static build -------------
-  # pkg-config is a BUILD TOOL, not a library dependency of any extension, so
-  # --for-extensions does NOT resolve it — spc build then can't find its own
-  # buildroot/bin/pkg-config and fails. Name it explicitly in the positional
-  # sources (merged with the --for-extensions set); --retry rides transient
-  # mirror blips on the dep downloads.
+  # --- spc build in a PER-VERSION working dir (isolates 8.4 from 8.5) -------
+  # spc derives WORKING_DIR from getcwd(), and findPkgConfig() only accepts
+  # <cwd>/buildroot/bin/pkg-config (spc's OWN built pkg-config — NEVER the system
+  # one). So doctor --auto-fix (which builds that pkg-config via its
+  # install-pkgconfig fix) MUST run in the SAME cwd as the build; run it inside
+  # $wd here, not once from the repo root.
   wd="$outdir/wd-$version"; rm -rf "$wd"; mkdir -p "$wd"
+  ( cd "$wd" && "$SPC" doctor --auto-fix >"$outdir/doctor-$version.log" 2>&1 ) \
+    || { echo "::error::spc doctor failed"; tail -40 "$outdir/doctor-$version.log" >&2; exit 1; }
+  # pkg-config is a BUILD TOOL, not a library dependency of any extension, so
+  # --for-extensions does NOT resolve its source — name it explicitly in the
+  # positional sources (merged with the --for-extensions set); --retry rides
+  # transient mirror blips on the dep downloads.
   ( cd "$wd" && "$SPC" download "pkg-config" --for-extensions="$EXTS" --with-php="$minor" \
       -U "php-src:http://127.0.0.1:$port/$src_name" --retry=3 \
       >"$outdir/spc-download-$version.log" 2>&1 ) \
