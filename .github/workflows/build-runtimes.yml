@@ -436,9 +436,15 @@ jobs:
           python3 -c "import sys,zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])" "$RUNNER_TEMP/metas.zip" "$RUNNER_TEMP/finalizable-metas"
       - name: Write pending records, commit, and dispatch scrape-and-sign
         env:
-          GH_TOKEN: ${{ secrets.DEVXDK_MANIFEST_PUSH_TOKEN }}
+          # The PAT pushes the pending commit to main (contents:write, and it is
+          # the ruleset bypass actor); the workflow_dispatch of scrape-and-sign
+          # rides the job's own GITHUB_TOKEN (permissions: actions: write above),
+          # so the PAT needs only contents:write — dispatching mutates no
+          # protected ref.
+          PUSH_TOKEN: ${{ secrets.DEVXDK_MANIFEST_PUSH_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name "devxdk-bot"
           git config user.email "bot@devxdk.com"
-          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/devxdk/devxdk.git"
+          git remote set-url origin "https://x-access-token:${PUSH_TOKEN}@github.com/devxdk/devxdk.git"
           python3 scripts/finalize_builds.py --metas "$RUNNER_TEMP/finalizable-metas"
