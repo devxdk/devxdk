@@ -117,12 +117,13 @@ platforms = { "windows/amd64" = { type = "adopt", provider = "astral" }, "linux/
 
 [components.postgres]
 kind = "service"
-# EDB zips on Windows/macOS (adopt: double-fetch self-hash); theseus binaries on
-# Linux (adopt: sha256 published). Manifest version = MAJOR.MINOR.
+# theseus-rs binaries on every platform (adopt: sha256 published via .sha256
+# sidecars, native builds including aarch64 macOS — no EDB re-hosting needed).
+# Manifest version = MAJOR.MINOR.
 [components.postgres.lines."18"]
 channel = "stable"
 retain_per_line = 3
-platforms = { "windows/amd64" = { type = "adopt", provider = "edb" }, "linux/amd64" = { type = "adopt", provider = "theseus" }, "darwin/amd64" = { type = "adopt", provider = "edb" }, "darwin/arm64" = { type = "adopt", provider = "edb" } }
+platforms = { "windows/amd64" = { type = "adopt", provider = "theseus" }, "linux/amd64" = { type = "adopt", provider = "theseus" }, "darwin/amd64" = { type = "adopt", provider = "theseus" }, "darwin/arm64" = { type = "adopt", provider = "theseus" } }
 
 [components.redis]
 kind = "service"

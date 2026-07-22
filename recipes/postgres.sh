@@ -1,19 +1,15 @@
 #!/usr/bin/env bash
-# Adopt recipe for postgres on Linux (theseus-rs/postgresql-binaries).
+# Adopt recipe for postgres on every platform (theseus-rs/postgresql-binaries).
 #
 # Adopt = re-host BY REFERENCE: the manifest points at the upstream theseus
-# tarball, verified by its published .sha256 sidecar. theseus already wraps
-# everything in a single postgresql-<ver>-<triple>/ dir, so the app's
-# ArchiveStrip=1 lands bin/postgres with no repack. Per LEG_ITEMS line, this
-# re-resolves the asset (asserting the planned full version is still newest),
-# downloads it, self-hash-verifies, extracts, and smokes with a real initdb +
-# pg_ctl start/stop, then writes a .meta.json (ordering_kind=adopted,
-# url=upstream, version=MAJOR.MINOR, source_version=full). No archive is
-# produced — nothing is rehosted.
-#
-# Windows/macOS postgres adopt EDB, which has no version-discovery API and
-# publishes no checksum; that provider is deferred, so this recipe is Linux-only
-# and fails loudly on any other platform.
+# tarball, verified by its published .sha256 sidecar. theseus ships native builds
+# for all four targets (including aarch64 macOS) and wraps each in a single
+# postgresql-<ver>-<triple>/ dir, so the app's ArchiveStrip=1 lands bin/postgres
+# with no repack. Per LEG_ITEMS line, this re-resolves the asset for its platform
+# (asserting the planned full version is still newest), downloads it,
+# self-hash-verifies against the sidecar, extracts, and smokes with a real initdb
+# plus pg_ctl start/stop, then writes an adopt .meta.json (upstream url, no
+# archive; version=MAJOR.MINOR, source_version=full).
 set -euo pipefail
 
 leg="${1:?usage: postgres.sh <leg>}"
@@ -31,29 +27,36 @@ for i in $(seq 0 $((count - 1))); do
   provider=$(item provider); epoch=$(item epoch); revision=$(item revision)
 
   [ "$mode" = "build" ] || { echo "::error::$leg item $version has mode '$mode'; the adopt recipe only runs the build (fetch+verify+smoke) mode" >&2; exit 1; }
-  [ "$platform" = "linux/amd64" ] || { echo "::error::postgres adopt is Linux-only (theseus); EDB win/mac is not implemented" >&2; exit 1; }
 
-  # --- resolve the upstream asset, asserting the full version identity -------
-  resolved=$(python3 - "$source_version" "$line" <<'PY'
+  case "$platform" in
+    windows/amd64) triple="x86_64-pc-windows-msvc"; exe=".exe"; is_win=1 ;;
+    linux/amd64)   triple="x86_64-unknown-linux-gnu"; exe=""; is_win=0 ;;
+    darwin/amd64)  triple="x86_64-apple-darwin"; exe=""; is_win=0 ;;
+    darwin/arm64)  triple="aarch64-apple-darwin"; exe=""; is_win=0 ;;
+    *) echo "::error::postgres: unsupported platform $platform" >&2; exit 1 ;;
+  esac
+
+  # --- resolve the upstream asset for THIS platform, asserting identity ------
+  resolved=$(python3 - "$source_version" "$line" "$platform" <<'PY'
 import sys
 sys.path.insert(0, "scripts")
 from devxdk_manifest import fetch, resolvers
-want, line = sys.argv[1], sys.argv[2]
+want, line, platform = sys.argv[1], sys.argv[2], sys.argv[3]
 got = resolvers.theseus_newest(fetch.Fetcher(), line)
 if got["source_version"] != want:
     sys.stderr.write(f"theseus newest {got['source_version']} != planned {want}\n")
     sys.exit(2)
-a = got["platforms"]["linux/amd64"]
+a = got["platforms"][platform]
 print(a["url"], a["sha256"], a["size"])
 PY
-) || { echo "::error::$leg: could not resolve theseus asset for $source_version" >&2; exit 1; }
+) || { echo "::error::$leg: could not resolve theseus asset for $platform $source_version" >&2; exit 1; }
   read -r url sha size <<< "$resolved"
-  echo "adopt postgres $source_version (manifest $version) linux/amd64: $url"
+  echo "adopt postgres $source_version (manifest $version) $platform: $url"
 
   # --- download + self-hash verify against the published sidecar ------------
-  work="$outdir/work-$version"; rm -rf "$work"; mkdir -p "$work"
+  work="$outdir/work-$version-${platform//\//-}"; rm -rf "$work"; mkdir -p "$work"
   asset="$work/pg.tar.gz"
-  curl -fsSL --retry 6 --retry-max-time 300 --max-time 600 -o "$asset" "$url"
+  curl -fsSL --retry 6 --retry-max-time 300 --max-time 900 -o "$asset" "$url"
   got_sha=$(python3 -c "import hashlib,sys;h=hashlib.sha256();f=open(sys.argv[1],'rb')
 while True:
  b=f.read(1<<20)
@@ -65,23 +68,31 @@ print(h.hexdigest())" "$asset")
 
   # --- extract + layout check (theseus wraps in postgresql-<ver>-<triple>/) --
   tar xzf "$asset" -C "$work"
-  pgroot="$work/postgresql-$source_version-x86_64-unknown-linux-gnu"
+  pgroot="$work/postgresql-$source_version-$triple"
   for b in postgres initdb pg_ctl; do
-    [ -f "$pgroot/bin/$b" ] || { echo "::error::layout: bin/$b missing under the wrapper dir" >&2; exit 1; }
+    [ -f "$pgroot/bin/$b$exe" ] || { echo "::error::layout: bin/$b$exe missing under the wrapper dir" >&2; exit 1; }
   done
   if find "$pgroot" \( -name '.devxdk-complete' -o -name '.devxdk-initialized' \) | grep -q .; then
     echo "::error::layout: bundle carries DevXDK marker files" >&2; exit 1
   fi
 
   # --- smoke: real initdb + pg_ctl start/stop on the target OS --------------
-  export LD_LIBRARY_PATH="$pgroot/lib:${LD_LIBRARY_PATH:-}"
-  data="$work/pgdata"; sock="$work/sock"; mkdir -p "$sock"
-  "$pgroot/bin/initdb" -D "$data" -U postgres -A trust --encoding=UTF8 >/dev/null 2>&1 \
+  data="$work/pgdata"
+  "$pgroot/bin/initdb$exe" -D "$data" -U postgres -A trust --encoding=UTF8 >/dev/null 2>&1 \
     || { echo "::error::smoke: initdb failed" >&2; exit 1; }
-  "$pgroot/bin/pg_ctl" -D "$data" -o "-p 54329 -k $sock -c listen_addresses=''" -w start >/dev/null 2>&1 \
-    || { echo "::error::smoke: pg_ctl start failed" >&2; exit 1; }
-  "$pgroot/bin/pg_ctl" -D "$data" -w stop >/dev/null 2>&1 || true
-  echo "smoke: postgres $source_version initdb + pg_ctl start/stop OK"
+  if [ "$is_win" = 1 ]; then
+    # Windows postgres has no Unix socket; start on a TCP loopback port.
+    "$pgroot/bin/pg_ctl$exe" -D "$data" -o "-p 54329 -c listen_addresses=127.0.0.1" -w start >/dev/null 2>&1 \
+      || { echo "::error::smoke: pg_ctl start failed" >&2; exit 1; }
+  else
+    export LD_LIBRARY_PATH="$pgroot/lib:${LD_LIBRARY_PATH:-}"
+    export DYLD_LIBRARY_PATH="$pgroot/lib:${DYLD_LIBRARY_PATH:-}"
+    sock="$work/sock"; mkdir -p "$sock"
+    "$pgroot/bin/pg_ctl" -D "$data" -o "-p 54329 -k $sock -c listen_addresses=''" -w start >/dev/null 2>&1 \
+      || { echo "::error::smoke: pg_ctl start failed" >&2; exit 1; }
+  fi
+  "$pgroot/bin/pg_ctl$exe" -D "$data" -w stop >/dev/null 2>&1 || true
+  echo "smoke: postgres $source_version $platform initdb + pg_ctl start/stop OK"
 
   # --- meta (adopt: version=MAJOR.MINOR, source_version=full, url=upstream) --
   URL="$url" SHA="$sha" SIZE="$got_size" VERSION="$version" PLATFORM="$platform" \
@@ -114,7 +125,7 @@ with open(sys.argv[1], "w", encoding="utf-8", newline="\n") as fh:
 PY
 
   rm -rf "$work"
-  echo "adopted postgres $version ($source_version) linux/amd64 (sha256 $sha, $got_size bytes)"
+  echo "adopted postgres $version ($source_version) $platform (sha256 $sha, $got_size bytes)"
 done
 
 echo "$leg: done"

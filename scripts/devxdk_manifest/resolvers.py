@@ -183,20 +183,28 @@ def astral_newest(fetcher, line_id: str) -> dict:
     return {"source_version": version, "release_tag": tag, "platforms": platforms}
 
 
-# theseus-rs postgres binaries: adopt provider for postgres on Linux. The macOS
-# and Windows platforms adopt EDB instead (not enabled yet — no discovery API).
+# theseus-rs postgres binaries: adopt provider for postgres on every platform.
+# theseus ships native builds for all four targets (including aarch64 macOS) with
+# a published .sha256 sidecar each, so postgres needs no EDB re-hosting.
 THESEUS_REPO = "theseus-rs/postgresql-binaries"
-_THESEUS_LINUX_TRIPLE = "x86_64-unknown-linux-gnu"
+_THESEUS_TRIPLES = {
+    "windows/amd64": "x86_64-pc-windows-msvc",
+    "linux/amd64": "x86_64-unknown-linux-gnu",
+    "darwin/amd64": "x86_64-apple-darwin",
+    "darwin/arm64": "aarch64-apple-darwin",
+}
 
 
 def theseus_newest(fetcher, line_id: str) -> dict:
     """Newest postgres in the tracked line from theseus-rs/postgresql-binaries.
 
-    Adopt provider (Linux): the manifest references the upstream tarball, verified
-    by the published .sha256 sidecar asset. theseus tags each release with the full
-    postgres version (e.g. 18.4.0); the manifest version is the MAJOR.MINOR the
-    validator requires, while the full version is the adopt ordering key (so a
-    later 18.4.x build supersedes an earlier one under the monotonic guard)."""
+    Adopt provider (all platforms): the manifest references the upstream tarball,
+    verified by the published .sha256 sidecar asset. theseus tags each release
+    with the full postgres version (e.g. 18.4.0); the manifest version is the
+    MAJOR.MINOR the validator requires, while the full version is the adopt
+    ordering key (so a later 18.4.x build supersedes an earlier one). Only a
+    release present on all four platforms is plannable — a partial upload must
+    never yield a platform-incomplete release."""
     headers = _gh_headers()
     # First page only: the GitHub releases list is newest-first and theseus has
     # hundreds of releases across every postgres major, so the newest release in
@@ -216,21 +224,27 @@ def theseus_newest(fetcher, line_id: str) -> dict:
         raise ResolveError(f"no postgres release for line {line_id} in {THESEUS_REPO}")
 
     assets = {a.get("name"): a for a in best_rel.get("assets", [])}
-    tarball = f"postgresql-{best}-{_THESEUS_LINUX_TRIPLE}.tar.gz"
-    asset = assets.get(tarball)
-    sidecar = assets.get(tarball + ".sha256")
-    if asset is None or sidecar is None:
-        raise ResolveError(f"theseus {best}: missing {tarball} or its .sha256 sidecar")
-    sha = fetcher.get_text(sidecar["browser_download_url"]).split()[0].strip().lower()
-    if len(sha) != 64 or any(c not in "0123456789abcdef" for c in sha):
-        raise ResolveError(f"theseus {best}: malformed sha256 in the sidecar")
+    platforms = {}
+    for pkey, triple in _THESEUS_TRIPLES.items():
+        tarball = f"postgresql-{best}-{triple}.tar.gz"
+        asset, sidecar = assets.get(tarball), assets.get(tarball + ".sha256")
+        if asset is None or sidecar is None:
+            raise ResolveError(f"theseus {best}: missing {tarball} or its .sha256 sidecar")
+        # Sidecar formats differ per platform: mac/linux are "<sha>  <file>",
+        # Windows is CertUtil ("SHA256 hash of <file>:\n<sha>\nCertUtil: ..."), so
+        # take the first 64-hex token anywhere rather than assuming column 1.
+        text = fetcher.get_text(sidecar["browser_download_url"])
+        sha = next((tok.lower() for tok in text.split()
+                    if len(tok) == 64 and all(c in "0123456789abcdefABCDEF" for c in tok)), None)
+        if sha is None:
+            raise ResolveError(f"theseus {best}: no sha256 in the sidecar for {tarball}")
+        platforms[pkey] = {"url": asset["browser_download_url"], "sha256": sha, "size": asset["size"]}
 
     return {
         "source_version": best,                                    # 18.4.0 (ordering key)
         "manifest_version": versions.parse(best).major_minor_string(),  # 18.4 (validator requires MAJOR.MINOR)
         "release_tag": best,
-        "platforms": {"linux/amd64": {
-            "url": asset["browser_download_url"], "sha256": sha, "size": asset["size"]}},
+        "platforms": platforms,
     }
 
 
