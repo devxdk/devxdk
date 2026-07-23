@@ -51,6 +51,51 @@
     },
     "php": {
       "8.4.23": {
+        "darwin/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "8.4",
+          "provider": "devxdk-php-spc",
+          "released_at": "2026-07-22",
+          "revoked": false,
+          "sha256": "36bb0bc72d8a800d59a4da70552c801338bee187ba798101a124e3ca70a66ef5",
+          "size_bytes": 48764480,
+          "source_version": "8.4.23",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.4.23/php-8.4.23-darwin-amd64.tar.gz"
+        },
+        "darwin/arm64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "8.4",
+          "provider": "devxdk-php-spc",
+          "released_at": "2026-07-22",
+          "revoked": false,
+          "sha256": "d4f954859878ea1805388a5a74d38dda978e70726f4f9dc5de73fbc2d4be9c5e",
+          "size_bytes": 49135758,
+          "source_version": "8.4.23",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.4.23/php-8.4.23-darwin-arm64.tar.gz"
+        },
+        "linux/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "8.4",
+          "provider": "devxdk-php-spc",
+          "released_at": "2026-07-22",
+          "revoked": false,
+          "sha256": "433dc8f40095fefa6cf4b99d2f86512470d098ab10d38a248e070a1de9b84558",
+          "size_bytes": 47745011,
+          "source_version": "8.4.23",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.4.23/php-8.4.23-linux-amd64.tar.gz"
+        },
         "windows/amd64": {
           "channel": "stable",
           "epoch": 1,
@@ -68,6 +113,51 @@
         }
       },
       "8.5.8": {
+        "darwin/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "8.5",
+          "provider": "devxdk-php-spc",
+          "released_at": "2026-07-22",
+          "revoked": false,
+          "sha256": "0bd2d56e1b1b7575d941fe31f13fbfb2b3df267ca4c40d2f5df9a2652bb8fe37",
+          "size_bytes": 49548849,
+          "source_version": "8.5.8",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.5.8/php-8.5.8-darwin-amd64.tar.gz"
+        },
+        "darwin/arm64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "8.5",
+          "provider": "devxdk-php-spc",
+          "released_at": "2026-07-22",
+          "revoked": false,
+          "sha256": "918132ce66b620261bee7d17403103fe696ed2cd292486d2bc6fe855ba615bfc",
+          "size_bytes": 49948216,
+          "source_version": "8.5.8",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.5.8/php-8.5.8-darwin-arm64.tar.gz"
+        },
+        "linux/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "8.5",
+          "provider": "devxdk-php-spc",
+          "released_at": "2026-07-22",
+          "revoked": false,
+          "sha256": "057c2dff319e1d2187875d6cd8183ae5e9c91481d142c84d9b9db609e3113571",
+          "size_bytes": 48433178,
+          "source_version": "8.5.8",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.5.8/php-8.5.8-linux-amd64.tar.gz"
+        },
         "windows/amd64": {
           "channel": "stable",
           "epoch": 1,
