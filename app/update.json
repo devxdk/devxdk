@@ -1,0 +1,16 @@
+{
+  "version": "",
+  "platforms": {},
+  "channels": {
+    "prerelease": {
+      "version": "0.1.0-rc.2",
+      "platforms": {
+        "windows/amd64": {
+          "url": "https://github.com/devxdk/devxdk/releases/download/app-v0.1.0-rc.2/devxdk-gui-0.1.0-rc.2-windows-amd64.exe",
+          "sha256": "b67b9dd90fb8400a2989187c9069f093f0d96339d7f983298f76c7aeff9c2ed0",
+          "sig_url": "https://github.com/devxdk/devxdk/releases/download/app-v0.1.0-rc.2/devxdk-gui-0.1.0-rc.2-windows-amd64.exe.minisig"
+        }
+      }
+    }
+  }
+}
