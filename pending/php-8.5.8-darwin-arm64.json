@@ -1,0 +1,14 @@
+{
+  "component": "php",
+  "epoch": 1,
+  "line": "8.5",
+  "ordering_kind": "built",
+  "platform": "darwin/arm64",
+  "provider": "devxdk-php-spc",
+  "revision": 1,
+  "sha256": "918132ce66b620261bee7d17403103fe696ed2cd292486d2bc6fe855ba615bfc",
+  "size_bytes": 49948216,
+  "source_version": "8.5.8",
+  "url": "https://github.com/devxdk/devxdk/releases/download/php-8.5.8/php-8.5.8-darwin-arm64.tar.gz",
+  "version": "8.5.8"
+}

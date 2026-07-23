@@ -1,0 +1,14 @@
+{
+  "component": "php",
+  "epoch": 1,
+  "line": "8.4",
+  "ordering_kind": "built",
+  "platform": "darwin/arm64",
+  "provider": "devxdk-php-spc",
+  "revision": 1,
+  "sha256": "d4f954859878ea1805388a5a74d38dda978e70726f4f9dc5de73fbc2d4be9c5e",
+  "size_bytes": 49135758,
+  "source_version": "8.4.23",
+  "url": "https://github.com/devxdk/devxdk/releases/download/php-8.4.23/php-8.4.23-darwin-arm64.tar.gz",
+  "version": "8.4.23"
+}
