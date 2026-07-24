@@ -198,10 +198,8 @@ def _validate_asset(name, ver, pkey, asset, hosts) -> list:
 
 
 def _try_parse(ver):
-    try:
-        return merge.versions.parse(ver)
-    except merge.versions.ParseError:
-        return None
+    # Thin alias for the shared lenient parser (N12 consolidation).
+    return merge.versions.try_parse(ver)
 
 
 def main(argv=None):

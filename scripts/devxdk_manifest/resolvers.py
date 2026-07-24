@@ -44,9 +44,8 @@ class ResolveError(RuntimeError):
 def _in_line(ver: str, line_id: str) -> bool:
     """Whether a version belongs to a tracked line (same dotted-shape rule as
     merge.line_for: no dot = major, one dot = major.minor, two = exact)."""
-    try:
-        v = versions.parse(ver)
-    except versions.ParseError:
+    v = versions.try_parse(ver)
+    if v is None:
         return False
     dots = line_id.count(".")
     if dots == 0:

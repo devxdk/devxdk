@@ -55,6 +55,12 @@ class TestComponentRules(unittest.TestCase):
                      platforms={"windows/amd64": _asset(url=NODE_URL.replace("24.17.0", "24.18.0"))})
         self.assertEqual(self._errs(_manifest(releases=[r])), [])
 
+    def test_unparseable_version_collected(self):
+        # L35: a malformed committed version is a COLLECTED error, and the
+        # tracked-line probe (line_for) must not crash on it.
+        errs = self._errs(_manifest(releases=[_release(ver="latest")]))
+        self.assertTrue(any("does not parse" in e for e in errs), errs)
+
     def test_bad_sha(self):
         for bad in ("A" * 64, "abc", "a" * 63):
             errs = self._errs(_manifest(releases=[_release(platforms={"windows/amd64": _asset(sha=bad)})]))

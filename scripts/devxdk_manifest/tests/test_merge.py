@@ -69,6 +69,14 @@ class TestLineFor(unittest.TestCase):
         self.assertIsNone(merge.line_for(self.cfg, "node", "25.0.0"))
         self.assertIsNone(merge.line_for(self.cfg, "mariadb", "10.5.1"))
 
+    def test_malformed_version_returns_none(self):
+        # L35: the parity checks feed raw committed manifest versions through
+        # line_for — an unparseable one must read as "no line", never raise
+        # (a ParseError used to escape validate()'s (OSError, GuardError)
+        # except as an uncaught traceback).
+        self.assertIsNone(merge.line_for(self.cfg, "node", "1.2.3.4"))
+        self.assertIsNone(merge.line_for(self.cfg, "node", "latest"))
+
 
 class TestGuard(unittest.TestCase):
     def test_admit_newer_and_evict(self):

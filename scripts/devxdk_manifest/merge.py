@@ -408,7 +408,13 @@ def line_for(cfg, component: str, ver: str) -> str | None:
     one dot = major.minor, two dots = full version (matching the app's data-line
     derivation)."""
     comp = cfg.component(component)
-    v = versions.parse(ver)
+    v = versions.try_parse(ver)
+    if v is None:
+        # An unparseable version belongs to no line (L35): the parity checks
+        # feed raw committed manifest versions through here, and a raised
+        # ParseError escaped validate()'s (OSError, GuardError) except into an
+        # uncaught traceback instead of the collected report.
+        return None
     for lid in comp.lines:
         dots = lid.count(".")
         if dots == 0 and v.major_string() == lid:
