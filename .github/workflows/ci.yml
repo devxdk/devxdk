@@ -80,7 +80,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - name: actionlint
-        uses: docker://rhysd/actionlint:1.7.7
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          args: -color
+          go-version: "1.26.5"
+      - name: actionlint
+        # go install is checksum-verified via the Go module sumdb (L31): the
+        # docker://rhysd/actionlint tag was the one mutable, un-pinned action
+        # in the repo (same pattern the app repo's CI already uses).
+        run: |
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+          actionlint -color
