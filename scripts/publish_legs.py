@@ -26,7 +26,7 @@ import zipfile
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from devxdk_manifest import handoff, releasepub, schema  # noqa: E402
+from devxdk_manifest import handoff, plan, releasepub, schema  # noqa: E402
 
 REPO = "devxdk/devxdk"
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -193,8 +193,10 @@ def publish(needs_json, workdir, api=None, dry=False):
                 # through to the finalizable set.
                 metas.append(meta)
                 continue
-            tag = f"{meta['component']}-{meta['version']}" + (
-                "" if meta["revision"] <= 1 else f"-r{meta['revision']}")
+            # plan.release_tag is the ONE tag rule (L37) — a drift between the
+            # publish tag and finalize's download URL would 404 the signed
+            # manifest.
+            tag = plan.release_tag(meta["component"], meta["version"], meta["revision"])
             try:
                 members = releasepub.build_members(meta, legdir)
                 referenced = releasepub.referenced_asset_names(

@@ -17,7 +17,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from devxdk_manifest import config, pending  # noqa: E402
+from devxdk_manifest import config, pending, plan  # noqa: E402
 from devxdk_manifest.config import ConfigError  # noqa: E402
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -25,10 +25,10 @@ PENDING_DIR = REPO_ROOT / "pending"
 
 
 def pending_filename(component, version, revision, platform):
-    """<component>-<version>[-rN]-<goos>-<goarch>.json (rN only for revision >= 2)."""
-    suffix = "" if revision <= 1 else f"-r{revision}"
+    """<component>-<version>[-rN]-<goos>-<goarch>.json (rN only for revision >= 2).
+    Composed from plan.release_tag — the ONE copy of the -rN rule (L37)."""
     plat = platform.replace("/", "-")
-    return f"{component}-{version}{suffix}-{plat}.json"
+    return f"{plan.release_tag(component, version, revision)}-{plat}.json"
 
 
 def build_record(args):

@@ -20,6 +20,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 import add_built_release  # noqa: E402
+from devxdk_manifest import plan  # noqa: E402
 
 REPO = "devxdk/devxdk"
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -28,8 +29,9 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 def _download_url(meta):
     if meta.get("ordering_kind") == "adopted":
         return meta["url"]  # adopt references the upstream asset directly (no rehost)
-    tag = f"{meta['component']}-{meta['version']}" + (
-        "" if meta["revision"] <= 1 else f"-r{meta['revision']}")
+    # plan.release_tag is the ONE tag rule (L37): a drifted inline copy would
+    # bake a 404 URL into the signed manifest.
+    tag = plan.release_tag(meta["component"], meta["version"], meta["revision"])
     return f"https://github.com/{REPO}/releases/download/{tag}/{meta['archive']}"
 
 
