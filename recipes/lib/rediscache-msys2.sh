@@ -143,8 +143,14 @@ for i in $(seq 0 $((count - 1))); do
     # without GCC source when built with unmodified GCC — which MSYS2's is) and
     # openssl (Apache-2.0, permissive). The license notices for ALL shipped
     # packages already ship in the bundle above regardless.
-    lic=$(awk '/^%LICENSE%/{getline; print; exit}' "/c/msys64/var/lib/pacman/local/${pkg}-${pkgver}/desc" 2>/dev/null)
-    if echo "$lic" | grep -qiE 'GPL' && ! echo "$lic" | grep -qi 'exception'; then
+    # Read the WHOLE %LICENSE% block (M17), not just its first line — a
+    # package listing its GPL identifier on any later line must still trigger
+    # the source offer (GPLv3 §6: object code never ships without its
+    # corresponding source). Evaluated PER LINE: a GPL entry counts only when
+    # its own line carries no exception, so an unrelated other-license
+    # exception line can never mask a plain GPL entry.
+    lic=$(awk '/^%LICENSE%/{f=1;next} /^%/{f=0} f&&NF' "/c/msys64/var/lib/pacman/local/${pkg}-${pkgver}/desc" 2>/dev/null)
+    if printf '%s\n' "$lic" | awk 'tolower($0) ~ /gpl/ && tolower($0) !~ /exception/ {found=1} END {exit found?0:1}'; then
       # The SOURCE package name (%BASE%) differs from the binary for split
       # packages (libopenssl -> openssl), so read it from the local pacman DB.
       base=$(awk '/^%BASE%/{getline; print; exit}' "/c/msys64/var/lib/pacman/local/${pkg}-${pkgver}/desc" 2>/dev/null)
