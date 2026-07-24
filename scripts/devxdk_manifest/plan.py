@@ -145,14 +145,40 @@ def build_leg_map(cfg, repo_root, fetcher, release_assets, *,
     Returns {leg_id: [item, ...]} containing ONLY legs with work. Providers
     outside resolvers.ENABLED_PROVIDERS are omitted (their recipe does not
     exist yet — an emitted item would be a guaranteed red leg); filters narrow
-    a dispatch to chosen components/platforms; version_override pins the
-    version instead of resolving newest (single-component dispatches only);
-    force publishes the next unused revision even when up to date."""
-    from . import merge, resolvers
+    a dispatch to chosen components/platforms; version_override LIMITS a
+    single-component dispatch to its line's CURRENT resolved version (it is an
+    assertion, not an arbitrary pin — the recipes independently hard-fail on
+    any non-newest source, and an override alone does not rebuild an
+    already-published version; add force for that); force publishes the next
+    unused revision even when up to date."""
+    from . import merge, resolvers, versions
 
     ledger = merge.LedgerState.load(f"{repo_root}/state/asset-revisions.json")
     resolved_cache = {}
     legs = {}
+
+    # Up-front override validation (M13): an unknown component or an override
+    # outside every tracked line used to skip the whole loop and return {} —
+    # a silent no-op that read as success.
+    if version_override is not None:
+        comps = set(components) if components else set()
+        if len(comps) != 1:
+            raise PlanError(
+                "a version override requires exactly one component filter "
+                "(the override asserts a single component/line's resolved version)")
+        (target,) = comps
+        managed = {c for c, _, _, _ in cfg.managed_keys()}
+        if target not in managed:
+            raise PlanError(f"version override: unknown or unmanaged component {target!r}")
+        try:
+            target_line = merge.line_for(cfg, target, version_override)
+        except versions.ParseError:
+            target_line = None
+        tracked = sorted({l for c, l, _, _ in cfg.managed_keys() if c == target})
+        if target_line not in tracked:
+            raise PlanError(
+                f"version override {version_override!r} falls in no tracked "
+                f"{target} line (tracked: {tracked})")
 
     for component, line_id, platform, plat in sorted(cfg.managed_keys()):
         if components and component not in components:
@@ -171,11 +197,26 @@ def build_leg_map(cfg, repo_root, fetcher, release_assets, *,
         # MAJOR.MINOR in the manifest (validator-enforced) while its ordering key
         # is the full upstream version (18.4.0), so a later 18.4.x build
         # supersedes an earlier one. Providers that don't set manifest_version
-        # (redis/php/python) keep version == source_version unchanged.
-        version = version_override or src.get("manifest_version") or src["source_version"]
-        source_version = version if version_override else src["source_version"]
+        # keep version == source_version unchanged.
+        resolved_version = src.get("manifest_version") or src["source_version"]
+        version = version_override or resolved_version
         if version_override and not _in_line_of(cfg, component, line_id, version):
             continue  # an override targets exactly one line; others skip
+        if version_override and version_override != resolved_version:
+            # Reject rule (M13): the override must EQUAL the version this line
+            # would resolve anyway. Anything else is unbuildable-as-labeled:
+            # the resolvers return newest-in-line (an older override would
+            # build the newest source mislabeled with the old version), and
+            # the adopt/build recipes independently hard-fail on any planned
+            # source that is not upstream-newest. Provider-agnostic on
+            # purpose — for adopt providers no bare manifest-only override
+            # value can name an exact source.
+            raise PlanError(
+                f"{component} {line_id} {platform}: version override "
+                f"{version_override!r} != the current resolved version "
+                f"{resolved_version!r} — the override only asserts/limits the "
+                f"current resolved version (use force to rebuild it)")
+        source_version = src["source_version"]
 
         rec = ledger.get(component, version, platform)
         if rec is not None and (rec.status != "active" or rec.revoked):

@@ -50,7 +50,10 @@ def main(argv=None):
     ap.add_argument("--leg-map-json", action="store_true", help="print the resolved leg map")
     ap.add_argument("--components", default="", help="comma-separated component filter")
     ap.add_argument("--platforms", default="", help="comma-separated platform filter")
-    ap.add_argument("--version", default="", help="pin this version instead of resolving newest")
+    ap.add_argument("--version", default="",
+                    help="assert/limit the single selected component's CURRENT "
+                         "resolved version (not an arbitrary pin; needs --force "
+                         "to rebuild a published version)")
     ap.add_argument("--force", action="store_true", help="publish the next unused revision")
     ap.add_argument("--assume-no-releases", action="store_true",
                     help="treat every Release as absent (offline/local planning)")

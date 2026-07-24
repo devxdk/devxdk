@@ -247,6 +247,53 @@ class TestBuildLegMap(unittest.TestCase):
         legs = self._map(components=["php"], version_override="8.4.23")
         self.assertEqual([i["line"] for i in legs["php-windows-amd64"]], ["8.4"])
 
+    def test_version_override_requires_single_component(self):
+        # M13: the docstring's "single-component dispatches only" contract is
+        # now enforced, not assumed.
+        with self.assertRaises(plan.PlanError):
+            self._map(version_override="8.4.23")
+        with self.assertRaises(plan.PlanError):
+            self._map(components=["php", "redis"], version_override="8.4.23")
+
+    def test_version_override_unknown_component_rejects(self):
+        # M13: an unknown component used to skip the whole loop and return {}
+        # — a silent no-op that read as success.
+        with self.assertRaises(plan.PlanError):
+            self._map(components=["nosuch"], version_override="1.0.0")
+
+    def test_version_override_outside_every_line_rejects(self):
+        # M13: postgres tracks line 18 only; 12.9 falls in no tracked line.
+        with self.assertRaises(plan.PlanError):
+            self._map(components=["postgres"], version_override="12.9")
+
+    def test_version_override_older_in_line_rejects(self):
+        # M13: an OLDER in-line postgres override (manifest 18.3 / source
+        # 18.3.0) is unbuildable-as-labeled — the resolver returns
+        # newest-in-line (18.4/18.4.0), so the old code planned source "18.3"
+        # (a nonexistent theseus asset name) and the adopt recipes exit 2 on
+        # any non-newest source regardless. Reject with an actionable error.
+        with self.assertRaises(plan.PlanError):
+            self._map(components=["postgres"], version_override="18.3")
+
+    def test_version_override_current_adopt_accepted(self):
+        # M13: override == the resolved manifest_version is accepted, and
+        # source_version is the resolver's authoritative FULL version — the
+        # old code set source_version to the bare override ("18.4"), a
+        # nonexistent theseus asset name.
+        legs = self._map(components=["postgres"], version_override="18.4")
+        pg = legs["postgres-darwin-arm64"][0]
+        self.assertEqual((pg["version"], pg["source_version"]), ("18.4", "18.4.0"))
+
+    def test_version_override_multi_line_not_rejected_by_sibling_line(self):
+        # M13 ordering: the equality check runs AFTER line targeting, so a
+        # php 8.4 override succeeds against its 8.4 line instead of being
+        # rejected by the 8.5 line's resolved version.
+        legs = self._map(components=["php"], version_override="8.4.23")
+        self.assertTrue(legs)
+        for leg_id, items in legs.items():
+            self.assertEqual([i["line"] for i in items], ["8.4"], leg_id)
+            self.assertEqual(items[0]["source_version"], "8.4.23", leg_id)
+
     def test_published_asset_flips_to_finalize_only(self):
         assets = {"redis-8.8.0": ["redis-8.8.0-windows-amd64.zip"]}
         legs = plan.build_leg_map(self.cfg, self.root, self.fetcher, assets.get,

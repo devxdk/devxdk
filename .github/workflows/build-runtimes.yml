@@ -27,7 +27,7 @@ on:
         type: string
         default: ""
       version:
-        description: "Pin this version instead of resolving newest (single-component dispatches)"
+        description: "Assert/limit the single selected component's CURRENT resolved version (not an arbitrary pin; needs force to rebuild a published version)"
         type: string
         default: ""
       force:
