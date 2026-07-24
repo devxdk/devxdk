@@ -180,19 +180,51 @@ for i in $(seq 0 $((count - 1))); do
   smoke_win=$(cygpath -w "$smoke")
   "$smoke/$component-server.exe" --version | grep -qi "v=$source_version" \
     || { echo "::error::smoke: --version does not report $source_version" >&2; exit 1; }
+  # N9 precondition: a stale server from a prior failed run holding the port
+  # would answer the PONG below and pass the smoke against the WRONG binary.
   powershell.exe -NoProfile -Command \
-    "Start-Process -FilePath '$smoke_win\\$component-server.exe' -ArgumentList 'etc/$component.conf' -WorkingDirectory '$smoke_win' -WindowStyle Hidden" \
+    "if (Get-NetTCPConnection -LocalPort $smoke_port -State Listen -ErrorAction SilentlyContinue) { exit 1 }" \
+    || { echo "::error::smoke: port $smoke_port pre-check failed or a listener already holds it" >&2; exit 1; }
+  # L30: -PassThru surfaces the PID out of the powershell boundary so every
+  # failure path can kill exactly OUR server Windows-natively (git-bash kill
+  # cannot reliably terminate a native Windows PID) and N9 can tie the
+  # answering listener to the process we launched.
+  smoke_pid=$(powershell.exe -NoProfile -Command \
+    "(Start-Process -FilePath '$smoke_win\\$component-server.exe' -ArgumentList 'etc/$component.conf' -WorkingDirectory '$smoke_win' -WindowStyle Hidden -PassThru).Id" \
+    | tr -d '[:space:]') \
     || { echo "::error::smoke: server failed to start" >&2; exit 1; }
+  case "$smoke_pid" in
+    ''|*[!0-9]*) echo "::error::smoke: no server PID captured (got '$smoke_pid')" >&2; exit 1 ;;
+  esac
+  # Kill + WAIT for exit (a live handle breaks the rm -rf of $smoke and leaks
+  # the port into the next item). Idempotent: clears the PID once handled.
+  smoke_kill() {
+    [ -n "${smoke_pid:-}" ] || return 0
+    powershell.exe -NoProfile -Command \
+      "Stop-Process -Id $smoke_pid -Force -ErrorAction SilentlyContinue; Wait-Process -Id $smoke_pid -Timeout 15 -ErrorAction SilentlyContinue" || true
+    smoke_pid=""
+  }
+  trap smoke_kill EXIT
   ok=""
   for _ in $(seq 1 20); do
     if "$smoke/$component-cli.exe" -p "$smoke_port" ping 2>/dev/null | grep -q PONG; then ok=1; break; fi
     sleep 1
   done
   [ -n "$ok" ] || { echo "::error::smoke: no PONG on port $smoke_port" >&2; exit 1; }
+  # N9: the PONG must be OURS — every listener on the smoke port must be the
+  # captured PID (unique-owner equality, not first-match).
+  owners=$(powershell.exe -NoProfile -Command \
+    "(Get-NetTCPConnection -LocalPort $smoke_port -State Listen).OwningProcess | Sort-Object -Unique" | tr -d '\r' | sed '/^$/d')
+  [ "$owners" = "$smoke_pid" ] \
+    || { echo "::error::smoke: port $smoke_port listener PID(s) '${owners:-none}' are not our server $smoke_pid" >&2; exit 1; }
   "$smoke/$component-cli.exe" -p "$smoke_port" set devxdk-smoke ok >/dev/null
   [ "$("$smoke/$component-cli.exe" -p "$smoke_port" get devxdk-smoke)" = "ok" ] \
     || { echo "::error::smoke: SET/GET round-trip failed" >&2; exit 1; }
   "$smoke/$component-cli.exe" -p "$smoke_port" shutdown nosave 2>/dev/null || true
+  # The polite shutdown is fire-and-forget: reap any survivor and WAIT for
+  # exit so the rm -rf below never races a live handle.
+  smoke_kill
+  trap - EXIT
   echo "smoke: $component $source_version PONG + SET/GET + shutdown OK"
 
   # --- corresponding source (the copyleft offer) --------------------------
