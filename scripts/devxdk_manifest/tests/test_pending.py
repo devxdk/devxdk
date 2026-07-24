@@ -118,6 +118,44 @@ class TestEpoch(unittest.TestCase):
         # A current-epoch r1 supersedes wholesale (no cross-epoch key compare).
         self.assertEqual(pending.classify(cfg, led, _prec(epoch=2, revision=1, sha256="b" * 64))[0], pending.APPLY)
 
+    def test_cross_epoch_revoked_adopted_superseded(self):
+        # M12 crash case: a REVOKED old-epoch ADOPTED entry (key "17.4-2") vs
+        # a post-migration BUILT record. The old revoked-first order ran
+        # _key_compare("built", "1", "17.4-2") -> int() ValueError that
+        # escaped apply_pending's except and crashed the whole apply. Epoch
+        # supersession must win: cross-epoch revoked -> APPLY (an epoch
+        # migration re-baselines the platform; the revocation bound the OLD
+        # provider/kind ordering).
+        cfg = _temp_cfg(epoch=2, provider="devxdk-redis-msys2")
+        old = _prec(ordering_kind="adopted", provider="theseus",
+                    source_version="17.4-2", epoch=1)
+        led = _ledger(old, revoked=True)
+        self.assertEqual(
+            pending.classify(cfg, led, _prec(epoch=2, revision=1, sha256="b" * 64))[0],
+            pending.APPLY)
+
+    def test_cross_epoch_revoked_same_kind_superseded(self):
+        # M12 silent-discard case: a revoked old-epoch BUILT r5 vs a
+        # post-migration r1 rebuild — the old order key-compared 1 <= 5 and
+        # silently discarded a legit reset-revision build.
+        cfg = _temp_cfg(epoch=2, provider="devxdk-redis-msys2")
+        led = _ledger(_prec(epoch=1, revision=5), revoked=True)
+        self.assertEqual(
+            pending.classify(cfg, led, _prec(epoch=2, revision=1, sha256="b" * 64))[0],
+            pending.APPLY)
+
+    def test_equal_epoch_revoked_cross_kind_errors_cleanly(self):
+        # M12 guard case: even at EQUAL epoch, a cross-kind revoked entry
+        # (adopted key "17.4-2" vs an incoming built record) must fail as a
+        # clean PendingError via the provider/kind guard — never the int()
+        # ValueError the revoked-first order raised.
+        cfg = _temp_cfg(epoch=1, provider="devxdk-redis-msys2")
+        old = _prec(ordering_kind="adopted", provider="theseus",
+                    source_version="17.4-2", epoch=1)
+        led = _ledger(old, revoked=True)
+        with self.assertRaises(pending.PendingError):
+            pending.classify(cfg, led, _prec(epoch=1, revision=1, sha256="b" * 64))
+
 
 class TestAdoptedOrdering(unittest.TestCase):
     def setUp(self):

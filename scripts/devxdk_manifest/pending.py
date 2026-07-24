@@ -83,7 +83,8 @@ def _key_compare(kind: str, a: str, b: str) -> int:
 def derive_channel(cfg, component: str, line_id: str, version: str) -> str:
     """A prerelease version is 'prerelease'; otherwise the line's configured
     channel (stable, or lts for an LTS line)."""
-    if versions.try_parse(version) is not None and versions.parse(version).is_prerelease():
+    v = versions.try_parse(version)
+    if v is not None and v.is_prerelease():
         return "prerelease"
     return cfg.line(component, line_id).channel
 
@@ -118,21 +119,30 @@ def classify(cfg, ledger: merge.LedgerState, rec: PendingRecord):
     if rec.ordering_kind != plat.ordering_kind:
         raise PendingError(f"ordering_kind {rec.ordering_kind!r} != config {plat.ordering_kind!r}")
 
-    # 3. Ledger transition.
+    # 3. Ledger transition. Epoch FIRST — a key compare across epochs is
+    # meaningless (the provider/ordering kind may have changed), and running
+    # the revoked key-logic on an old-epoch adopted key would crash int().
     existing = ledger.get(rec.component, rec.version, rec.platform)
     if existing is None:
         return APPLY, None
+    if existing.epoch < rec.epoch:
+        # Wholesale supersession across the epoch bump — EXPLICITLY including
+        # a revoked old-epoch entry: an epoch migration re-baselines the
+        # platform, so a current-epoch record supersedes an old-epoch
+        # revocation (which bound the OLD provider/kind ordering that no
+        # longer applies). Intended under the epoch-migration model.
+        return APPLY, None
+    if existing.epoch > rec.epoch:
+        raise PendingError(f"ledger entry epoch {existing.epoch} is above the record epoch {rec.epoch}")
+    # Same epoch — provider/kind must match BEFORE any key compare, in the
+    # revoked branch too: an equal-epoch cross-kind compare would crash int()
+    # on an adopted key like "17.4-2".
+    if existing.provider != rec.provider or existing.kind != rec.ordering_kind:
+        raise PendingError(f"{rec.component} {rec.version} {rec.platform}: ledger provider/kind mismatch at same epoch")
     if existing.revoked:
         if _key_compare(rec.ordering_kind, rec.key, existing.key) <= 0:
             return DISCARD, "revoked entry; incoming key is not newer"
         raise PendingError(f"{rec.component} {rec.version} {rec.platform} is revoked; needs a readmit record")
-    if existing.epoch < rec.epoch:
-        return APPLY, None  # wholesale supersession across the epoch bump
-    if existing.epoch > rec.epoch:
-        raise PendingError(f"ledger entry epoch {existing.epoch} is above the record epoch {rec.epoch}")
-    # Same epoch — provider/kind must match, then three-way key ordering.
-    if existing.provider != rec.provider or existing.kind != rec.ordering_kind:
-        raise PendingError(f"{rec.component} {rec.version} {rec.platform}: ledger provider/kind mismatch at same epoch")
     c = _key_compare(rec.ordering_kind, rec.key, existing.key)
     if c < 0:
         return DISCARD, f"stale key {rec.key} < committed {existing.key}"
