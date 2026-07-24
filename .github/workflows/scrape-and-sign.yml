@@ -56,11 +56,41 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "stable"
+          # Exact pin (L32): this builds the TRUST-ROOT signer — the most
+          # trust-sensitive build must not float with whatever setup-go
+          # resolves "stable" to. Matches the app repo's GO_VERSION.
+          go-version: "1.26.5"
 
       - name: Resolve the pinned signer commit
         id: pin
-        run: echo "sha=$(grep -oE '[0-9a-f]{40}' config/signer-source.pin | head -1)" >> "$GITHUB_OUTPUT"
+        # Fail closed (L33/N10): the pin must be EXACTLY one nonblank,
+        # non-comment line that is a COMPLETE 40-hex commit SHA. The old
+        # grep -oE resolution yielded an empty sha on an empty/malformed pin —
+        # and an empty ref: checks out the app repo's default-branch HEAD, a
+        # supply-chain control failing open — while a 64-hex sha256 pasted by
+        # mistake was silently truncated to a plausible-but-wrong 40-hex
+        # prefix (regexing the grep OUTPUT cannot detect that: it is already
+        # exactly 40 hex).
+        run: |
+          pin_file=config/signer-source.pin
+          count=0; sha=""
+          while IFS= read -r line || [ -n "$line" ]; do
+            line="${line%$'\r'}"
+            line="${line#"${line%%[![:space:]]*}"}"
+            line="${line%"${line##*[![:space:]]}"}"
+            [ -z "$line" ] && continue
+            [[ "$line" == \#* ]] && continue
+            count=$((count+1)); sha="$line"
+          done < "$pin_file"
+          if [ "$count" -ne 1 ]; then
+            echo "::error::$pin_file must contain exactly one non-comment line (found $count)" >&2
+            exit 1
+          fi
+          if ! [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::$pin_file pin '$sha' is not a complete 40-hex commit SHA" >&2
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
 
       - name: Checkout the pinned signer source (private app repo)
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
