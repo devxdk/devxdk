@@ -133,7 +133,11 @@ def _pending_exists(repo_root, component, version, platform):
     pending = pathlib.Path(repo_root) / "pending"
     if not pending.is_dir():
         return False
-    prefix = f"{component}-{version}"
+    # The trailing '-' is the field boundary (L36): pending names are
+    # <component>-<version>[-rN]-<goos>-<goarch>.json, so without it a query
+    # for 8.4.2 also matched a pending 8.4.23-… file and silently skipped a
+    # needed build.
+    prefix = f"{component}-{version}-"
     return any(p.name.startswith(prefix) and p.name.endswith(f"-{plat}.json")
                for p in pending.glob("*.json"))
 

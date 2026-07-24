@@ -2,6 +2,7 @@
 the canonical revision/naming helpers."""
 
 import pathlib
+import tempfile
 import unittest
 
 from devxdk_manifest import config, plan
@@ -60,6 +61,22 @@ class TestHelpers(unittest.TestCase):
     def test_release_tag(self):
         self.assertEqual(plan.release_tag("php", "8.5.6", 1), "php-8.5.6")
         self.assertEqual(plan.release_tag("php", "8.5.6", 2), "php-8.5.6-r2")
+
+    def test_pending_exists_version_boundary(self):
+        # L36: pending names are <component>-<version>[-rN]-<plat>.json — a
+        # query for 8.4.2 must NOT match a pending 8.4.23 file (the old bare
+        # startswith silently skipped a needed build), while exact matches
+        # (with and without -rN) still hit.
+        with tempfile.TemporaryDirectory() as root:
+            pend = pathlib.Path(root) / "pending"
+            pend.mkdir()
+            (pend / "php-8.4.23-windows-amd64.json").write_text("{}", encoding="utf-8")
+            (pend / "php-8.4.2-r2-windows-amd64.json").write_text("{}", encoding="utf-8")
+            self.assertTrue(plan._pending_exists(root, "php", "8.4.23", "windows/amd64"))
+            self.assertTrue(plan._pending_exists(root, "php", "8.4.2", "windows/amd64"))
+            self.assertFalse(plan._pending_exists(root, "php", "8.4.2", "linux/amd64"))
+            (pend / "php-8.4.2-r2-windows-amd64.json").unlink()
+            self.assertFalse(plan._pending_exists(root, "php", "8.4.2", "windows/amd64"))
 
 
 if __name__ == "__main__":
