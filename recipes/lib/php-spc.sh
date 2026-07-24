@@ -71,12 +71,22 @@ export GNUPGHOME="$outdir/gnupg"; rm -rf "$GNUPGHOME"; mkdir -p "$GNUPGHOME"; ch
 for kf in "$keydir"/*.key; do
   gpg --batch --quiet --import "$kf" 2>/dev/null || { echo "::error::failed to import $kf" >&2; exit 1; }
 done
-present=$(gpg --batch --with-colons --list-keys 2>/dev/null | awk -F: '/^fpr:/{print $10}' | sort -u)
-for fpr in $php_fprs; do
-  printf '%s\n' "$present" | grep -qx "$fpr" \
-    || { echo "::error::pinned php key $fpr not present in the keyring after import" >&2; exit 1; }
-done
-echo "php keyring: pinned release-manager fingerprints present"
+# Exact-set assertion (M4, parity with nginx.sh's M3): the keyring must hold
+# EXACTLY the pinned fingerprints — an unpinned committed .key must never
+# become a trusted signer (the php.net sha256 is a weak second gate: it shares
+# php.net's origin). PRIMARY fingerprints only: gpg --with-colons emits an fpr
+# record for every subkey too, and the pin list is primaries.
+primary=$(gpg --batch --with-colons --list-keys 2>/dev/null \
+  | awk -F: '$1=="pub"{want=1;next} $1=="fpr"{if(want)print $10; want=0; next} {want=0}' | sort -u)
+pinned=$(printf '%s\n' "$php_fprs" | tr ' ' '\n' | awk 'NF' | sort -u)
+[ -n "$pinned" ] || { echo "::error::pinned php fingerprint list is empty" >&2; exit 1; }
+if [ "$primary" != "$pinned" ]; then
+  { echo "::error::php keyring does not hold EXACTLY the pinned fingerprint set"
+    echo "keyring primaries:"; printf '%s\n' "$primary"
+    echo "pinned:"; printf '%s\n' "$pinned"; } >&2
+  exit 1
+fi
+echo "php keyring: exactly the pinned release-manager fingerprint set"
 
 # --- system build tools (CWD-independent) ----------------------------------
 # Pre-install the OS tools with a FRESH apt index rather than leaning on spc
