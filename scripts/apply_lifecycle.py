@@ -43,7 +43,10 @@ def main(argv=None):
     argparse.ArgumentParser(description="Apply line retirement/reactivation.").parse_args(argv)
     try:
         affected = apply(REPO_ROOT)
-    except (lifecycle.LifecycleError, merge.GuardError) as e:
+    except (lifecycle.LifecycleError, merge.GuardError, config.ConfigError) as e:
+        # ConfigError too (L34): reactivate_line -> find_platform raises it,
+        # and so can config.load() — both must fail closed with the clean
+        # "nothing written" report, never an uncaught traceback.
         sys.stderr.write(f"apply_lifecycle: FAILED (nothing written): {e}\n")
         return 1
     if affected:
