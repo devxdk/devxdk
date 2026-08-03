@@ -4,6 +4,18 @@
   "kind": "runtime",
   "releases": [
     {
+      "version": "8.5.9",
+      "channel": "stable",
+      "released_at": "2026-08-03",
+      "platforms": {
+        "windows/amd64": {
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.5.9/php-8.5.9-windows-amd64.zip",
+          "sha256": "6b5d2682cc92a8bf51ca85b6b36190e1eee0c01bb4b1b147892154956d1b4e57",
+          "size_bytes": 37309413
+        }
+      }
+    },
+    {
       "version": "8.5.8",
       "channel": "stable",
       "released_at": "2026-07-22",
@@ -27,6 +39,18 @@
           "url": "https://github.com/devxdk/devxdk/releases/download/php-8.5.8/php-8.5.8-darwin-arm64.tar.gz",
           "sha256": "918132ce66b620261bee7d17403103fe696ed2cd292486d2bc6fe855ba615bfc",
           "size_bytes": 49948216
+        }
+      }
+    },
+    {
+      "version": "8.4.24",
+      "channel": "stable",
+      "released_at": "2026-08-03",
+      "platforms": {
+        "windows/amd64": {
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.4.24/php-8.4.24-windows-amd64.zip",
+          "sha256": "45c6d143ba408f44701337e40f5c409a3ea4b7d55b01636b366ada9255ed04b0",
+          "size_bytes": 36339216
         }
       }
     },

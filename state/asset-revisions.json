@@ -112,6 +112,23 @@
           "url": "https://github.com/devxdk/devxdk/releases/download/php-8.4.23/php-8.4.23-windows-amd64.zip"
         }
       },
+      "8.4.24": {
+        "windows/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "8.4",
+          "provider": "devxdk-php-windows",
+          "released_at": "2026-08-03",
+          "revoked": false,
+          "sha256": "45c6d143ba408f44701337e40f5c409a3ea4b7d55b01636b366ada9255ed04b0",
+          "size_bytes": 36339216,
+          "source_version": "8.4.24",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.4.24/php-8.4.24-windows-amd64.zip"
+        }
+      },
       "8.5.8": {
         "darwin/amd64": {
           "channel": "stable",
@@ -172,6 +189,23 @@
           "source_version": "8.5.8",
           "status": "active",
           "url": "https://github.com/devxdk/devxdk/releases/download/php-8.5.8/php-8.5.8-windows-amd64.zip"
+        }
+      },
+      "8.5.9": {
+        "windows/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "8.5",
+          "provider": "devxdk-php-windows",
+          "released_at": "2026-08-03",
+          "revoked": false,
+          "sha256": "6b5d2682cc92a8bf51ca85b6b36190e1eee0c01bb4b1b147892154956d1b4e57",
+          "size_bytes": 37309413,
+          "source_version": "8.5.9",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.5.9/php-8.5.9-windows-amd64.zip"
         }
       }
     },
