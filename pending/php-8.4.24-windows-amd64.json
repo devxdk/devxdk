@@ -1,0 +1,14 @@
+{
+  "component": "php",
+  "epoch": 1,
+  "line": "8.4",
+  "ordering_kind": "built",
+  "platform": "windows/amd64",
+  "provider": "devxdk-php-windows",
+  "revision": 1,
+  "sha256": "45c6d143ba408f44701337e40f5c409a3ea4b7d55b01636b366ada9255ed04b0",
+  "size_bytes": 36339216,
+  "source_version": "8.4.24",
+  "url": "https://github.com/devxdk/devxdk/releases/download/php-8.4.24/php-8.4.24-windows-amd64.zip",
+  "version": "8.4.24"
+}
