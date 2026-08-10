@@ -4,6 +4,33 @@
   "kind": "runtime",
   "releases": [
     {
+      "version": "3.14.7",
+      "channel": "stable",
+      "released_at": "2026-08-10",
+      "platforms": {
+        "windows/amd64": {
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260807/cpython-3.14.7%2B20260807-x86_64-pc-windows-msvc-install_only.tar.gz",
+          "sha256": "b06367695ce177e4abb2e02a8ff00fa60903c29fb381e40affaee2f51ef6115a",
+          "size_bytes": 49592591
+        },
+        "linux/amd64": {
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260807/cpython-3.14.7%2B20260807-x86_64-unknown-linux-gnu-install_only.tar.gz",
+          "sha256": "3d1705fee7747c491d774e26fa91fad67e25d1eb3ede4124dc88501279f2e7d4",
+          "size_bytes": 127096492
+        },
+        "darwin/amd64": {
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260807/cpython-3.14.7%2B20260807-x86_64-apple-darwin-install_only.tar.gz",
+          "sha256": "2551ac222fbf0ec16ad8bd575bf94614d4da0877e74adb0e155cef019bf3007d",
+          "size_bytes": 26745356
+        },
+        "darwin/arm64": {
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260807/cpython-3.14.7%2B20260807-aarch64-apple-darwin-install_only.tar.gz",
+          "sha256": "433c2c61f5edfb2beda061d3b1f226bbe3493fa926cec68068843dd49110e539",
+          "size_bytes": 26662371
+        }
+      }
+    },
+    {
       "version": "3.14.6",
       "channel": "stable",
       "released_at": "2026-07-22",
