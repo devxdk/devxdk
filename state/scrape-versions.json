@@ -25,7 +25,7 @@
       "1": {
         "darwin/amd64": {
           "epoch": 1,
-          "floor_version": "1.26.5",
+          "floor_version": "1.26.6",
           "provider": "golang",
           "revoked": [],
           "status": "active",
@@ -33,16 +33,16 @@
             {
               "channel": "stable",
               "released_at": "",
-              "sha256": "6231d8d3b8f5552ec6cbf6d685bdd5482e1e703214b120e89b3bf0d7bf1ef725",
-              "size_bytes": 67836304,
-              "url": "https://go.dev/dl/go1.26.5.darwin-amd64.tar.gz",
-              "version": "1.26.5"
+              "sha256": "08b65a63f244115121ced6c3b55ad38d801a7442acad5c949a17aad84ae6d684",
+              "size_bytes": 67851334,
+              "url": "https://go.dev/dl/go1.26.6.darwin-amd64.tar.gz",
+              "version": "1.26.6"
             }
           ]
         },
         "darwin/arm64": {
           "epoch": 1,
-          "floor_version": "1.26.5",
+          "floor_version": "1.26.6",
           "provider": "golang",
           "revoked": [],
           "status": "active",
@@ -50,16 +50,16 @@
             {
               "channel": "stable",
               "released_at": "",
-              "sha256": "efb87ff28af9a188d0536ef5d42e63dd52ba8263cd7344a993cc48dd11dedb6a",
-              "size_bytes": 64738542,
-              "url": "https://go.dev/dl/go1.26.5.darwin-arm64.tar.gz",
-              "version": "1.26.5"
+              "sha256": "2dc95ce4675829f2df0e86b28bcef3283635902062a5f0580ca659bf570f3204",
+              "size_bytes": 64772321,
+              "url": "https://go.dev/dl/go1.26.6.darwin-arm64.tar.gz",
+              "version": "1.26.6"
             }
           ]
         },
         "linux/amd64": {
           "epoch": 1,
-          "floor_version": "1.26.5",
+          "floor_version": "1.26.6",
           "provider": "golang",
           "revoked": [],
           "status": "active",
@@ -67,16 +67,16 @@
             {
               "channel": "stable",
               "released_at": "",
-              "sha256": "5c2c3b16caefa1d968a94c1daca04a7ca301a496d9b086e17ad77bb81393f053",
-              "size_bytes": 66879095,
-              "url": "https://go.dev/dl/go1.26.5.linux-amd64.tar.gz",
-              "version": "1.26.5"
+              "sha256": "708effb774be8237570d0add163225abbdfaf4fca28b2611df167beba4feef89",
+              "size_bytes": 66890545,
+              "url": "https://go.dev/dl/go1.26.6.linux-amd64.tar.gz",
+              "version": "1.26.6"
             }
           ]
         },
         "windows/amd64": {
           "epoch": 1,
-          "floor_version": "1.26.5",
+          "floor_version": "1.26.6",
           "provider": "golang",
           "revoked": [],
           "status": "active",
@@ -84,10 +84,10 @@
             {
               "channel": "stable",
               "released_at": "",
-              "sha256": "97e6b2a833b6d89f9ff17d25419ac0a7e3b482a044e9ab18cdef834bd834fd38",
-              "size_bytes": 74927386,
-              "url": "https://go.dev/dl/go1.26.5.windows-amd64.zip",
-              "version": "1.26.5"
+              "sha256": "5b6c5b556525810463b5c897b50dc7a82d6a3dc0bfaf55d990a7e9f31d6b2318",
+              "size_bytes": 74954710,
+              "url": "https://go.dev/dl/go1.26.6.windows-amd64.zip",
+              "version": "1.26.6"
             }
           ]
         }
@@ -133,11 +133,19 @@
       "10.6": {
         "linux/amd64": {
           "epoch": 1,
-          "floor_version": "10.6.27",
+          "floor_version": "10.6.28",
           "provider": "mariadb",
           "revoked": [],
           "status": "active",
           "tuples": [
+            {
+              "channel": "stable",
+              "released_at": "",
+              "sha256": "80ca39575e5dd9670d9015b674835cd1d37548576547425763694d1bcc686ce2",
+              "size_bytes": 326718696,
+              "url": "https://archive.mariadb.org/mariadb-10.6.28/bintar-linux-systemd-x86_64/mariadb-10.6.28-linux-systemd-x86_64.tar.gz",
+              "version": "10.6.28"
+            },
             {
               "channel": "stable",
               "released_at": "",
@@ -150,11 +158,19 @@
         },
         "windows/amd64": {
           "epoch": 1,
-          "floor_version": "10.6.27",
+          "floor_version": "10.6.28",
           "provider": "mariadb",
           "revoked": [],
           "status": "active",
           "tuples": [
+            {
+              "channel": "stable",
+              "released_at": "",
+              "sha256": "a4e5cd01587d1662728f0cf0d8bb3d1aaedc6861b272cec18f504ab4ba8b2f72",
+              "size_bytes": 87852101,
+              "url": "https://archive.mariadb.org/mariadb-10.6.28/winx64-packages/mariadb-10.6.28-winx64.zip",
+              "version": "10.6.28"
+            },
             {
               "channel": "stable",
               "released_at": "",

@@ -72,6 +72,23 @@
       }
     },
     {
+      "version": "10.6.28",
+      "channel": "stable",
+      "released_at": "",
+      "platforms": {
+        "windows/amd64": {
+          "url": "https://archive.mariadb.org/mariadb-10.6.28/winx64-packages/mariadb-10.6.28-winx64.zip",
+          "sha256": "a4e5cd01587d1662728f0cf0d8bb3d1aaedc6861b272cec18f504ab4ba8b2f72",
+          "size_bytes": 87852101
+        },
+        "linux/amd64": {
+          "url": "https://archive.mariadb.org/mariadb-10.6.28/bintar-linux-systemd-x86_64/mariadb-10.6.28-linux-systemd-x86_64.tar.gz",
+          "sha256": "80ca39575e5dd9670d9015b674835cd1d37548576547425763694d1bcc686ce2",
+          "size_bytes": 326718696
+        }
+      }
+    },
+    {
       "version": "10.6.27",
       "channel": "stable",
       "released_at": "",
