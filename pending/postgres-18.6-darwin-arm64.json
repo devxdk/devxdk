@@ -1,0 +1,14 @@
+{
+  "component": "postgres",
+  "epoch": 1,
+  "line": "18",
+  "ordering_kind": "adopted",
+  "platform": "darwin/arm64",
+  "provider": "theseus",
+  "revision": 1,
+  "sha256": "a257bcdb8aa3301a13d6a5bcec48f8c9517045b7cbae71e50788b2615539e95b",
+  "size_bytes": 13081312,
+  "source_version": "18.6.0",
+  "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.0/postgresql-18.6.0-aarch64-apple-darwin.tar.gz",
+  "version": "18.6"
+}
