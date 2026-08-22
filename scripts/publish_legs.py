@@ -26,7 +26,7 @@ import zipfile
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from devxdk_manifest import handoff, plan, releasepub, schema  # noqa: E402
+from devxdk_manifest import config, handoff, plan, releasepub, schema  # noqa: E402
 
 REPO = "devxdk/devxdk"
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -169,11 +169,87 @@ def _committed_releases(component):
     return schema.load(mpath).get("releases", []) if mpath.exists() else []
 
 
+# Provider -> the EXACT set of [pins.*] names that provider's leg metadata must
+# declare under provenance.static_libs. Fail CLOSED: a missing static_libs
+# block, a missing key, or an extra key is an error BEFORE publication, not a
+# pass. A presence-only rule would let a recipe edit that drops or renames the
+# block turn this control off silently while CI stayed green.
+#
+# devxdk-nginx-unix is the case that exists today: recipes/nginx.sh statically
+# links openssl, pcre2 and zlib into the three unix nginx bundles we ship, so a
+# stale pin there is a shipped-binary CVE, not a CI-hygiene item.
+#
+# Keys must be a subset of resolvers.ENABLED_PROVIDERS (asserted in
+# test_publish_legs) so a row naming a provider that no longer exists fails the
+# tests rather than sitting dead.
+STATIC_PIN_PROVIDERS = {
+    "devxdk-nginx-unix": frozenset({"openssl", "pcre2", "zlib"}),
+}
+
+
+def _static_pins():
+    """The [pins.*] table from the tree THIS run checked out.
+
+    Its own function so tests can substitute it, mirroring _committed_releases.
+    """
+    return config.load().pins
+
+
+def validate_static_pins(meta, pins):
+    """Return a list of error strings for meta's provenance.static_libs block.
+
+    What this proves, stated narrowly: the bytes just built used the pins
+    committed in the tree this run checked out. It attests nothing about assets
+    published earlier -- between publications the currency gate can prove the
+    PIN is current and cannot prove the ARTIFACT was built from it, because the
+    leg .meta.json is neither published nor committed (releasepub publishes only
+    what release_assets declares, and the pending/ledger record keeps identity,
+    url, sha256 and size only). Closing that would mean persisting authenticated
+    build-input provenance as a third published format, which this work's public
+    surface deliberately does not admit. That is why a static-source pin bump is
+    an obligation of the bump procedure -- bump the pin, then force-rebuild at
+    the next -rN -- and not something left for a scanner to catch later.
+    """
+    provider = meta.get("provider")
+    declared = (meta.get("provenance") or {}).get("static_libs")
+    expected = STATIC_PIN_PROVIDERS.get(provider)
+
+    if expected is None:
+        # Not in the map: still validated if it declares anything, so a future
+        # recipe is covered from its first run. The map gains its row when that
+        # recipe lands; the two layers are complementary.
+        if declared is None:
+            return []
+        if not isinstance(declared, dict):
+            return ["provider {!r}: provenance.static_libs must be a table, "
+                    "got {!r}".format(provider, declared)]
+    else:
+        if not isinstance(declared, dict):
+            return ["provider {!r} must declare provenance.static_libs {}, "
+                    "got {!r}".format(provider, sorted(expected), declared)]
+        if set(declared) != set(expected):
+            return ["provider {!r} declares static_libs {}, want exactly {}".format(
+                provider, sorted(declared), sorted(expected))]
+
+    errs = []
+    for name in sorted(declared):
+        pinned = (pins.get(name) or {}).get("version")
+        if pinned is None:
+            errs.append("provider {!r}: static_libs names {!r}, which has no "
+                        "[pins.{}] version".format(provider, name, name))
+            continue
+        if declared[name] != pinned:
+            errs.append("provider {!r}: built against {} {!r} but [pins.{}] is "
+                        "{!r}".format(provider, name, declared[name], name, pinned))
+    return errs
+
+
 def publish(needs_json, workdir, api=None, dry=False):
     """Reconcile every success leg's Release; return (finalizable_metas, errors)."""
     api = api or GhReleaseAPI()
     workdir = pathlib.Path(workdir)
     legs = success_legs(needs_json)
+    pins = _static_pins()
     metas, errors = [], []
 
     for leg, ref in sorted(legs.items()):
@@ -184,8 +260,36 @@ def publish(needs_json, workdir, api=None, dry=False):
         except (releasepub.ReleaseError, handoff.HandoffError) as e:
             errors.append(f"{leg}: artifact verify failed: {e}")
             continue
+
+        # PASS 1 -- parse and validate EVERY meta in this leg before reconciling
+        # ANY of them. A leg really can carry several metas: each recipe builds
+        # every tracked line for its (component, platform) pair and writes one
+        # .meta.json per line (recipes/README.md:4-7), so mariadb has 5 today and
+        # php 2. nginx has one line by CONFIGURATION, not by construction -- a
+        # second nginx line would falsify a single-pass guarantee with no code
+        # change at all. Two passes make the promise true by shape: a mismatched
+        # leg uploads no asset and appends no meta, hence no pending record and
+        # no manifest entry.
+        leg_metas, leg_errors = [], []
         for meta_path in sorted(legdir.glob("*.meta.json")):
-            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            try:
+                meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError) as e:
+                leg_errors.append(f"{leg}: {meta_path.name}: unreadable: {e}")
+                continue
+            leg_errors.extend(f"{leg}: {meta_path.name}: {m}"
+                              for m in validate_static_pins(meta, pins))
+            leg_metas.append(meta)
+        if leg_errors:
+            # Failure stays PER LEG, using this function's existing idiom, because
+            # publish()'s documented contract is that one bad leg still lets the
+            # others finalize. Preflighting all LEGS before reconciling any would
+            # change that contract; preflighting all METAS within a leg does not.
+            errors.extend(leg_errors)
+            continue
+
+        # PASS 2 -- reconcile.
+        for meta in leg_metas:
             if meta.get("ordering_kind") == "adopted":
                 # Adopt re-hosts nothing: no Release, no asset upload. The leg
                 # already self-hash-verified the upstream bytes; finalize writes a
@@ -193,7 +297,7 @@ def publish(needs_json, workdir, api=None, dry=False):
                 # through to the finalizable set.
                 metas.append(meta)
                 continue
-            # plan.release_tag is the ONE tag rule (L37) — a drift between the
+            # plan.release_tag is the ONE tag rule (L37) -- a drift between the
             # publish tag and finalize's download URL would 404 the signed
             # manifest.
             tag = plan.release_tag(meta["component"], meta["version"], meta["revision"])

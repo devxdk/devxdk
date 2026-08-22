@@ -1,0 +1,41 @@
+# Offline inventory-consistency gate.
+#
+# TWO FILES, NOT ONE JOB WITH AN `if:`. The currency half lives in
+# versions-currency.yml because a skipped job reports its status as SUCCESS on
+# every PR: an `if`-gated currency job would both inflate this repo's check
+# count and — worse — install a required check that is structurally incapable of
+# failing on a pull request. Permanently green, permanently vacuous, and worse
+# than its absence, because the ruleset would then look like it covered currency
+# when nothing did.
+#
+# This job holds NO secrets and makes NO network request. It is the one that is
+# a required status check; its name below is the exact string the ruleset must
+# carry, so keep them in step.
+
+name: versions-consistency
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  consistency:
+    name: Versions — inventory consistency
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        # Current stable, and deliberately NOT the 3.12 the recipe/signing
+        # workflows are held at: this job runs one stdlib script and touches no
+        # recipe, no key and no published artifact, so it carries none of the
+        # verification cost that earned that time-bounded exception.
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+      - name: Inventory consistency
+        run: python scripts/ci/check_versions.py --mode consistency

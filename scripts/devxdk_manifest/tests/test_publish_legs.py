@@ -13,8 +13,17 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))  # sibling test
 
 import finalize_builds  # noqa: E402
 import publish_legs  # noqa: E402
-from devxdk_manifest import handoff  # noqa: E402
+from devxdk_manifest import handoff, releasepub, resolvers  # noqa: E402
 from devxdk_manifest.tests.test_releasepub import FakeAPI  # noqa: E402  (reuse the fake API)
+
+# Pins the static-provenance tests validate against, so they do not move when
+# config/tracked-versions.toml is bumped.
+FAKE_PINS = {
+    "openssl": {"version": "3.5.7"},
+    "pcre2": {"version": "10.47"},
+    "zlib": {"version": "1.3.2"},
+}
+FAKE_PINS_VERSIONS = {k: v["version"] for k, v in FAKE_PINS.items()}
 
 
 def _leg_dir(root, leg, component, version):
@@ -34,6 +43,33 @@ def _leg_dir(root, leg, component, version):
     (d / f"{archive}.meta.json").write_text(json.dumps(meta), encoding="utf-8")
     manifest_sha = handoff.write(d)
     return d, manifest_sha, meta
+
+
+def _nginx_leg_dir(root, leg, entries):
+    """Materialize a verified devxdk-nginx-unix leg carrying one meta per entry.
+
+    entries is a list of (version, static_libs) where static_libs is the dict to
+    put under provenance.static_libs, or None to omit the block entirely.
+    """
+    d = pathlib.Path(root) / leg
+    d.mkdir(parents=True)
+    for version, static_libs in entries:
+        archive = f"nginx-{version}-linux-amd64.tar.gz"
+        (d / archive).write_bytes(f"nginx-{version}-bytes".encode())
+        sha = hashlib.sha256((d / archive).read_bytes()).hexdigest()
+        provenance = {"recipe": "nginx-unix", "os": "linux"}
+        if static_libs is not None:
+            provenance["static_libs"] = static_libs
+        meta = {
+            "component": "nginx", "version": version, "platform": "linux/amd64",
+            "line": version.rsplit(".", 1)[0], "ordering_kind": "built",
+            "provider": "devxdk-nginx-unix", "epoch": 1, "revision": 1,
+            "source_version": version, "archive": archive, "sha256": sha,
+            "size_bytes": (d / archive).stat().st_size,
+            "provenance": provenance,
+        }
+        (d / f"{archive}.meta.json").write_text(json.dumps(meta), encoding="utf-8")
+    return d, handoff.write(d)
 
 
 def _adopt_leg_dir(root, leg, component, version, url):
@@ -74,13 +110,16 @@ class TestPublish(unittest.TestCase):
         self.staged = {}   # artifact_id -> leg dir (the "downloaded" artifact)
         self._orig_dl = publish_legs.download_artifact
         self._orig_rel = publish_legs._committed_releases
+        self._orig_pins = publish_legs._static_pins
         publish_legs.download_artifact = self._fake_download
         publish_legs._committed_releases = lambda _c: []
+        publish_legs._static_pins = lambda: FAKE_PINS
         self.addCleanup(self._restore)
 
     def _restore(self):
         publish_legs.download_artifact = self._orig_dl
         publish_legs._committed_releases = self._orig_rel
+        publish_legs._static_pins = self._orig_pins
 
     def _fake_download(self, artifact_id, dest):
         import shutil
@@ -190,6 +229,125 @@ class TestWritePending(unittest.TestCase):
             rec = json.loads((pathlib.Path(t) / "pending" / "python-3.14.6-windows-amd64.json").read_text())
             self.assertEqual(rec["url"], upstream)  # upstream, NOT a devxdk Release URL
             self.assertEqual(rec["ordering_kind"], "adopted")
+
+
+class TestStaticPinProvenance(unittest.TestCase):
+    """The publish-time static-pin validator (fail-closed, two passes)."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = pathlib.Path(self.tmp.name)
+        self.staged = {}
+        self.reconciled = []
+        self._orig_dl = publish_legs.download_artifact
+        self._orig_rel = publish_legs._committed_releases
+        self._orig_pins = publish_legs._static_pins
+        self._orig_reconcile = releasepub.reconcile_release
+        publish_legs.download_artifact = self._fake_download
+        publish_legs._committed_releases = lambda _c: []
+        publish_legs._static_pins = lambda: FAKE_PINS
+        releasepub.reconcile_release = self._count_reconcile
+        self.addCleanup(self._restore)
+
+    def _restore(self):
+        publish_legs.download_artifact = self._orig_dl
+        publish_legs._committed_releases = self._orig_rel
+        publish_legs._static_pins = self._orig_pins
+        releasepub.reconcile_release = self._orig_reconcile
+
+    def _count_reconcile(self, api, tag, **kw):
+        self.reconciled.append(tag)
+        return self._orig_reconcile(api, tag, **kw)
+
+    def _fake_download(self, artifact_id, dest):
+        import shutil
+        shutil.copytree(self.staged[artifact_id], dest, dirs_exist_ok=True)
+
+    def _needs(self, entries, artifact_id="n1"):
+        d, msha = _nginx_leg_dir(self.root / "src", f"{artifact_id}-nginx", entries)
+        self.staged[artifact_id] = d
+        return json.dumps({"leg-nginx-linux-amd64": {
+            "result": "success",
+            "outputs": {"artifact_id": artifact_id, "manifest_sha256": msha}}})
+
+    def test_matching_meta_reconciles(self):
+        needs = self._needs([("1.30.4", dict(FAKE_PINS_VERSIONS))])
+        metas, errors = publish_legs.publish(needs, self.root / "work", api=FakeAPI())
+        self.assertEqual(errors, [])
+        self.assertEqual([m["version"] for m in metas], ["1.30.4"])
+        self.assertEqual(self.reconciled, ["nginx-1.30.4"])
+
+    def test_mismatch_collects_error_and_reconciles_nothing(self):
+        stale = dict(FAKE_PINS_VERSIONS, zlib="1.3.1")
+        needs = self._needs([("1.30.4", stale)])
+        metas, errors = publish_legs.publish(needs, self.root / "work", api=FakeAPI())
+        self.assertEqual(metas, [])
+        self.assertEqual(len(errors), 1)
+        self.assertIn("zlib", errors[0])
+        self.assertIn("1.3.1", errors[0])
+        self.assertIn("1.3.2", errors[0])
+        self.assertEqual(self.reconciled, [])
+
+    def test_second_meta_mismatch_reconciles_zero(self):
+        # The ordering property: a leg can carry several metas, and pass 1 must
+        # reject the whole leg BEFORE pass 2 uploads meta #1's assets. A check
+        # bolted into the old single pass would already have published 1.30.4.
+        needs = self._needs([
+            ("1.30.4", dict(FAKE_PINS_VERSIONS)),
+            ("1.31.0", dict(FAKE_PINS_VERSIONS, pcre2="10.46")),
+        ])
+        metas, errors = publish_legs.publish(needs, self.root / "work", api=FakeAPI())
+        self.assertEqual(metas, [])
+        self.assertEqual(self.reconciled, [])
+        self.assertEqual(len(errors), 1)
+        self.assertIn("pcre2", errors[0])
+
+    def test_missing_static_libs_is_rejected(self):
+        # Fail CLOSED: a recipe edit that drops the block must be an error, not a
+        # silent pass. Assert the REJECTION, never that it goes through untouched.
+        needs = self._needs([("1.30.4", None)])
+        metas, errors = publish_legs.publish(needs, self.root / "work", api=FakeAPI())
+        self.assertEqual(metas, [])
+        self.assertEqual(self.reconciled, [])
+        self.assertEqual(len(errors), 1)
+        self.assertIn("must declare provenance.static_libs", errors[0])
+
+    def test_extra_key_is_rejected(self):
+        needs = self._needs([("1.30.4", dict(FAKE_PINS_VERSIONS, brotli="1.1.0"))])
+        metas, errors = publish_legs.publish(needs, self.root / "work", api=FakeAPI())
+        self.assertEqual(metas, [])
+        self.assertEqual(self.reconciled, [])
+        self.assertIn("want exactly", errors[0])
+
+
+class TestStaticPinMapHygiene(unittest.TestCase):
+    def test_map_keys_are_enabled_providers(self):
+        # A row naming a provider that no longer exists must fail here rather
+        # than sit dead in the map.
+        self.assertTrue(
+            set(publish_legs.STATIC_PIN_PROVIDERS) <= resolvers.ENABLED_PROVIDERS,
+            set(publish_legs.STATIC_PIN_PROVIDERS) - resolvers.ENABLED_PROVIDERS)
+
+    def test_unmapped_provider_with_no_static_libs_passes(self):
+        meta = {"provider": "devxdk-redis-msys2", "provenance": {"recipe": "x"}}
+        self.assertEqual(publish_legs.validate_static_pins(meta, FAKE_PINS), [])
+
+    def test_unmapped_provider_declaring_static_libs_is_validated(self):
+        # The presence rule: a future recipe is covered from its first run, even
+        # before its row is added to the map.
+        meta = {"provider": "devxdk-redis-unix",
+                "provenance": {"static_libs": {"openssl": "3.5.6"}}}
+        errs = publish_legs.validate_static_pins(meta, FAKE_PINS)
+        self.assertEqual(len(errs), 1)
+        self.assertIn("openssl", errs[0])
+
+    def test_static_lib_with_no_pin_row_is_an_error(self):
+        meta = {"provider": "devxdk-redis-unix",
+                "provenance": {"static_libs": {"brotli": "1.1.0"}}}
+        errs = publish_legs.validate_static_pins(meta, FAKE_PINS)
+        self.assertEqual(len(errs), 1)
+        self.assertIn("no [pins.brotli] version", errs[0])
 
 
 if __name__ == "__main__":
