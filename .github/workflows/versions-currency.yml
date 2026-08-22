@@ -1,0 +1,42 @@
+# Networked currency check: is every pinned version still the current one?
+#
+# `schedule` + `workflow_dispatch` ONLY. It deliberately carries neither
+# `pull_request` nor `push`, which is why it is a separate file from
+# versions-consistency.yml: with both triggers in one workflow, GitHub reports
+# the skipped job as a SUCCESS check on every PR, and a required check that
+# cannot fail is worse than no check at all.
+#
+# A network or parse failure FAILS this job. A currency gate that goes green
+# because it could not reach the registry is worse than no gate, so
+# check_versions.py never downgrades an unreachable API to "current".
+
+name: versions-currency
+
+on:
+  schedule:
+    # Monthly, early on the 1st. The consistency job is what catches inventory
+    # rot between runs; this one only answers "has upstream moved".
+    - cron: "17 6 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  currency:
+    name: Versions — currency (scheduled)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+      - name: Currency
+        env:
+          # Passed through the environment, not the command line, so it never
+          # lands in a step's echoed command. api.github.com rows need it for
+          # the rate limit; proxy.golang.org and registry.npmjs.org need none.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/ci/check_versions.py --mode currency

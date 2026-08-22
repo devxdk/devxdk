@@ -1,0 +1,533 @@
+# DevXDK manifest repo - the version inventory.
+#
+# Read by scripts/ci/check_versions.py in two modes:
+#   * versions-consistency.yml (pull_request + push, OFFLINE) - every row is
+#     still where it says, in the declared number of places, all sites agree,
+#     and nothing pin-shaped in this tree is missing from the file.
+#   * versions-currency.yml (schedule + workflow_dispatch, NETWORKED) - every
+#     row is compared to the authoritative API the row itself names.
+#
+# THIS REPO HAS NO DEPENDABOT. There is no .github/dependabot.yml here, so
+# unlike the app repo every pin is inventory-or-nothing: this file is the ONLY
+# thing that can notice a pin drifting. It therefore enumerates the FULL set -
+# every workflow pin AND every config/tracked-versions.toml [pins.*] row - not
+# just the ones that happened to be stale when it was written.
+#
+# Seven rows need a policy other than "track latest"; each says which and why.
+# Two rows are EXCEPTIONS, and the two kinds are different:
+#   * a HOLD carries a testable `condition` and NO date (blocked by something
+#     outside our control);
+#   * a TIME-BOUNDED exception carries an `expires_on` and NO condition (blocked
+#     by our own verification cost, which a condition would never clear on its
+#     own). The consistency job FAILS past that date.
+# Never both, never neither - check_versions.validate_inventory enforces it.
+
+schema = 1
+
+# ---------------------------------------------------------------------------
+# What the reverse scan walks.
+# ---------------------------------------------------------------------------
+[scan]
+include_globs = [
+  ".github/workflows/*.yml",
+  "**/*.sh",
+  "**/*.py",
+  "**/*.md",
+  "**/go.mod",
+  "*.yml",
+]
+# `tests` is excluded for the same reason the AST guard excludes it: a test that
+# asserts a floating ref is REJECTED has to contain one, and a scanner that read
+# its own fixtures would fail on the proof that it works.
+exclude_dirs = [".git", "__pycache__", "node_modules", "vendor", "tests"]
+digest_globs = ["keys/*.sha256"]
+# The structured [pins.*] walk. A regex over TOML would miss a nested table -
+# [pins.php_redis.dll."8.5"] is exactly that shape - which is the one thing this
+# walk exists for.
+pins_file = "config/tracked-versions.toml"
+
+# ---------------------------------------------------------------------------
+# Deliberately floating - the ABSENCE of a pin, not a pin we track.
+# ---------------------------------------------------------------------------
+[[allowlist]]
+select_kind = "runs-on"
+select_values = ["ubuntu-latest", "windows-latest", "macos-latest"]
+
+[[allowlist]]
+# runs-on: ${{ inputs.runner }} in the reusable leg workflow. The VALUE is
+# pinned at each caller by the `runner:` input rows below, which is where the
+# dated label actually lives; treating the expression as unpinned would flag the
+# indirection instead of the pin.
+select_kind = "runs-on-indirect"
+
+[[allowlist]]
+# Local composite / reusable workflows: `./...` has no upstream to pin to.
+select_kind = "uses-local"
+
+# ===========================================================================
+# GitHub Actions - SHA-pinned, tracked at latest release.
+#
+# `value` is the 40-hex commit (what the file must literally carry); `version`
+# is the release tag it claims to be. The currency job proves BOTH: that the tag
+# is still latest, and that the tag still resolves to that commit - a
+# correct-looking version comment beside a wrong commit is exactly what a
+# version-only comparison cannot see.
+# ===========================================================================
+
+[[rows]]
+id = "action-checkout"
+why = "SHA-pinned action; eleven sites across all six workflows"
+version = "v7.0.1"
+value = "3d3c42e5aac5ba805825da76410c181273ba90b1"
+[[rows.checks]]
+kind = "scan"
+select_kind = "uses"
+select_identity = "actions/checkout"
+count = 11
+[rows.currency]
+api = "github-release"
+source = "actions/checkout"
+policy = "latest"
+compare_value = "v7.0.1"
+verify_tag_sha = true
+
+[[rows]]
+id = "action-setup-python"
+why = "SHA-pinned action; NINE sites after this commit adds the two versions-* workflows. NOTE: this is the ACTION version, a different pin with the opposite policy from the python-version INPUT at the same seven sites (see python-recipes-signing)"
+version = "v7.0.0"
+value = "5fda3b95a4ea91299a34e894583c3862153e4b97"
+[[rows.checks]]
+kind = "scan"
+select_kind = "uses"
+select_identity = "actions/setup-python"
+count = 9
+[rows.currency]
+api = "github-release"
+source = "actions/setup-python"
+policy = "latest"
+compare_value = "v7.0.0"
+verify_tag_sha = true
+
+[[rows]]
+id = "action-setup-go"
+why = "SHA-pinned action; two sites (ci.yml, scrape-and-sign.yml)"
+version = "v7.0.0"
+value = "b7ad1dad31e06c5925ef5d2fc7ad053ef454303e"
+[[rows.checks]]
+kind = "scan"
+select_kind = "uses"
+select_identity = "actions/setup-go"
+count = 2
+[rows.currency]
+api = "github-release"
+source = "actions/setup-go"
+policy = "latest"
+compare_value = "v7.0.0"
+verify_tag_sha = true
+
+[[rows]]
+id = "action-upload-artifact"
+why = "SHA-pinned action; two sites (build-runtime-leg.yml, build-runtimes.yml)"
+version = "v7.0.1"
+value = "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
+[[rows.checks]]
+kind = "scan"
+select_kind = "uses"
+select_identity = "actions/upload-artifact"
+count = 2
+[rows.currency]
+api = "github-release"
+source = "actions/upload-artifact"
+policy = "latest"
+compare_value = "v7.0.1"
+verify_tag_sha = true
+
+# ===========================================================================
+# Toolchains
+# ===========================================================================
+
+[[rows]]
+id = "go-toolchain"
+why = "Two sites, and one of them builds the TRUST-ROOT signer. Held equal to the app repo's GO_VERSION - a claim that used to be only a comment at scrape-and-sign.yml, and had already drifted a patch behind"
+value = "1.27.0"
+[[rows.checks]]
+kind = "scan"
+select_kind = "go-version"
+count = 2
+[rows.currency]
+api = "go-dl"
+policy = "latest"
+
+[[rows]]
+id = "actionlint"
+why = "go install pin in ci.yml - the one mutable-tag action this repo removed by moving to a checksum-verified module install"
+value = "v1.7.12"
+[[rows.checks]]
+kind = "scan"
+select_kind = "go-tool"
+select_identity = "github.com/rhysd/actionlint/cmd/actionlint"
+count = 1
+[rows.currency]
+api = "go-proxy"
+source = "github.com/rhysd/actionlint"
+policy = "latest"
+
+# ---- Python: TWO rows, because the two site groups have opposite policies ---
+
+[[rows]]
+id = "python-recipes-signing"
+why = "The seven python-version inputs that drive the RECIPES and the SIGNING path - the manifest trust root. Nothing upstream blocks a newer interpreter: the scripts are stdlib-only. The cost is re-running and re-validating the recipes on the workflow that signs the trust root, which is our own effort, not an upstream fact"
+value = "3.12"
+exception = "time-bounded"
+expires_on = "2026-11-30"
+expires_target = "re-run the recipes against, and move these seven sites to, the THEN-CURRENT stable series - not literally 3.14, which PEP 790 makes stale before this date arrives (3.15 goes GA 2026-10-01)"
+[[rows.checks]]
+kind = "scan"
+select_kind = "python-version"
+select_values = ["3.12"]
+count = 7
+[rows.currency]
+api = "python-versions"
+policy = "report-only"
+source = "actions/python-versions"
+compare_value = "3.12"
+
+[[rows]]
+id = "python-versions-workflows"
+why = "The two python-version inputs in the versions-* workflows. NOT under the time-bounded exception above and must never inherit it: those two jobs run one stdlib script and touch no recipe, no key and no published artifact, so they carry none of the verification cost that earned the exception. Letting an exception's size grow with unrelated workflows is how it stops meaning anything"
+value = "3.14"
+[[rows.checks]]
+kind = "scan"
+select_kind = "python-version"
+select_values = ["3.14"]
+count = 2
+[rows.currency]
+api = "python-versions"
+policy = "series-track"
+series = "3.14"
+source = "actions/python-versions"
+compare_value = "3.14"
+
+# ===========================================================================
+# Reference minisign - MULTI-PART: the version lives inside the release URL and
+# the archive digest sits beside it. They move as ONE unit, exactly like NSIS in
+# the app repo. The file itself says "Bump via a normal reviewed PR".
+# ===========================================================================
+
+[[rows]]
+id = "reference-minisign"
+why = "CI verifies Ed25519 manifest signatures with reference minisign (stdlib Python cannot). URL version + committed digest are one unit"
+version = "0.12"
+value = "9a599b48ba6eb7b1e80f12f36b94ceca7c00b7a5173c95c3efc88d9822957e73"
+[[rows.checks]]
+kind = "scan"
+select_kind = "digest-file"
+select_identity = "keys/minisign.sha256"
+count = 1
+[[rows.checks]]
+# The version inside the download URL - the half a digest-only row would miss.
+kind = "file"
+file = "keys/minisign.sha256"
+regex = "minisign/releases/download/([0-9.]+)/"
+value = "0.12"
+count = 1
+[[rows.checks]]
+kind = "file"
+regex = "minisign-([0-9.]+)-linux\\.tar\\.gz"
+file = "keys/minisign.sha256"
+value = "0.12"
+count = 2
+[rows.currency]
+api = "github-release"
+source = "jedisct1/minisign"
+policy = "latest"
+compare_value = "0.12"
+
+# ===========================================================================
+# Reviewed pins - NEVER compared to anything upstream.
+# ===========================================================================
+
+[[rows]]
+id = "signer-source"
+why = "SECURITY pin, not a currency one: it stops any app-repo writer reaching the MANIFEST trust root by altering the signer at an unpinned branch tip. A gate that reported it as behind main would be actively harmful, so it is never compared to a branch tip - the row asserts only that it exists and is a well-formed reviewed commit"
+[[rows.checks]]
+kind = "file"
+file = "config/signer-source.pin"
+regex = "^([0-9a-f]{40})$"
+count = 1
+value = "c37a8f5cce1d45ebd3670ca3df16aedbb0be066e"
+[rows.currency]
+api = "none"
+policy = "never"
+
+[[rows]]
+id = "pins-redis-hashes"
+why = "A git ref into the upstream hash-publishing repo the redis recipes verify tarballs against. There is no 'latest version' to compare - the row asserts a well-formed 40-hex ref and nothing more"
+value = "4323436a86cb5562449bab143a0a91a0dea3f476"
+[[rows.checks]]
+kind = "scan"
+select_kind = "toml-pin"
+select_identity = "pins.redis_hashes"
+count = 1
+[[rows.checks]]
+kind = "file"
+file = "config/tracked-versions.toml"
+regex = "ref = \"([0-9a-f]{40})\"\nref"
+count = 0
+[rows.currency]
+api = "none"
+policy = "never"
+
+[[rows]]
+id = "pins-valkey-hashes"
+why = "Same shape as pins-redis-hashes: a reviewed upstream git ref, never auto-latest"
+value = "4d68b09df13b9f58cf4a10c9d52263e4fdd32f16"
+[[rows.checks]]
+kind = "scan"
+select_kind = "toml-pin"
+select_identity = "pins.valkey_hashes"
+count = 1
+[rows.currency]
+api = "none"
+policy = "never"
+
+[[rows]]
+id = "pins-nginx-keys"
+why = "TRUST MATERIAL. The four F5/nginx release-manager fingerprints the nginx-unix recipe asserts an isolated keyring holds EXACTLY. 'Track latest' is meaningless for a fingerprint, and a gate chasing upstream key rotation automatically would be a trust-root downgrade wearing a currency badge. Presence, 40-hex well-formedness and the expected COUNT only; a new release manager is a reviewed PR"
+value = "43387825DDB1BB97EC36BA5D007C8D7C15D87369,D6786CE303D9A9022998DC6CC8464D549AF75C0A,7338973069ED3F443F4D37DFA64FD5B17ADB39A8,13C82A63B603576156E30A4EA0EA981B66B0D967"
+[[rows.checks]]
+kind = "scan"
+select_kind = "toml-pin"
+select_identity = "pins.nginx_keys"
+count = 1
+[rows.currency]
+api = "none"
+policy = "never"
+
+[[rows]]
+id = "pins-php-keys"
+why = "TRUST MATERIAL, same rule as pins-nginx-keys: the two PHP release-manager fingerprints php-spc gpg-verifies against. Presence + well-formedness + count, never an upstream comparison"
+value = "9D7F99A0CB8F05C8A6958D6256A97AF7600A39A6,D95C03BC702BE9515344AE3374E44BC9067701A5"
+[[rows.checks]]
+kind = "scan"
+select_kind = "toml-pin"
+select_identity = "pins.php_keys"
+count = 1
+[rows.currency]
+api = "none"
+policy = "never"
+
+# ===========================================================================
+# Build pins - version + digest as ONE unit.
+#
+# These are the half an inventory is most likely to miss and the most expensive
+# to miss: OpenSSL, PCRE2 and zlib are STATICALLY COMPILED INTO the nginx we
+# ship, and static-php-cli builds the PHP bundle. A stale pin here is not a
+# CI-hygiene item, it is a shipped-binary CVE.
+#
+# WHAT THESE ROWS DO NOT PROVE. They assert the version+digest coupling and
+# NOTHING about the shipped bytes. There is no durable artifact a scheduled
+# scanner could read to prove which zlib is inside a published asset: the leg
+# .meta.json that records it is neither published nor committed. So between
+# publications this gate can prove the PIN is current and cannot prove the
+# ARTIFACT was built from it. That gap is closed at BUILD time instead, by the
+# static-pin provenance validator in scripts/publish_legs.py - and it is why a
+# static-source pin bump is an obligation of the bump procedure (bump the pin,
+# then force-rebuild at the next -rN) rather than something left for a scanner.
+# ===========================================================================
+
+[[rows]]
+id = "pins-openssl"
+why = "Statically linked into the three DevXDK-built unix nginx bundles (recipes/nginx.sh is the ONLY reader of this pin - redis/valkey take OpenSSL from the runner's package manager, and in php-spc 'openssl' is an extension NAME, so a grep for the word is misleading)"
+value = "3.5.7"
+[[rows.checks]]
+kind = "scan"
+select_kind = "toml-pin"
+select_identity = "pins.openssl"
+count = 2
+# Coverage only: this table's fields are a version and its digest(s),
+# which cannot share one expected value.
+assert_value = false
+[[rows.checks]]
+# The version field itself, which DOES have to equal the row.
+kind = "scan"
+select_kind = "toml-pin"
+select_identity = "pins.openssl.version"
+count = 1
+[rows.currency]
+api = "github-release"
+source = "openssl/openssl"
+policy = "series"
+series = "3.5"
+series_note = "3.5 is the reviewed LTS line, supported to April 2030. Changing series is a BUILD decision (ABI, --api, the recipes' configure flags), not a currency bump, and this gate must not be able to force it: a row that compared against the newest release would report the pin two series behind on arrival, and a gate that is red on arrival gets its row weakened"
+compare_value = "openssl-3.5.7"
+
+[[rows]]
+id = "pins-pcre2"
+why = "Statically linked into the three unix nginx bundles; single active line upstream, so plain latest"
+value = "10.47"
+[[rows.checks]]
+kind = "scan"
+select_kind = "toml-pin"
+select_identity = "pins.pcre2"
+count = 2
+# Coverage only: this table's fields are a version and its digest(s),
+# which cannot share one expected value.
+assert_value = false
+[[rows.checks]]
+# The version field itself, which DOES have to equal the row.
+kind = "scan"
+select_kind = "toml-pin"
+select_identity = "pins.pcre2.version"
+count = 1
+[rows.currency]
+api = "github-release"
+source = "PCRE2Project/pcre2"
+policy = "latest"
+compare_value = "pcre2-10.47"
+
+[[rows]]
+id = "pins-zlib"
+why = "Statically linked into the three unix nginx bundles. Bumped 1.3.1 -> 1.3.2 in this commit (a security-audit release), which is why the three nginx unix legs are force-rebuilt at the next -rN in the same work - the pin and the shipped bytes only agree again after that repack"
+value = "1.3.2"
+[[rows.checks]]
+kind = "scan"
+select_kind = "toml-pin"
+select_identity = "pins.zlib"
+count = 2
+# Coverage only: this table's fields are a version and its digest(s),
+# which cannot share one expected value.
+assert_value = false
+[[rows.checks]]
+# The version field itself, which DOES have to equal the row.
+kind = "scan"
+select_kind = "toml-pin"
+select_identity = "pins.zlib.version"
+count = 1
+[rows.currency]
+api = "github-release"
+source = "madler/zlib"
+policy = "latest"
+compare_value = "v1.3.2"
+
+[[rows]]
+id = "pins-static-php-cli"
+why = "The spc static builder that produces the PHP bundles; version plus three per-runner digests, all one unit"
+value = "2.8.5"
+[[rows.checks]]
+kind = "scan"
+select_kind = "toml-pin"
+select_identity = "pins.static_php_cli"
+count = 4
+# Coverage only: this table's fields are a version and its digest(s),
+# which cannot share one expected value.
+assert_value = false
+[[rows.checks]]
+# The version field itself, which DOES have to equal the row.
+kind = "scan"
+select_kind = "toml-pin"
+select_identity = "pins.static_php_cli.version"
+count = 1
+[rows.currency]
+api = "github-release"
+source = "crazywhalecc/static-php-cli"
+policy = "latest"
+compare_value = "2.8.5"
+
+[[rows]]
+id = "pins-php-redis"
+why = "The php_redis PECL DLLs per PHP line. COUPLING row: the version is embedded in each `file` name, so bumping `version` alone fails NOTHING today - the two downloads still resolve, their digests still match, and the bump ships the OLD extension forever. This row asserts each `file` contains the pinned version as a substring. A grep for every `file =`/`url =` field in tracked-versions.toml returns exactly these two lines, so this is the whole class"
+value = "6.3.0"
+[[rows.checks]]
+kind = "scan"
+select_kind = "toml-pin"
+select_identity = "pins.php_redis"
+count = 5
+# Coverage only: this table's fields are a version and its digest(s),
+# which cannot share one expected value.
+assert_value = false
+[[rows.checks]]
+# The version field itself, which DOES have to equal the row.
+kind = "scan"
+select_kind = "toml-pin"
+select_identity = "pins.php_redis.version"
+count = 1
+[[rows.checks]]
+kind = "file"
+file = "config/tracked-versions.toml"
+regex = "file = \"php_redis-([0-9.]+)-8\\.[45]-nts-vs17-x64\\.zip\""
+count = 2
+[rows.currency]
+api = "github-release"
+source = "phpredis/phpredis"
+policy = "latest"
+compare_value = "6.3.0"
+
+# ===========================================================================
+# Dated runner labels - version pins with a COMPATIBILITY policy.
+#
+# These fix the build environment so the runtime bundles are reproducible. The
+# currency job reports what shipped and never demands the move. Counted by
+# SCANNING, not by eye: all six ubuntu-22.04 sites hide from a grep filtered on
+# the labels you already know about.
+# ===========================================================================
+
+[[rows]]
+id = "runner-macos-15"
+why = "Build-reproducibility pin: darwin/arm64 legs. Upstream calls this image macos-15-arm64 - the GitHub LABEL macos-15 is Apple Silicon, and the x64 image is the one named plain macos-15, so the two tag_prefix values below are deliberately crossed relative to the labels"
+value = "macos-15"
+[[rows.checks]]
+kind = "scan"
+select_kind = "runner"
+select_values = ["macos-15"]
+count = 6
+[rows.currency]
+api = "runner-image"
+source = "actions/runner-images"
+policy = "report-only"
+tag_prefix = "macos-15-arm64/"
+
+[[rows]]
+id = "runner-macos-15-intel"
+why = "Build-reproducibility pin: darwin/amd64 legs. Upstream image name is plain macos-15 (the x64 one) - see the crossing noted on runner-macos-15"
+value = "macos-15-intel"
+[[rows.checks]]
+kind = "scan"
+select_kind = "runner"
+select_values = ["macos-15-intel"]
+count = 6
+[rows.currency]
+api = "runner-image"
+source = "actions/runner-images"
+policy = "report-only"
+tag_prefix = "macos-15/"
+
+[[rows]]
+id = "runner-ubuntu-2204"
+why = "Build-reproducibility pin: linux/amd64 legs, glibc baseline"
+value = "ubuntu-22.04"
+[[rows.checks]]
+kind = "scan"
+select_kind = "runner"
+select_values = ["ubuntu-22.04"]
+count = 6
+[rows.currency]
+api = "runner-image"
+source = "actions/runner-images"
+policy = "report-only"
+tag_prefix = "ubuntu22/"
+
+[[rows]]
+id = "runner-windows-2022"
+why = "Build-reproducibility pin: windows/amd64 legs"
+value = "windows-2022"
+[[rows.checks]]
+kind = "scan"
+select_kind = "runner"
+select_values = ["windows-2022"]
+count = 5
+[rows.currency]
+api = "runner-image"
+source = "actions/runner-images"
+policy = "report-only"
+tag_prefix = "win22/"
