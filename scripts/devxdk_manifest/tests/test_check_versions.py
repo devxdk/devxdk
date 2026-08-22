@@ -233,6 +233,59 @@ count = 0
         self.assertEqual(indirect[0].value, "${{ inputs.runner }}")
 
 
+class TestYamlFlowMappings(ScannerCase):
+    """A pin written in a YAML FLOW mapping is still a pin.
+
+    This is not hypothetical: the app repo's release.yml writes
+    `with: { node-version: "24" }` and `with: { go-version: "${{ env.GO_VERSION }}" }`
+    on one line, three times each. A line-anchored `^\\s*node-version:` saw NONE
+    of them, so the gate was blind to three real node-version sites in a repo
+    whose inventory claims seven - found only by pointing the scanner at the
+    second repo.
+    """
+
+    def _scan(self, body):
+        write(self.root, ".github/workflows/a.yml", body)
+        errors = []
+        hits = cv.scan_tree(self.root, {"include_globs": [".github/workflows/*.yml"]}, errors)
+        return hits, errors
+
+    def test_flow_mapping_node_version_is_seen(self):
+        hits, errors = self._scan('      - with: { node-version: "24" }\n')
+        self.assertEqual(errors, [])
+        self.assertEqual([(h.kind, h.value) for h in hits], [("node-version", "24")])
+
+    def test_flow_mapping_go_version_indirection_survives_whole(self):
+        hits, _ = self._scan('      - with: { go-version: "${{ env.GO_VERSION }}" }\n')
+        self.assertEqual([(h.kind, h.value) for h in hits],
+                         [("go-version", "${{ env.GO_VERSION }}")])
+
+    def test_two_pins_in_one_flow_mapping(self):
+        hits, _ = self._scan('      - with: { go-version: "1.27.0", node-version: "24" }\n')
+        self.assertEqual(sorted((h.kind, h.value) for h in hits),
+                         [("go-version", "1.27.0"), ("node-version", "24")])
+
+    def test_unquoted_flow_scalar_stops_at_the_brace(self):
+        hits, _ = self._scan("      - with: { node-version: 24 }\n")
+        self.assertEqual([(h.kind, h.value) for h in hits], [("node-version", "24")])
+
+    def test_block_form_still_works(self):
+        hits, _ = self._scan('        with:\n          node-version: "22.22.2"\n')
+        self.assertEqual([(h.kind, h.value) for h in hits], [("node-version", "22.22.2")])
+
+    def test_a_longer_key_ending_in_the_pin_key_is_not_matched(self):
+        # `cache-dependency-path:` ends in nothing relevant, but `...-version:`
+        # keys are a real hazard: only a key that OPENS the line or follows
+        # `{`/`,` counts.
+        hits, _ = self._scan("          cache-dependency-path: frontend/package-lock.json\n"
+                             "          my-go-version: 9.9.9\n")
+        self.assertEqual(hits, [])
+
+    def test_uses_in_flow_form_is_still_checked(self):
+        _, errors = self._scan("      - { uses: vendor/action@v1 }\n")
+        self.assertTrue(any("40-hex" in e for e in errors), errors)
+
+
 # ---------------------------------------------------------------------------
 # Go tool refs - the four forms a literal-version regex sees none of
 # ---------------------------------------------------------------------------

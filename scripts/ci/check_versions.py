@@ -213,7 +213,6 @@ class Hit:
 # recognize actions that are ALREADY correct - `vendor/action@v1`, the mutable
 # tag the repo forbids, would match nothing, need no row, and sail through. The
 # one case the scan exists to catch is the one such a regex cannot see.
-RE_USES = re.compile(r"^\s*(?:-\s+)?uses:(.*)$")
 RE_GO_TOOL = re.compile(
     r"\bgo\s+(?:install|run)\s+"
     r"(?P<mod>[A-Za-z0-9][A-Za-z0-9.\-]*\.[A-Za-z]{2,}/[^\s@'\"`]+)"
@@ -222,38 +221,94 @@ RE_GO_TOOL = re.compile(
     # first one, captures "${{", and then classifies an ordinary indirection as
     # a forbidden floating ref.
     r"@(?P<ref>\$\{\{[^}]*\}\}|\$\{[^}]*\}|[^\s'\"`)\\;&|]+)")
-RE_GO_VERSION = re.compile(r"^\s*go-version:(.*)$")
-RE_NODE_VERSION = re.compile(r"^\s*node-version:(.*)$")
-RE_PY_VERSION = re.compile(r"^\s*python-version:(.*)$")
-RE_WITH_VERSION = re.compile(r"^\s*version:(.*)$")
-RE_RUNS_ON = re.compile(r"^\s*runs-on:(.*)$")
-RE_RUNNER = re.compile(r"^\s*runner:(.*)$")
-
-
-def _yaml_scalar(raw: str):
-    """The scalar after a YAML key, quotes and trailing comment removed.
-
-    Written out rather than folded into each regex because the two shapes
-    disagree: a character-class capture stops at the first space, which silently
-    truncates `runs-on: ${{ inputs.runner }}` to `${{` and would then classify a
-    perfectly ordinary indirection as an unrecognised literal.
-    """
-    raw = raw.strip()
-    if not raw:
-        return None
-    if raw[0] in "\"'":
-        q = raw[0]
-        end = raw.find(q, 1)
-        return raw[1:end] if end > 0 else None
-    idx = raw.find(" #")
-    if idx >= 0:
-        raw = raw[:idx]
-    raw = raw.strip()
-    return raw or None
 RE_GO_DIRECTIVE = re.compile(r"^go\s+(\S+)\s*$")
 RE_TOOLCHAIN = re.compile(r"^toolchain\s+(\S+)\s*$")
 RE_DOCKER_FROM = re.compile(r"^\s*FROM\s+(\S+?):(\S+)")
 RE_SHA256_LINE = re.compile(r"^([0-9a-f]{64})\s+\*?(\S+)\s*$")
+
+# YAML keys that carry a pin, and the Hit kind each produces. Scanned by KEY.
+# Matching `uses: ...@<40-hex>` instead would only recognize actions that are
+# ALREADY correct - `vendor/action@v1`, the mutable tag the repo forbids, would
+# match nothing, need no inventory row, and sail through. The one case the scan
+# exists to catch is the one such a regex cannot see.
+YAML_PIN_KEYS = (
+    ("uses", "uses"),
+    ("go-version", "go-version"),
+    ("node-version", "node-version"),
+    ("python-version", "python-version"),
+    ("version", "version-input"),
+    ("runner", "runner"),
+    ("runs-on", "runs-on"),
+)
+
+# A key is a real key when it opens the line or follows `{` or `,` - which is
+# what makes FLOW mappings visible. release.yml writes
+# `with: { node-version: "24" }` on one line, and a line-anchored `^\s*key:`
+# sees none of those: three node-version sites and three go-version sites were
+# invisible until this was widened, in a repo whose inventory claims seven.
+# The lookbehind also stops `cache-dependency-path:` matching the `version` key.
+_KEY_RE_CACHE = {}
+
+
+def _key_regex(key):
+    rx = _KEY_RE_CACHE.get(key)
+    if rx is None:
+        rx = re.compile(r"(?:^|[{,])\s*-?\s*" + re.escape(key) + r":")
+        _KEY_RE_CACHE[key] = rx
+    return rx
+
+
+def yaml_scalars(line, key):
+    """Every scalar this line assigns to `key`, block or flow form."""
+    out = []
+    for m in _key_regex(key).finditer(line):
+        val = _scalar_at(line, m.end())
+        if val is not None:
+            out.append(val)
+    return out
+
+
+def _scalar_at(line, i):
+    """The scalar starting at index i, quotes and flow/comment terminators
+    removed. Written out rather than folded into each regex because the two
+    shapes disagree: a character-class capture stops at the first space, which
+    silently truncates `runs-on: ${{ inputs.runner }}` to `${{` and would then
+    classify an ordinary indirection as an unrecognised literal."""
+    n = len(line)
+    while i < n and line[i] in " \t":
+        i += 1
+    if i >= n:
+        return None
+    if line[i] in "\"'":
+        q = line[i]
+        end = line.find(q, i + 1)
+        return line[i + 1:end] if end > 0 else None
+    # Unquoted: a ${{ ... }} expression may contain spaces and must survive
+    # whole, so consume it as a unit before applying the ordinary terminators.
+    out = []
+    depth = 0
+    while i < n:
+        ch = line[i]
+        if line.startswith("${{", i):
+            depth += 1
+            out.append("${{")
+            i += 3
+            continue
+        if depth and line.startswith("}}", i):
+            depth -= 1
+            out.append("}}")
+            i += 2
+            continue
+        if not depth:
+            if ch in ",}":
+                break
+            if ch == "#" and out and out[-1].endswith(" "):
+                break
+        out.append(ch)
+        i += 1
+    val = "".join(out).strip()
+    return val or None
+
 
 RE_SEMVER_REF = re.compile(r"^v\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.\-]+)?$")
 RE_SHA40 = re.compile(r"^[0-9a-f]{40}$")
@@ -298,35 +353,27 @@ def scan_tree(root: pathlib.Path, scan_cfg: dict, errors: list) -> list:
             stripped = line.strip()
 
             if is_yaml:
-                m = RE_USES.match(line)
-                if m and (ref := _yaml_scalar(m.group(1))):
-                    if ref.startswith("./") or ref.startswith("."):
-                        hits.append(Hit("uses-local", ref, "", rel))
-                    elif "@" in ref:
-                        ident, _, sha = ref.rpartition("@")
-                        if not RE_SHA40.match(sha):
-                            errors.append(
-                                f"{rel}: uses: {ref} - every non-local action must be pinned to a "
-                                f"full 40-hex commit (the policy stated at ci.yml's header, which "
-                                f"until now nothing enforced)")
+                for key, kind in YAML_PIN_KEYS:
+                    for val in yaml_scalars(line, key):
+                        if key == "uses":
+                            if val.startswith("."):
+                                hits.append(Hit("uses-local", val, "", rel))
+                            elif "@" in val:
+                                ident, _, sha = val.rpartition("@")
+                                if not RE_SHA40.match(sha):
+                                    errors.append(
+                                        f"{rel}: uses: {val} - every non-local action must be "
+                                        f"pinned to a full 40-hex commit (the policy stated at "
+                                        f"ci.yml's header, which until now nothing enforced)")
+                                else:
+                                    hits.append(Hit("uses", ident, sha, rel))
+                            else:
+                                errors.append(f"{rel}: uses: {val} - no ref at all")
+                        elif key == "runs-on":
+                            k = "runs-on-indirect" if RE_INDIRECT.search(val) else "runs-on"
+                            hits.append(Hit(k, "", val, rel))
                         else:
-                            hits.append(Hit("uses", ident, sha, rel))
-                    else:
-                        errors.append(f"{rel}: uses: {ref} - no ref at all")
-                for regex, kind in (
-                    (RE_GO_VERSION, "go-version"),
-                    (RE_NODE_VERSION, "node-version"),
-                    (RE_PY_VERSION, "python-version"),
-                    (RE_WITH_VERSION, "version-input"),
-                    (RE_RUNNER, "runner"),
-                ):
-                    m = regex.match(line)
-                    if m and (val := _yaml_scalar(m.group(1))) is not None:
-                        hits.append(Hit(kind, "", val, rel))
-                m = RE_RUNS_ON.match(line)
-                if m and (val := _yaml_scalar(m.group(1))) is not None:
-                    kind = "runs-on-indirect" if RE_INDIRECT.search(val) else "runs-on"
-                    hits.append(Hit(kind, "", val, rel))
+                            hits.append(Hit(kind, "", val, rel))
 
             if is_gomod:
                 m = RE_GO_DIRECTIVE.match(stripped)
