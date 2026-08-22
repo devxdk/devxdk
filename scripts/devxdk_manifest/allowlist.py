@@ -24,7 +24,6 @@ VENDORED_HOSTS = [
     "redis.io",
     "getcomposer.org",
     "dl.google.com",
-    "get.enterprisedb.com",
     "dlm.mariadb.com",
     "github.com",
     "release-assets.githubusercontent.com",
