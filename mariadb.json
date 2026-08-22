@@ -4,6 +4,23 @@
   "kind": "service",
   "releases": [
     {
+      "version": "12.3.3",
+      "channel": "stable",
+      "released_at": "",
+      "platforms": {
+        "windows/amd64": {
+          "url": "https://archive.mariadb.org/mariadb-12.3.3/winx64-packages/mariadb-12.3.3-winx64.zip",
+          "sha256": "4b5706b47148b47c8f36963c8352d1ddee37a1287b4690428f631a74b09b85a0",
+          "size_bytes": 104081715
+        },
+        "linux/amd64": {
+          "url": "https://archive.mariadb.org/mariadb-12.3.3/bintar-linux-systemd-x86_64/mariadb-12.3.3-linux-systemd-x86_64.tar.gz",
+          "sha256": "a12bf7bce08a896cdd01f174f04b4ce1d5da43ec250a5e7fceb9972119514329",
+          "size_bytes": 491853347
+        }
+      }
+    },
+    {
       "version": "12.3.2",
       "channel": "stable",
       "released_at": "",
@@ -17,6 +34,23 @@
           "url": "https://archive.mariadb.org/mariadb-12.3.2/bintar-linux-systemd-x86_64/mariadb-12.3.2-linux-systemd-x86_64.tar.gz",
           "sha256": "4a18365541d7280bbe947762e341bab94bc49f3ed31e6b5caf4e21f26246e458",
           "size_bytes": 471369650
+        }
+      }
+    },
+    {
+      "version": "11.8.9",
+      "channel": "lts",
+      "released_at": "",
+      "platforms": {
+        "windows/amd64": {
+          "url": "https://archive.mariadb.org/mariadb-11.8.9/winx64-packages/mariadb-11.8.9-winx64.zip",
+          "sha256": "830c46727d9278eae212ae3eca44eeb9e71b2a68704e95f344a64fba7b1963f5",
+          "size_bytes": 97016251
+        },
+        "linux/amd64": {
+          "url": "https://archive.mariadb.org/mariadb-11.8.9/bintar-linux-systemd-x86_64/mariadb-11.8.9-linux-systemd-x86_64.tar.gz",
+          "sha256": "32f8871a2aa38b36aa418b7f4abc6fc0c6ef1ba5a45798cacb2afa52c8a6113b",
+          "size_bytes": 447936227
         }
       }
     },
@@ -38,6 +72,23 @@
       }
     },
     {
+      "version": "11.4.13",
+      "channel": "stable",
+      "released_at": "",
+      "platforms": {
+        "windows/amd64": {
+          "url": "https://archive.mariadb.org/mariadb-11.4.13/winx64-packages/mariadb-11.4.13-winx64.zip",
+          "sha256": "d62986d433eeebfde218560b276103831604a61e929e87f1a17f5aebd80257e2",
+          "size_bytes": 95024126
+        },
+        "linux/amd64": {
+          "url": "https://archive.mariadb.org/mariadb-11.4.13/bintar-linux-systemd-x86_64/mariadb-11.4.13-linux-systemd-x86_64.tar.gz",
+          "sha256": "3cebf63914df3154b7cb6d548337eb2be42c773aeb641110446b72e2746cfed7",
+          "size_bytes": 358652272
+        }
+      }
+    },
+    {
       "version": "11.4.12",
       "channel": "stable",
       "released_at": "",
@@ -51,6 +102,23 @@
           "url": "https://archive.mariadb.org/mariadb-11.4.12/bintar-linux-systemd-x86_64/mariadb-11.4.12-linux-systemd-x86_64.tar.gz",
           "sha256": "afb81282f977c599ecbb0390588b0005b304b4e87d64615a2649ecd2bd1dc16f",
           "size_bytes": 377926973
+        }
+      }
+    },
+    {
+      "version": "10.11.19",
+      "channel": "stable",
+      "released_at": "",
+      "platforms": {
+        "windows/amd64": {
+          "url": "https://archive.mariadb.org/mariadb-10.11.19/winx64-packages/mariadb-10.11.19-winx64.zip",
+          "sha256": "398ea30e5036010bbebe01d2b1804280424dcc2626e36d8e95155c04d25a0490",
+          "size_bytes": 93557290
+        },
+        "linux/amd64": {
+          "url": "https://archive.mariadb.org/mariadb-10.11.19/bintar-linux-systemd-x86_64/mariadb-10.11.19-linux-systemd-x86_64.tar.gz",
+          "sha256": "7efb257927f31f4422f496246b32590d0b7617f3d9dd900e575de761b302d919",
+          "size_bytes": 357390930
         }
       }
     },
