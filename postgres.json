@@ -2,6 +2,7 @@
   "name": "postgres",
   "display_name": "PostgreSQL",
   "kind": "service",
+  "revision": 1,
   "releases": [
     {
       "version": "18.6",

@@ -27,6 +27,7 @@ repo root; exits nonzero with the errors printed if anything fails.
 """
 
 import argparse
+import json
 import pathlib
 import re
 import sys
@@ -34,13 +35,20 @@ import urllib.parse
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from devxdk_manifest import allowlist, config, merge, schema  # noqa: E402
+from devxdk_manifest import allowlist, config, merge, schema, strictjson  # noqa: E402
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 ARCHIVE_EXTS = (".tar.gz", ".tgz", ".tar", ".zip")
 VALID_CHANNELS = {"stable", "lts", "prerelease"}
+
+# The IDENTICAL contract the client enforces in internal/component.ValidName.
+# Left to the client alone, a MyComp.json carrying "name":"MyComp" passes here,
+# gets SIGNED and published, and is then rejected by every client — a component
+# nobody can fetch, discovered on first fetch instead of at the gate.
+COMPONENT_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]*$")
+COMPONENT_NAME_MAX = 64
 
 
 def validate(repo_root=REPO_ROOT, allowlist_go=None) -> list:
@@ -85,6 +93,13 @@ def _validate_component(cfg, data, name, hosts) -> list:
     errors = []
     if data.get("name") != name:
         errors.append(f"{name}.json: name field {data.get('name')!r} != filename")
+    if not COMPONENT_NAME_RE.match(name) or len(name) > COMPONENT_NAME_MAX:
+        errors.append(
+            f"{name}.json: component name must match {COMPONENT_NAME_RE.pattern} "
+            f"and be at most {COMPONENT_NAME_MAX} characters (internal/component.ValidName)")
+    reason = schema.require_positive_int64(data.get("revision"), f"{name}.json: revision")
+    if reason is not None:
+        errors.append(reason)
     if not isinstance(data.get("display_name"), str) or not data["display_name"]:
         errors.append(f"{name}.json: display_name must be a non-empty string")
     kind = data.get("kind")
@@ -192,8 +207,14 @@ def _validate_asset(name, ver, pkey, asset, hosts) -> list:
 
     if not isinstance(sha, str) or not SHA256_RE.match(sha):
         errors.append(f"{name}.json {ver} {pkey}: sha256 must be lowercase 64-hex")
-    if not isinstance(size, int) or isinstance(size, bool) or size <= 0:
-        errors.append(f"{name}.json {ver} {pkey}: size_bytes must be a positive integer")
+    # The SAME predicate the revision uses. size_bytes had no upper bound while
+    # manifest.Asset.SizeBytes is int64, so an oversized value would validate,
+    # get signed, and then make the whole manifest unparseable for every Go
+    # client. Pre-existing hole; it rides along because §4 is exactly about the
+    # two views of a signed document agreeing.
+    reason = schema.require_positive_int64(size, f"{name}.json {ver} {pkey}: size_bytes")
+    if reason is not None:
+        errors.append(reason)
     return errors
 
 
@@ -207,7 +228,14 @@ def main(argv=None):
     ap.add_argument("--allowlist-go", help="path to internal/download/allowlist.go (pinned app-src)")
     args = ap.parse_args(argv)
 
-    errors = validate(REPO_ROOT, args.allowlist_go)
+    try:
+        errors = validate(REPO_ROOT, args.allowlist_go)
+    except (json.JSONDecodeError, strictjson.StrictJSONError) as e:
+        # A refusal, not a traceback: a document the two languages would parse
+        # differently must not reach the signer, and the operator must be told
+        # which one and why.
+        sys.stderr.write(f"validate_manifests: FAILED (not strict JSON): {e}\n")
+        return 1
     if errors:
         sys.stderr.write(f"validate_manifests: {len(errors)} error(s)\n")
         for e in errors:

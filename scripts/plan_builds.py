@@ -25,7 +25,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from devxdk_manifest import config, fetch, plan, resolvers  # noqa: E402
+from devxdk_manifest import config, fetch, plan, resolvers, strictjson  # noqa: E402
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 
@@ -39,7 +39,7 @@ def gh_release_assets(tag):
          "--json", "assets", "--jq", "[.assets[].name]"],
         capture_output=True, text=True)
     if proc.returncode == 0:
-        return json.loads(proc.stdout)
+        return strictjson.loads(proc.stdout)
     if "release not found" in proc.stderr.lower():
         return None
     raise plan.PlanError(f"gh release view {tag}: {proc.stderr.strip()}")

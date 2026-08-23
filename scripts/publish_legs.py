@@ -26,7 +26,7 @@ import zipfile
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from devxdk_manifest import config, handoff, plan, releasepub, schema  # noqa: E402
+from devxdk_manifest import config, handoff, plan, releasepub, schema, strictjson  # noqa: E402
 
 REPO = "devxdk/devxdk"
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -88,7 +88,7 @@ class GhReleaseAPI:
                 "-f", "make_latest=false"]
         if prerelease:
             args += ["-F", "prerelease=true"]
-        data = json.loads(self._api(*args).stdout)
+        data = strictjson.loads(self._api(*args).stdout)
         return {"id": data["id"], "draft": data["draft"], "assets": []}
 
     def upload_asset(self, release_id, name, path):
@@ -113,22 +113,17 @@ class GhReleaseAPI:
             return resp.read()
 
     def _tag_for(self, release_id):
-        data = json.loads(self._api(f"repos/{REPO}/releases/{release_id}").stdout)
+        data = strictjson.loads(self._api(f"repos/{REPO}/releases/{release_id}").stdout)
         return data["tag_name"]
 
 
 def _split_json_arrays(text):
-    """gh --paginate concatenates top-level JSON arrays; yield each."""
-    dec = json.JSONDecoder()
-    i, n = 0, len(text)
-    while i < n:
-        while i < n and text[i] in " \r\n\t":
-            i += 1
-        if i >= n:
-            break
-        obj, end = dec.raw_decode(text, i)
-        yield obj
-        i = end
+    """gh --paginate concatenates top-level JSON arrays; yield each.
+
+    A GENERATOR, so a strict refusal surfaces at the consumer's `for` loop
+    (_list_releases, _assets), not at the call that creates it.
+    """
+    return strictjson.split_json_arrays(text)
 
 
 def download_artifact(artifact_id, dest):
@@ -154,7 +149,7 @@ def success_legs(needs_json):
     """{leg: {artifact_id, manifest_sha256}} for every leg-* need that succeeded
     and carries both outputs."""
     out = {}
-    for job, info in json.loads(needs_json).items():
+    for job, info in strictjson.loads(needs_json).items():
         if not job.startswith("leg-") or info.get("result") != "success":
             continue
         outputs = info.get("outputs") or {}
@@ -273,7 +268,7 @@ def publish(needs_json, workdir, api=None, dry=False):
         leg_metas, leg_errors = [], []
         for meta_path in sorted(legdir.glob("*.meta.json")):
             try:
-                meta = json.loads(meta_path.read_text(encoding="utf-8"))
+                meta = strictjson.load(meta_path)
             except (OSError, ValueError) as e:
                 leg_errors.append(f"{leg}: {meta_path.name}: unreadable: {e}")
                 continue

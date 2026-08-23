@@ -10,13 +10,12 @@ Standard library only.
 """
 
 import argparse
-import json
 import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from devxdk_manifest import config, merge, revoke, schema  # noqa: E402
+from devxdk_manifest import config, merge, revoke, schema, strictjson  # noqa: E402
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 
@@ -29,7 +28,7 @@ def apply(repo_root=REPO_ROOT):
 
     records = []
     for path in sorted((repo_root / "revocations").glob("*.json")):
-        records.append((revoke.RevocationRecord.from_dict(json.loads(path.read_text(encoding="utf-8"))), path))
+        records.append((revoke.RevocationRecord.from_dict(strictjson.load(path)), path))
     if not records:
         return {"applied": [], "affected": []}
 
@@ -39,11 +38,15 @@ def apply(repo_root=REPO_ROOT):
         applied.append((rec.scope, rec.component, rec.version, rec.platform, action))
         affected.add(comp)
 
+    # PREFLIGHT: resolve every target before writing any of them (schema.resolve).
+    resolved = []
     for comp in sorted(affected):
         mpath = repo_root / f"{comp}.json"
         existing = schema.load(mpath)
         manifest = merge.recompose(comp, existing["display_name"], existing["kind"], cfg, scrape_state, ledger)
-        schema.write(mpath, manifest)
+        resolved.append((mpath, schema.resolve(mpath, manifest)))
+    for mpath, doc in resolved:
+        schema.write_resolved(mpath, doc)
 
     scrape_state.save(repo_root / "state" / "scrape-versions.json")
     ledger.save(repo_root / "state" / "asset-revisions.json")
@@ -56,7 +59,8 @@ def main(argv=None):
     argparse.ArgumentParser(description="Consume committed revocation records.").parse_args(argv)
     try:
         result = apply(REPO_ROOT)
-    except (revoke.RevocationError, merge.GuardError) as e:
+    except (revoke.RevocationError, merge.GuardError, schema.SchemaError,
+            strictjson.StrictJSONError) as e:
         sys.stderr.write(f"apply_revocations: FAILED (nothing written): {e}\n")
         return 1
     for scope, c, v, p, action in result["applied"]:

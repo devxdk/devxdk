@@ -177,8 +177,11 @@ class TestApplyIntegration(unittest.TestCase):
         (self.tmp / "pending").mkdir()
         merge.ScrapeState().save(self.tmp / "state" / "scrape-versions.json")
         merge.LedgerState().save(self.tmp / "state" / "asset-revisions.json")
+        # A prior WITH a revision: schema.write fails closed on one without,
+        # which is the point of that rule and is exercised in test_schema.
         (self.tmp / "redis.json").write_text(
-            json.dumps({"name": "redis", "display_name": "Redis", "kind": "service", "releases": []}, indent=2) + "\n",
+            json.dumps({"name": "redis", "display_name": "Redis", "kind": "service",
+                        "revision": 1, "releases": []}, indent=2) + "\n",
             encoding="utf-8")
 
     def _drop(self, **kw):
@@ -196,6 +199,7 @@ class TestApplyIntegration(unittest.TestCase):
         self.assertEqual(redis["releases"][0]["version"], "8.8.0")
         self.assertEqual(redis["releases"][0]["released_at"], "2026-07-20")
         self.assertIn("windows/amd64", redis["releases"][0]["platforms"])
+        self.assertEqual(redis["revision"], 2)  # content changed -> exactly one bump
         # Ledger updated, pending consumed.
         ledger = merge.LedgerState.load(self.tmp / "state" / "asset-revisions.json")
         self.assertIsNotNone(ledger.get("redis", "8.8.0", "windows/amd64"))
@@ -212,6 +216,7 @@ class TestApplyIntegration(unittest.TestCase):
         rel = redis["releases"][0]
         self.assertEqual(set(rel["platforms"]), {"windows/amd64", "linux/amd64"})
         self.assertEqual(rel["released_at"], "2026-07-20")  # first publication date reused
+        self.assertEqual(redis["revision"], 3)  # one bump per content-changing write
 
     def test_mixed_scrape_build_inherits_released_at(self):
         # A scrape-seeded windows tuple (nginx) fixes the release's released_at; a

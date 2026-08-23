@@ -2,6 +2,7 @@
   "name": "mariadb",
   "display_name": "MariaDB",
   "kind": "service",
+  "revision": 1,
   "releases": [
     {
       "version": "12.3.3",

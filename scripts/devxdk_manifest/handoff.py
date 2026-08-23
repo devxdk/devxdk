@@ -26,6 +26,8 @@ import hashlib
 import json
 import pathlib
 
+from . import strictjson
+
 MANIFEST_NAME = "manifest.json"
 SCHEMA = 1
 _CHUNK = 1 << 20
@@ -114,8 +116,10 @@ def verify(directory, expected_sha256: str | None = None) -> dict:
             raise HandoffError(f"{MANIFEST_NAME} sha256 {got} != expected {expected_sha256.strip().lower()}")
 
     try:
-        manifest = json.loads(raw)
-    except json.JSONDecodeError as e:
+        manifest = strictjson.loads(raw)
+    except (json.JSONDecodeError, strictjson.StrictJSONError) as e:
+        # The sha256 above proves authenticity, never well-formedness — a valid
+        # hash over an ambiguous document is still an ambiguous document.
         raise HandoffError(f"{MANIFEST_NAME} is not valid JSON: {e}") from e
     if not isinstance(manifest, dict) or manifest.get("schema") != SCHEMA:
         raise HandoffError(f"{MANIFEST_NAME} schema is not {SCHEMA}")

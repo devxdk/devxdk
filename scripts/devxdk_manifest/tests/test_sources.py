@@ -59,7 +59,9 @@ class TestNodeByteIdentity(unittest.TestCase):
             text_map={f"https://nodejs.org/dist/v{ver}/SHASUMS256.txt": "\n".join(shasum_lines) + "\n"},
             size_map=sizes,
         )
-        out = schema.dump_str(node.build(fetcher))
+        # component() never assigns a revision (write() does), so project the
+        # committed one in before comparing bytes.
+        out = schema.dump_str(schema.with_revision(node.build(fetcher), data["revision"]))
         self.assertEqual(out, raw, "node.build output must be byte-identical to committed node.json")
 
     def test_selects_newest_lts_in_line(self):
@@ -98,7 +100,7 @@ class TestGoByteIdentity(unittest.TestCase):
             for a in rel["platforms"].values()
         ]
         fetcher = FakeFetcher(json_map={go.DL_URL: [{"version": f"go{ver}", "stable": True, "files": files}]})
-        out = schema.dump_str(go.build(fetcher))
+        out = schema.dump_str(schema.with_revision(go.build(fetcher), data["revision"]))
         self.assertEqual(out, raw, "go.build output must be byte-identical to committed go.json")
 
     def test_selects_highest_stable_numeric(self):
@@ -131,7 +133,7 @@ class TestComposerByteIdentity(unittest.TestCase):
             text_map={url + ".sha256sum": f"{asset['sha256']}  composer.phar\n"},
             size_map={url: asset["size_bytes"]},
         )
-        out = schema.dump_str(composer.build(fetcher))
+        out = schema.dump_str(schema.with_revision(composer.build(fetcher), data["revision"]))
         self.assertEqual(out, raw, "composer.build output must be byte-identical to committed composer.json")
 
     def test_selects_newest_in_line(self):

@@ -2,6 +2,7 @@
   "name": "composer",
   "display_name": "Composer",
   "kind": "runtime",
+  "revision": 1,
   "releases": [
     {
       "version": "2.10.2",

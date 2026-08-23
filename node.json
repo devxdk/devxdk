@@ -2,6 +2,7 @@
   "name": "node",
   "display_name": "Node.js",
   "kind": "runtime",
+  "revision": 1,
   "releases": [
     {
       "version": "24.19.0",

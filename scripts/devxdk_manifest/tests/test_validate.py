@@ -25,8 +25,11 @@ def _release(ver="24.17.0", channel="lts", platforms=None):
             "platforms": platforms if platforms is not None else {"windows/amd64": _asset()}}
 
 
-def _manifest(name="node", kind="runtime", releases=None):
-    return {"name": name, "display_name": "X", "kind": kind, "releases": releases or []}
+def _manifest(name="node", kind="runtime", releases=None, revision=1):
+    # revision in its fixed slot: the head invariant requires every manifest to
+    # carry a positive int64 one.
+    return {"name": name, "display_name": "X", "kind": kind,
+            "revision": revision, "releases": releases or []}
 
 
 class TestRealManifests(unittest.TestCase):
@@ -127,7 +130,7 @@ class TestComponentRules(unittest.TestCase):
         # darwin/amd64 is not a configured node platform in line 24? It IS. Use a
         # platform valid globally but not configured for this component/line:
         # mariadb has no darwin platform.
-        m = {"name": "mariadb", "display_name": "MariaDB", "kind": "service", "releases": [
+        m = {"name": "mariadb", "display_name": "MariaDB", "kind": "service", "revision": 1, "releases": [
             {"version": "11.8.8", "channel": "lts", "released_at": "",
              "platforms": {"darwin/arm64": _asset(url="https://archive.mariadb.org/x.tar.gz")}},
         ]}
@@ -135,12 +138,12 @@ class TestComponentRules(unittest.TestCase):
         self.assertTrue(any("not configured for line" in e for e in errs))
 
     def test_composer_phar_ext(self):
-        good = {"name": "composer", "display_name": "Composer", "kind": "runtime", "releases": [
+        good = {"name": "composer", "display_name": "Composer", "kind": "runtime", "revision": 1, "releases": [
             {"version": "2.10.2", "channel": "stable", "released_at": "",
              "platforms": {"any": _asset(url="https://getcomposer.org/download/2.10.2/composer.phar")}},
         ]}
         self.assertEqual(vm._validate_component(self.cfg, good, "composer", HOSTS), [])
-        bad = {"name": "composer", "display_name": "Composer", "kind": "runtime", "releases": [
+        bad = {"name": "composer", "display_name": "Composer", "kind": "runtime", "revision": 1, "releases": [
             {"version": "2.10.2", "channel": "stable", "released_at": "",
              "platforms": {"any": _asset(url="https://getcomposer.org/download/2.10.2/composer.zip")}},
         ]}

@@ -2,6 +2,7 @@
   "name": "nginx",
   "display_name": "Nginx",
   "kind": "service",
+  "revision": 1,
   "releases": [
     {
       "version": "1.30.4",
