@@ -2,6 +2,7 @@
   "name": "valkey",
   "display_name": "Valkey",
   "kind": "service",
+  "revision": 1,
   "releases": [
     {
       "version": "9.1.0",

@@ -2,6 +2,7 @@
   "name": "go",
   "display_name": "Go",
   "kind": "runtime",
+  "revision": 1,
   "releases": [
     {
       "version": "1.27.0",

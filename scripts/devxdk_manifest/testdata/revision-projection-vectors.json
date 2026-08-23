@@ -1,0 +1,75 @@
+{
+  "schema": 1,
+  "note": "Canonical cross-language vectors for revision assignment. THE RULE: parse the prior strictly (a rejection is the verdict for the reject cases); read its revision; compare candidate_b64 to prior_b64 byte for byte; equal -> preserve that revision, different -> prior + 1. Both payloads are base64 because three vectors differ ONLY in bytes JSON would otherwise normalize. Canonical copy lives in the public manifest repo; the app repo vendors it byte-identically and the vector-parity job cmp's the two.",
+  "vectors": [
+    {
+      "name": "identical-bytes",
+      "why": "byte-identical content must PRESERVE the revision and write a zero diff",
+      "prior_b64": "ewogICJuYW1lIjogInJlZGlzIiwKICAiZGlzcGxheV9uYW1lIjogIlJlZGlzIiwKICAia2luZCI6ICJzZXJ2aWNlIiwKICAicmV2aXNpb24iOiA1LAogICJyZWxlYXNlcyI6IFsKICAgIHsKICAgICAgInZlcnNpb24iOiAiOC44LjAiLAogICAgICAiY2hhbm5lbCI6ICJzdGFibGUiLAogICAgICAicmVsZWFzZWRfYXQiOiAiMjAyNi0wMS0wMSIsCiAgICAgICJwbGF0Zm9ybXMiOiB7CiAgICAgICAgIndpbmRvd3MvYW1kNjQiOiB7CiAgICAgICAgICAidXJsIjogImh0dHBzOi8vZXhhbXBsZS5jb20vcmVkaXMtOC44LjAuemlwIiwKICAgICAgICAgICJzaGEyNTYiOiAiYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYSIsCiAgICAgICAgICAic2l6ZV9ieXRlcyI6IDEwMAogICAgICAgIH0KICAgICAgfQogICAgfQogIF0KfQo=",
+      "candidate_b64": "ewogICJuYW1lIjogInJlZGlzIiwKICAiZGlzcGxheV9uYW1lIjogIlJlZGlzIiwKICAia2luZCI6ICJzZXJ2aWNlIiwKICAicmV2aXNpb24iOiA1LAogICJyZWxlYXNlcyI6IFsKICAgIHsKICAgICAgInZlcnNpb24iOiAiOC44LjAiLAogICAgICAiY2hhbm5lbCI6ICJzdGFibGUiLAogICAgICAicmVsZWFzZWRfYXQiOiAiMjAyNi0wMS0wMSIsCiAgICAgICJwbGF0Zm9ybXMiOiB7CiAgICAgICAgIndpbmRvd3MvYW1kNjQiOiB7CiAgICAgICAgICAidXJsIjogImh0dHBzOi8vZXhhbXBsZS5jb20vcmVkaXMtOC44LjAuemlwIiwKICAgICAgICAgICJzaGEyNTYiOiAiYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYSIsCiAgICAgICAgICAic2l6ZV9ieXRlcyI6IDEwMAogICAgICAgIH0KICAgICAgfQogICAgfQogIF0KfQo=",
+      "expect": "preserve",
+      "expect_revision": 5
+    },
+    {
+      "name": "formatting-only-reorder",
+      "why": "same semantics, different bytes: dump_str is insertion-ordered, so a key reorder moves the published bytes while the document is unchanged. A semantic comparison preserves the revision here, the client sees equal revision + different hash, and refuses that component permanently",
+      "prior_b64": "ewogICJkaXNwbGF5X25hbWUiOiAiUmVkaXMiLAogICJuYW1lIjogInJlZGlzIiwKICAia2luZCI6ICJzZXJ2aWNlIiwKICAicmV2aXNpb24iOiA1LAogICJyZWxlYXNlcyI6IFsKICAgIHsKICAgICAgInZlcnNpb24iOiAiOC44LjAiLAogICAgICAiY2hhbm5lbCI6ICJzdGFibGUiLAogICAgICAicmVsZWFzZWRfYXQiOiAiMjAyNi0wMS0wMSIsCiAgICAgICJwbGF0Zm9ybXMiOiB7CiAgICAgICAgIndpbmRvd3MvYW1kNjQiOiB7CiAgICAgICAgICAidXJsIjogImh0dHBzOi8vZXhhbXBsZS5jb20vcmVkaXMtOC44LjAuemlwIiwKICAgICAgICAgICJzaGEyNTYiOiAiYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYSIsCiAgICAgICAgICAic2l6ZV9ieXRlcyI6IDEwMAogICAgICAgIH0KICAgICAgfQogICAgfQogIF0KfQo=",
+      "candidate_b64": "ewogICJuYW1lIjogInJlZGlzIiwKICAiZGlzcGxheV9uYW1lIjogIlJlZGlzIiwKICAia2luZCI6ICJzZXJ2aWNlIiwKICAicmV2aXNpb24iOiA1LAogICJyZWxlYXNlcyI6IFsKICAgIHsKICAgICAgInZlcnNpb24iOiAiOC44LjAiLAogICAgICAiY2hhbm5lbCI6ICJzdGFibGUiLAogICAgICAicmVsZWFzZWRfYXQiOiAiMjAyNi0wMS0wMSIsCiAgICAgICJwbGF0Zm9ybXMiOiB7CiAgICAgICAgIndpbmRvd3MvYW1kNjQiOiB7CiAgICAgICAgICAidXJsIjogImh0dHBzOi8vZXhhbXBsZS5jb20vcmVkaXMtOC44LjAuemlwIiwKICAgICAgICAgICJzaGEyNTYiOiAiYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYSIsCiAgICAgICAgICAic2l6ZV9ieXRlcyI6IDEwMAogICAgICAgIH0KICAgICAgfQogICAgfQogIF0KfQo=",
+      "expect": "bump",
+      "expect_revision": 6
+    },
+    {
+      "name": "revision-digit-width",
+      "why": "9 -> 10 moves every following byte; the rule must handle it with no token substitution at all",
+      "prior_b64": "ewogICJuYW1lIjogInJlZGlzIiwKICAiZGlzcGxheV9uYW1lIjogIlJlZGlzIiwKICAia2luZCI6ICJzZXJ2aWNlIiwKICAicmV2aXNpb24iOiA5LAogICJyZWxlYXNlcyI6IFsKICAgIHsKICAgICAgInZlcnNpb24iOiAiOC44LjAiLAogICAgICAiY2hhbm5lbCI6ICJzdGFibGUiLAogICAgICAicmVsZWFzZWRfYXQiOiAiMjAyNi0wMS0wMSIsCiAgICAgICJwbGF0Zm9ybXMiOiB7CiAgICAgICAgIndpbmRvd3MvYW1kNjQiOiB7CiAgICAgICAgICAidXJsIjogImh0dHBzOi8vZXhhbXBsZS5jb20vcmVkaXMtOC44LjAuemlwIiwKICAgICAgICAgICJzaGEyNTYiOiAiYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYSIsCiAgICAgICAgICAic2l6ZV9ieXRlcyI6IDEwMAogICAgICAgIH0KICAgICAgfQogICAgfQogIF0KfQo=",
+      "candidate_b64": "ewogICJuYW1lIjogInJlZGlzIiwKICAiZGlzcGxheV9uYW1lIjogIlJlZGlzIiwKICAia2luZCI6ICJzZXJ2aWNlIiwKICAicmV2aXNpb24iOiA5LAogICJyZWxlYXNlcyI6IFsKICAgIHsKICAgICAgInZlcnNpb24iOiAiOS4wLjAiLAogICAgICAiY2hhbm5lbCI6ICJzdGFibGUiLAogICAgICAicmVsZWFzZWRfYXQiOiAiMjAyNi0wMS0wMSIsCiAgICAgICJwbGF0Zm9ybXMiOiB7CiAgICAgICAgIndpbmRvd3MvYW1kNjQiOiB7CiAgICAgICAgICAidXJsIjogImh0dHBzOi8vZXhhbXBsZS5jb20vcmVkaXMtOS4wLjAuemlwIiwKICAgICAgICAgICJzaGEyNTYiOiAiYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYSIsCiAgICAgICAgICAic2l6ZV9ieXRlcyI6IDEwMAogICAgICAgIH0KICAgICAgfQogICAgfQogIF0KfQo=",
+      "expect": "bump",
+      "expect_revision": 10
+    },
+    {
+      "name": "lf-vs-crlf",
+      "why": "a CRLF prior compares EQUAL to an LF candidate under a text-mode read, so the revision would be preserved while the bytes published changed",
+      "prior_b64": "ew0KICAibmFtZSI6ICJyZWRpcyIsDQogICJkaXNwbGF5X25hbWUiOiAiUmVkaXMiLA0KICAia2luZCI6ICJzZXJ2aWNlIiwNCiAgInJldmlzaW9uIjogMywNCiAgInJlbGVhc2VzIjogWw0KICAgIHsNCiAgICAgICJ2ZXJzaW9uIjogIjguOC4wIiwNCiAgICAgICJjaGFubmVsIjogInN0YWJsZSIsDQogICAgICAicmVsZWFzZWRfYXQiOiAiMjAyNi0wMS0wMSIsDQogICAgICAicGxhdGZvcm1zIjogew0KICAgICAgICAid2luZG93cy9hbWQ2NCI6IHsNCiAgICAgICAgICAidXJsIjogImh0dHBzOi8vZXhhbXBsZS5jb20vcmVkaXMtOC44LjAuemlwIiwNCiAgICAgICAgICAic2hhMjU2IjogImFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWEiLA0KICAgICAgICAgICJzaXplX2J5dGVzIjogMTAwDQogICAgICAgIH0NCiAgICAgIH0NCiAgICB9DQogIF0NCn0NCg==",
+      "candidate_b64": "ewogICJuYW1lIjogInJlZGlzIiwKICAiZGlzcGxheV9uYW1lIjogIlJlZGlzIiwKICAia2luZCI6ICJzZXJ2aWNlIiwKICAicmV2aXNpb24iOiAzLAogICJyZWxlYXNlcyI6IFsKICAgIHsKICAgICAgInZlcnNpb24iOiAiOC44LjAiLAogICAgICAiY2hhbm5lbCI6ICJzdGFibGUiLAogICAgICAicmVsZWFzZWRfYXQiOiAiMjAyNi0wMS0wMSIsCiAgICAgICJwbGF0Zm9ybXMiOiB7CiAgICAgICAgIndpbmRvd3MvYW1kNjQiOiB7CiAgICAgICAgICAidXJsIjogImh0dHBzOi8vZXhhbXBsZS5jb20vcmVkaXMtOC44LjAuemlwIiwKICAgICAgICAgICJzaGEyNTYiOiAiYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYSIsCiAgICAgICAgICAic2l6ZV9ieXRlcyI6IDEwMAogICAgICAgIH0KICAgICAgfQogICAgfQogIF0KfQo=",
+      "expect": "bump",
+      "expect_revision": 4
+    },
+    {
+      "name": "absent-final-newline",
+      "why": "the trailing newline is part of the published bytes",
+      "prior_b64": "ewogICJuYW1lIjogInJlZGlzIiwKICAiZGlzcGxheV9uYW1lIjogIlJlZGlzIiwKICAia2luZCI6ICJzZXJ2aWNlIiwKICAicmV2aXNpb24iOiAzLAogICJyZWxlYXNlcyI6IFsKICAgIHsKICAgICAgInZlcnNpb24iOiAiOC44LjAiLAogICAgICAiY2hhbm5lbCI6ICJzdGFibGUiLAogICAgICAicmVsZWFzZWRfYXQiOiAiMjAyNi0wMS0wMSIsCiAgICAgICJwbGF0Zm9ybXMiOiB7CiAgICAgICAgIndpbmRvd3MvYW1kNjQiOiB7CiAgICAgICAgICAidXJsIjogImh0dHBzOi8vZXhhbXBsZS5jb20vcmVkaXMtOC44LjAuemlwIiwKICAgICAgICAgICJzaGEyNTYiOiAiYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYSIsCiAgICAgICAgICAic2l6ZV9ieXRlcyI6IDEwMAogICAgICAgIH0KICAgICAgfQogICAgfQogIF0KfQ==",
+      "candidate_b64": "ewogICJuYW1lIjogInJlZGlzIiwKICAiZGlzcGxheV9uYW1lIjogIlJlZGlzIiwKICAia2luZCI6ICJzZXJ2aWNlIiwKICAicmV2aXNpb24iOiAzLAogICJyZWxlYXNlcyI6IFsKICAgIHsKICAgICAgInZlcnNpb24iOiAiOC44LjAiLAogICAgICAiY2hhbm5lbCI6ICJzdGFibGUiLAogICAgICAicmVsZWFzZWRfYXQiOiAiMjAyNi0wMS0wMSIsCiAgICAgICJwbGF0Zm9ybXMiOiB7CiAgICAgICAgIndpbmRvd3MvYW1kNjQiOiB7CiAgICAgICAgICAidXJsIjogImh0dHBzOi8vZXhhbXBsZS5jb20vcmVkaXMtOC44LjAuemlwIiwKICAgICAgICAgICJzaGEyNTYiOiAiYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYSIsCiAgICAgICAgICAic2l6ZV9ieXRlcyI6IDEwMAogICAgICAgIH0KICAgICAgfQogICAgfQogIF0KfQo=",
+      "expect": "bump",
+      "expect_revision": 4
+    },
+    {
+      "name": "trailing-whitespace",
+      "why": "trailing bytes after the document are still published bytes",
+      "prior_b64": "ewogICJuYW1lIjogInJlZGlzIiwKICAiZGlzcGxheV9uYW1lIjogIlJlZGlzIiwKICAia2luZCI6ICJzZXJ2aWNlIiwKICAicmV2aXNpb24iOiAzLAogICJyZWxlYXNlcyI6IFsKICAgIHsKICAgICAgInZlcnNpb24iOiAiOC44LjAiLAogICAgICAiY2hhbm5lbCI6ICJzdGFibGUiLAogICAgICAicmVsZWFzZWRfYXQiOiAiMjAyNi0wMS0wMSIsCiAgICAgICJwbGF0Zm9ybXMiOiB7CiAgICAgICAgIndpbmRvd3MvYW1kNjQiOiB7CiAgICAgICAgICAidXJsIjogImh0dHBzOi8vZXhhbXBsZS5jb20vcmVkaXMtOC44LjAuemlwIiwKICAgICAgICAgICJzaGEyNTYiOiAiYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYSIsCiAgICAgICAgICAic2l6ZV9ieXRlcyI6IDEwMAogICAgICAgIH0KICAgICAgfQogICAgfQogIF0KfQogICAK",
+      "candidate_b64": "ewogICJuYW1lIjogInJlZGlzIiwKICAiZGlzcGxheV9uYW1lIjogIlJlZGlzIiwKICAia2luZCI6ICJzZXJ2aWNlIiwKICAicmV2aXNpb24iOiAzLAogICJyZWxlYXNlcyI6IFsKICAgIHsKICAgICAgInZlcnNpb24iOiAiOC44LjAiLAogICAgICAiY2hhbm5lbCI6ICJzdGFibGUiLAogICAgICAicmVsZWFzZWRfYXQiOiAiMjAyNi0wMS0wMSIsCiAgICAgICJwbGF0Zm9ybXMiOiB7CiAgICAgICAgIndpbmRvd3MvYW1kNjQiOiB7CiAgICAgICAgICAidXJsIjogImh0dHBzOi8vZXhhbXBsZS5jb20vcmVkaXMtOC44LjAuemlwIiwKICAgICAgICAgICJzaGEyNTYiOiAiYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYSIsCiAgICAgICAgICAic2l6ZV9ieXRlcyI6IDEwMAogICAgICAgIH0KICAgICAgfQogICAgfQogIF0KfQo=",
+      "expect": "bump",
+      "expect_revision": 4
+    },
+    {
+      "name": "duplicate-top-level-revision",
+      "why": "both decoders keep the LAST duplicate, deterministically \u2014 but a security ordering key must not have two spellings",
+      "prior_b64": "eyJuYW1lIjoicmVkaXMiLCJkaXNwbGF5X25hbWUiOiJSZWRpcyIsImtpbmQiOiJzZXJ2aWNlIiwicmV2aXNpb24iOjYsInJldmlzaW9uIjo3LCJyZWxlYXNlcyI6W119Cg==",
+      "candidate_b64": null,
+      "expect": "reject"
+    },
+    {
+      "name": "case-fold-collision",
+      "why": "Python reads 6 while Go's decoder matches BOTH to the tagged field and keeps 100. A history gate ordering this at 6 makes the client record 100, after which the genuine revision 7 is lower than the mark and that component is refused permanently",
+      "prior_b64": "eyJuYW1lIjoicmVkaXMiLCJkaXNwbGF5X25hbWUiOiJSZWRpcyIsImtpbmQiOiJzZXJ2aWNlIiwicmV2aXNpb24iOjYsIlJldmlzaW9uIjoxMDAsInJlbGVhc2VzIjpbXX0K",
+      "candidate_b64": null,
+      "expect": "reject"
+    },
+    {
+      "name": "non-ascii-member-name",
+      "why": "rejected outright so equivalence stays A-Z <-> a-z: Go folds with SimpleFold semantics while Python's casefold() does full Unicode folding, and they put different names in the same class",
+      "prior_b64": "eyJuYW1lIjoicmVkaXMiLCJkaXNwbGF5X25hbWUiOiJSZWRpcyIsImtpbmQiOiJzZXJ2aWNlIiwicmV2aXNpw7ZuIjoxLCJyZWxlYXNlcyI6W119Cg==",
+      "candidate_b64": null,
+      "expect": "reject"
+    }
+  ]
+}

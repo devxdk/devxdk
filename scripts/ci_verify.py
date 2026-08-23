@@ -27,7 +27,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from devxdk_manifest import schema  # noqa: E402
+from devxdk_manifest import schema, strictjson  # noqa: E402
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 
@@ -186,7 +186,13 @@ def default_record_verify(minisign_bin):
             old_pub_file.unlink(missing_ok=True)
         if p.returncode != 0:
             return False, "old-key signature does not verify"
-        rec = json.loads(record_path.read_text(encoding="utf-8"))
+        # This record authorizes a TRUST-ROOT TRANSITION, so an ambiguous
+        # document must not reach the field reads below. Return, never raise:
+        # this function's contract is (ok, reason).
+        try:
+            rec = strictjson.load(record_path)
+        except (json.JSONDecodeError, strictjson.StrictJSONError) as e:
+            return False, f"rotation record is not strict JSON: {e}"
         if rec.get("trust_root") != trust_root:
             return False, f"trust_root {rec.get('trust_root')!r} != {trust_root!r}"
         if rec.get("old_pub") != old_pub:

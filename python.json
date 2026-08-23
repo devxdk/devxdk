@@ -2,6 +2,7 @@
   "name": "python",
   "display_name": "Python",
   "kind": "runtime",
+  "revision": 1,
   "releases": [
     {
       "version": "3.14.7",

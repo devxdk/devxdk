@@ -9,10 +9,11 @@ the same surface so no adapter test touches a live feed.
 
 from __future__ import annotations
 
-import json
 import time
 import urllib.error
 import urllib.request
+
+from .strictjson import loads as strict_loads
 
 DEFAULT_TIMEOUT = 60
 DEFAULT_RETRIES = 3
@@ -64,7 +65,10 @@ class Fetcher:
         return self.get_bytes(url, headers).decode("utf-8")
 
     def get_json(self, url: str, headers: dict | None = None):
-        return json.loads(self.get_text(url, headers))
+        # Strict even though a release feed is not a trust root: a duplicate key
+        # upstream would silently pick one asset URL over another, and a
+        # per-site judgement call is exactly what the repo-wide guard removes.
+        return strict_loads(self.get_bytes(url, headers))
 
     def _read_capped(self, resp) -> bytes:
         # Read one extra byte so an at-cap body is still detectable as over-cap.
@@ -129,7 +133,7 @@ class Fetcher:
                 try:
                     with self._open(req, timeout=self.timeout) as resp:
                         body = self._read_capped(resp)
-                        page = json.loads(body.decode("utf-8"))
+                        page = strict_loads(body)
                         if not isinstance(page, list):
                             raise FetchError(f"paginated GET {next_url}: expected a JSON array")
                         out.extend(page)

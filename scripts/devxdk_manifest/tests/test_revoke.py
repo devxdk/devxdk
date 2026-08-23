@@ -123,7 +123,7 @@ class TestApplyIntegration(unittest.TestCase):
         _ledger().save(self.tmp / "state" / "asset-revisions.json")
         # redis.json holds the managed release the ledger entry backs.
         (self.tmp / "redis.json").write_text(json.dumps({
-            "name": "redis", "display_name": "Redis", "kind": "service",
+            "name": "redis", "display_name": "Redis", "kind": "service", "revision": 4,
             "releases": [{"version": "8.8.0", "channel": "stable", "released_at": "2026-01-01",
                           "platforms": {"windows/amd64": {"url": _tuple_fields()["url"],
                                                           "sha256": "a" * 64, "size_bytes": 100}}}],
@@ -140,6 +140,10 @@ class TestApplyIntegration(unittest.TestCase):
         self.assertEqual(len(result["applied"]), 1)
         redis = json.loads((self.tmp / "redis.json").read_text(encoding="utf-8"))
         self.assertEqual(redis["releases"], [])  # platform removed -> release gone
+        # A revocation rewrites the manifest through schema.write, so it bumps
+        # like any other content change — the path a constructor-based design
+        # would have missed.
+        self.assertEqual(redis["revision"], 5)
         ledger = merge.LedgerState.load(self.tmp / "state" / "asset-revisions.json")
         self.assertTrue(ledger.get("redis", "8.8.0", "windows/amd64").revoked)  # sticky
         self.assertEqual(list((self.tmp / "revocations").glob("*.json")), [])

@@ -2,6 +2,7 @@
   "name": "redis",
   "display_name": "Redis",
   "kind": "service",
+  "revision": 1,
   "releases": [
     {
       "version": "8.8.0",

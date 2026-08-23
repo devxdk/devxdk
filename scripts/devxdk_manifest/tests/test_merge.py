@@ -137,20 +137,29 @@ class TestReconcileRecompose(unittest.TestCase):
         state = merge.ScrapeState.load(STATE_FILE)
         ledger = merge.LedgerState.load(REPO_ROOT / "state" / "asset-revisions.json")
         for name in ("node", "go", "mariadb", "nginx", "composer"):
-            comp = schema.load(REPO_ROOT / f"{name}.json")
+            path = REPO_ROOT / f"{name}.json"
+            comp = schema.load(path)
             rebuilt = merge.recompose(name, comp["display_name"], comp["kind"], self.cfg, state, ledger)
+            # Through schema.resolve, which is what write() would do. That makes
+            # this assertion strictly stronger than the raw dump it replaces: it
+            # proves byte-identity AND that a no-change rebuild preserves the
+            # revision instead of bumping it.
             self.assertEqual(
-                schema.dump_str(rebuilt),
-                (REPO_ROOT / f"{name}.json").read_text(encoding="utf-8"),
+                schema.dump_str(schema.resolve(path, rebuilt)),
+                path.read_text(encoding="utf-8"),
                 f"recompose({name}) must reproduce the committed manifest byte-for-byte",
             )
+            self.assertEqual(schema.resolve(path, rebuilt)["revision"], comp["revision"],
+                             f"a no-change recompose({name}) must not bump the revision")
 
     def test_scrape_reconcile_idempotent(self):
         # Reconciling the committed node manifest against the state changes nothing.
         state = merge.ScrapeState.load(STATE_FILE)
         node = schema.load(REPO_ROOT / "node.json")
         _st, manifest, actions = merge.scrape_reconcile(state, self.cfg, node)
-        self.assertEqual(schema.dump_str(manifest), (REPO_ROOT / "node.json").read_text(encoding="utf-8"))
+        path = REPO_ROOT / "node.json"
+        self.assertEqual(schema.dump_str(schema.resolve(path, manifest)),
+                         path.read_text(encoding="utf-8"))
         self.assertFalse(any(a[3][0] in ("admit", "evict") for a in actions))
 
     def test_scrape_reconcile_admits_newer(self):

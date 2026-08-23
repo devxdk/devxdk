@@ -10,6 +10,9 @@
 #     validator/allowlist/byte-identity/ci-verify) — byte-stability of the
 #     scrapers is covered there against frozen fixtures, never a live feed;
 #   * validate_manifests.py over the committed manifests + both state files;
+#   * revision monotonicity across history (check_revision_history.py) — a STEP
+#     in the python job, not a job of its own, because a job is a REPORTED CHECK
+#     and this repo's total must stay four;
 #   * reference-minisign verification of every root manifest (and app/update.json
 #     when present) plus the key-immutability + never-existed-seed rules;
 #   * actionlint over the repo's workflows.
@@ -28,8 +31,10 @@ jobs:
   python:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout (full history for the revision monotonicity gate)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -41,6 +46,21 @@ jobs:
         run: python scripts/validate_manifests.py
       - name: Check build-runtimes static-job / config parity
         run: python scripts/plan_builds.py --check-parity .github/workflows/build-runtimes.yml
+      - name: Revision monotonicity across history
+        # DETECTIVE only: the bot pushes straight to main and Pages serves from
+        # main, so this reports after a bad revision is already fetchable. The
+        # PREVENTIVE half is the same script run before each automated push
+        # (scrape-sign-push.sh, finalize_builds.py, and release.yml in the app
+        # repo). This stays as the backstop if a ruleset bypass is ever
+        # mis-scoped, and it is what makes the gate legible in the checks list.
+        env:
+          EVENT: ${{ github.event_name }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = "push" ]; then CMP="$PUSH_BEFORE"; else CMP="$PR_BASE"; fi
+          python scripts/ci/check_revision_history.py --base "$CMP"
 
   signatures:
     runs-on: ubuntu-latest

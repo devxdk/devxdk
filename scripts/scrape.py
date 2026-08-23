@@ -16,12 +16,13 @@ CI (scrape-and-sign.yml) runs this, then validates and re-signs every JSON.
 """
 
 import argparse
+import json
 import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from devxdk_manifest import config, fetch, merge, schema  # noqa: E402
+from devxdk_manifest import config, fetch, merge, schema, strictjson  # noqa: E402
 from devxdk_manifest.sources import composer, go, mariadb, node  # noqa: E402
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -55,6 +56,7 @@ def main(argv=None):
     scrape_components = {c for c, _l, _p, _plat in cfg.scrape_keys()}
 
     rc = 0
+    built = []
     for name in sorted(scrape_components & SOURCES.keys()):
         try:
             candidate = SOURCES[name](fetcher)
@@ -69,10 +71,22 @@ def main(argv=None):
         moves = ", ".join(f"{a[3][0]} {a[3][1]}" for a in actions if a[3][0] in ("admit", "evict")) or "no change"
         prefix = "[dry-run] " if args.dry_run else ""
         sys.stderr.write(f"{prefix}{name}.json -> {rel['version']} ({rel.get('released_at', '')}) [{moves}]\n")
-        if not args.dry_run:
-            schema.write(REPO_ROOT / f"{name}.json", manifest)
+        built.append((REPO_ROOT / f"{name}.json", manifest))
 
     if not args.dry_run:
+        # PREFLIGHT, and this script needed it most: schema.write sat OUTSIDE
+        # the except above, so a raise there escaped main() with earlier
+        # manifests already rewritten, state never saved, and no FAILED message
+        # at all. A per-component SOURCE failure still only skips that component
+        # (unchanged, and a different class); a malformed prior aborts the whole
+        # transaction.
+        try:
+            resolved = [(path, schema.resolve(path, manifest)) for path, manifest in built]
+        except (schema.SchemaError, strictjson.StrictJSONError, json.JSONDecodeError) as e:
+            sys.stderr.write(f"scrape: FAILED (nothing written): {e}\n")
+            return 1
+        for path, doc in resolved:
+            schema.write_resolved(path, doc)
         # State + manifests are written together, committed in one scrape-and-sign
         # commit; a no-change run re-writes identical bytes (zero diff).
         state.save(STATE_FILE)

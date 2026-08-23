@@ -12,7 +12,6 @@ AND finalize-only legs alike. Standard library only; git/gh are shelled out.
 """
 
 import argparse
-import json
 import pathlib
 import subprocess
 import sys
@@ -20,7 +19,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 import add_built_release  # noqa: E402
-from devxdk_manifest import plan  # noqa: E402
+from devxdk_manifest import plan, strictjson  # noqa: E402
 
 REPO = "devxdk/devxdk"
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -35,12 +34,47 @@ def _download_url(meta):
     return f"https://github.com/{REPO}/releases/download/{tag}/{meta['archive']}"
 
 
+# Every field write_pending reads out of a .meta.json. Resolved in the
+# preflight so a malformed SECOND file cannot leave the FIRST record written.
+_META_FIELDS = ("component", "version", "platform", "line", "ordering_kind",
+                "provider", "epoch", "revision", "source_version", "sha256",
+                "size_bytes")
+
+
 def write_pending(metas_dir, repo_root=REPO_ROOT):
-    """Write a pending record per meta; return the list of written paths."""
+    """Write a pending record per meta; return the list of written paths.
+
+    PASS 1 strict-parses and field-checks EVERY meta before PASS 2 writes any
+    record. The parse and the write used to interleave, so a malformed second
+    file left the first record already written — the same shape the four
+    multi-manifest writers are preflighted for.
+
+    The preflight lives inside this function deliberately: commit_and_push
+    re-invokes it per attempt (reset --hard discards the just-committed
+    records), so resolve-then-write here keeps every attempt independently
+    atomic.
+
+    Scope the guarantee honestly: this writes files into pending/; the durable
+    boundary is the git add + commit + push in commit_and_push, all after it
+    returns. One residual stays — an add_built_release REJECTION mid-batch
+    raises SystemExit below, which escapes both functions (the retry loop's
+    fetch/reset is reached only on a PUSH rejection), leaving earlier records
+    untracked and unstaged, never committed, discarded with the CI workspace.
+    Pre-existing; closing it needs a dry-run mode on add_built_release.
+    """
     metas_dir = pathlib.Path(metas_dir)
-    written = []
+    metas = []
     for meta_path in sorted(metas_dir.glob("*.meta.json")):
-        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        meta = strictjson.load(meta_path)
+        if not isinstance(meta, dict):
+            raise SystemExit(f"finalize: {meta_path.name} is not a JSON object")
+        missing = [f for f in _META_FIELDS if f not in meta]
+        if missing:
+            raise SystemExit(f"finalize: {meta_path.name} is missing {', '.join(missing)}")
+        metas.append((meta_path, meta))
+
+    written = []
+    for meta_path, meta in metas:
         rc = add_built_release.main([
             "--component", meta["component"],
             "--version", meta["version"],
@@ -65,28 +99,61 @@ def _git(*args, check=True):
     return subprocess.run(["git", *args], cwd=REPO_ROOT, capture_output=True, text=True, check=check)
 
 
+def _check_revision_history():
+    """Run the pre-push monotonicity gate against the freshly fetched tip."""
+    gate = REPO_ROOT / "scripts" / "ci" / "check_revision_history.py"
+    proc = subprocess.run([sys.executable, str(gate), "--base", "FETCH_HEAD", "--head", "HEAD"],
+                          cwd=REPO_ROOT, capture_output=True, text=True)
+    if proc.returncode != 0:
+        sys.stderr.write(proc.stderr)
+    return proc.returncode == 0
+
+
 def commit_and_push(metas_dir, attempts=5):
-    """Write pending/ records, commit, and push with a full rebase-retry: on
-    rejection reset to the freshly fetched tip and RE-WRITE the records against
-    it, so a concurrently committed scrape/publish never clobbers or is
-    clobbered. write_pending is INSIDE the loop because `reset --hard` discards
-    the just-committed records — re-deriving them from the metas each attempt is
-    what makes the retry correct (idempotent: apply_pending later discards any
-    record whose version already landed)."""
+    """Write pending/ records, commit, gate, and push with a full rebase-retry.
+
+    EVERY ATTEMPT NOW OPENS WITH fetch + reset --hard, which is a reshape: the
+    loop used to fetch and reset only AFTER a rejection, so on the first attempt
+    FETCH_HEAD was absent or left over from something unrelated and was not a
+    comparison base at all. That shape is now identical to
+    scrape-sign-push.sh's — fetch, reset, generate, commit, gate, push — which
+    is what lets ONE rule cover all three automated writers.
+
+    Fetching without resetting would be WORSE than not fetching: HEAD would sit
+    on the checkout-time tip while FETCH_HEAD moved to the current one, and the
+    moment anyone pushed in between the gate would compare two commits with no
+    ancestry — hard-failing an ordinary race the push-rejection retry already
+    handles.
+
+    The reset is safe on the first attempt for the reason this loop always
+    relied on: write_pending re-derives every record from --metas each attempt,
+    and that directory lives outside the repo, so reset --hard discards nothing
+    it needs. (Idempotent downstream too: apply_pending discards any record
+    whose version already landed.)
+
+    This writer touches no manifest, so the gate passes trivially here — RUN IT
+    ANYWAY. The property worth having is "every push by the automation actor was
+    gated", and that is only true if no writer is exempt. Bypass attaches to the
+    ACTOR, not the workflow: one PAT pushes scrape, finalize and the release, so
+    a bypass granted for one is a bypass for all three.
+    """
     for attempt in range(1, attempts + 1):
+        _git("fetch", "origin", "main")
+        _git("reset", "--hard", "FETCH_HEAD")
         write_pending(metas_dir)
         _git("add", "pending")
         if _git("diff", "--cached", "--quiet", check=False).returncode == 0:
             sys.stderr.write("finalize: pending records already applied — nothing to commit\n")
             return True
         _git("commit", "-m", "chore: queue built-runtime pending records")
+        if not _check_revision_history():
+            sys.stderr.write("finalize: revision history gate failed — not pushing\n")
+            return False
         push = _git("push", "origin", "HEAD:main", check=False)
         if push.returncode == 0:
             sys.stderr.write(f"finalize: pushed on attempt {attempt}\n")
             return True
         sys.stderr.write(f"finalize: push rejected (attempt {attempt}); rebasing\n{push.stderr.strip()}\n")
-        _git("fetch", "origin", "main")
-        _git("reset", "--hard", "FETCH_HEAD")
     return False
 
 

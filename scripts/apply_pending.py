@@ -12,13 +12,12 @@ Standard library only.
 
 import argparse
 import datetime
-import json
 import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from devxdk_manifest import config, merge, pending, schema  # noqa: E402
+from devxdk_manifest import config, merge, pending, schema, strictjson  # noqa: E402
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 STATE_FILE = REPO_ROOT / "state" / "scrape-versions.json"
@@ -29,7 +28,7 @@ PENDING_DIR = REPO_ROOT / "pending"
 def load_pending(pending_dir):
     out = []
     for path in sorted(pending_dir.glob("*.json")):
-        rec = pending.PendingRecord.from_dict(json.loads(path.read_text(encoding="utf-8")))
+        rec = pending.PendingRecord.from_dict(strictjson.load(path))
         out.append((rec, path))
     return out
 
@@ -49,11 +48,15 @@ def apply(repo_root=REPO_ROOT, today=None):
         cfg, ledger, scrape_state, [r for r, _p in records], today
     )
 
+    # PREFLIGHT: resolve every target before writing any of them (schema.resolve).
+    resolved = []
     for comp in sorted(affected):
         mpath = repo_root / f"{comp}.json"
         existing = schema.load(mpath)
         manifest = merge.recompose(comp, existing["display_name"], existing["kind"], cfg, scrape_state, ledger)
-        schema.write(mpath, manifest)
+        resolved.append((mpath, schema.resolve(mpath, manifest)))
+    for mpath, doc in resolved:
+        schema.write_resolved(mpath, doc)
 
     ledger.save(repo_root / "state" / "asset-revisions.json")
     # Every processed record — applied or discarded — is consumed in the same run.
@@ -73,7 +76,8 @@ def main(argv=None):
     args = ap.parse_args(argv)
     try:
         result = apply(REPO_ROOT, args.today)
-    except (pending.PendingError, merge.GuardError) as e:
+    except (pending.PendingError, merge.GuardError, schema.SchemaError,
+            strictjson.StrictJSONError) as e:
         sys.stderr.write(f"apply_pending: FAILED (nothing written): {e}\n")
         return 1
     for c, v, p in result["applied"]:

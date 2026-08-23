@@ -11,11 +11,45 @@ written with LF endings — identical to gen-manifest.py's write_manifest.
 from __future__ import annotations
 
 import json
+import pathlib
+
+from .strictjson import loads as strict_loads
+
+# The largest value Go's int64 holds. Python's ints are arbitrary-precision and
+# Go's are not, so the bound is required, not stylistic: without it a manifest
+# carrying 2**63 validates here, gets SIGNED, and then fails json.Unmarshal on
+# every client.
+INT64_MAX = 9223372036854775807
 
 # Canonical per-release and per-asset key order (mirrors the committed manifests
 # and internal/manifest's struct tags).
 RELEASE_FIELDS = ("version", "channel", "released_at", "platforms")
 ASSET_FIELDS = ("url", "sha256", "size_bytes")
+
+# Where "revision" sits in a component manifest. A FIXED slot, not an append:
+# dump_str is insertion-ordered and the committed byte layout is asserted by
+# tests, so the bytes would otherwise depend on dict construction order.
+REVISION_AFTER = "kind"
+
+
+class SchemaError(ValueError):
+    """A document that is well-formed JSON but not a manifest we may write."""
+
+
+def require_positive_int64(value, label):
+    """Return None when `value` is a JSON integer Go unmarshals into an int64
+    and the domain accepts (>= 1), else a human-readable reason.
+
+    Returns rather than raises because validate_manifests collects reasons into
+    a list while schema.write must fail closed — one definition either way. The
+    bool exclusion is required, not stylistic: isinstance(True, int) is True in
+    Python, so `true` would otherwise read as revision 1.
+    """
+    if isinstance(value, bool) or not isinstance(value, int):
+        return f"{label} must be an integer, got {value!r}"
+    if not 1 <= value <= INT64_MAX:
+        return f"{label} must be in [1, {INT64_MAX}], got {value}"
+    return None
 
 # Canonical platform ordering inside a release's "platforms" map. gen-manifest.py
 # emitted platforms in this order (NODE_PLATFORMS / GO_PLATFORMS), so recomposing
@@ -72,19 +106,109 @@ def component(name: str, display_name: str, kind: str, releases: list) -> dict:
 
 def dump_str(data: dict) -> str:
     """Serialize a manifest to the exact committed byte layout (LF, indent=2,
-    trailing newline, insertion-ordered keys)."""
-    return json.dumps(data, indent=2) + "\n"
+    trailing newline, insertion-ordered keys).
+
+    allow_nan=False so the writer moves with the reader: the default emits
+    NaN/Infinity, which strictjson refuses, and the failure would surface one
+    run away from its cause.
+    """
+    return json.dumps(data, indent=2, allow_nan=False) + "\n"
+
+
+def with_revision(data: dict, revision: int) -> dict:
+    """Rebuild `data` with `revision` in its fixed slot, just after "kind"."""
+    out = {}
+    for key, value in data.items():
+        if key == "revision":
+            continue
+        out[key] = value
+        if key == REVISION_AFTER:
+            out["revision"] = revision
+    if "revision" not in out:
+        out["revision"] = revision
+    return out
+
+
+def next_revision(path, data: dict) -> int:
+    """The revision `data` must carry when written to `path`.
+
+    THE COMPARISON IS BYTE IDENTITY AGAINST THE PRIOR FILE'S ACTUAL BYTES, and
+    that is the single most defect-prone decision in this design. The client's
+    mark holds a SHA-256 over the raw fetched body, so the invariant it depends
+    on is: the published bytes change <=> the revision increments. A semantic
+    comparison breaks that in one direction — dump_str's output is a function of
+    dict CONSTRUCTION ORDER (reorder PLATFORM_ORDER or RELEASE_FIELDS and you
+    get identical semantics with different bytes), so it would preserve the
+    revision while the bytes moved, and every client holding a mark would see
+    equal revision + different hash and refuse that component permanently.
+
+    read_bytes(), never a text read: schema.load's universal-newlines mode
+    translates CRLF to LF, so a CRLF prior would compare EQUAL to an LF
+    candidate and produce that same permanent lockout through a second door.
+
+    Compared against the prior's RAW bytes rather than a re-dump of the parsed
+    prior, for a third door: a hand-edited or differently-formatted prior would
+    be silently normalized by a re-dump, so the comparison would say "unchanged"
+    while the published bytes changed. A non-canonical prior must read as
+    CHANGED and take an increment.
+    """
+    path = pathlib.Path(path)
+    try:
+        prior_bytes = path.read_bytes()
+    except FileNotFoundError:
+        return 1
+    prior = strict_loads(prior_bytes)
+    if not isinstance(prior, dict):
+        raise SchemaError(f"{path.name}: prior is not a JSON object")
+    reason = require_positive_int64(prior.get("revision"), f"{path.name}: prior revision")
+    if reason is not None:
+        # NEVER reset to 1 on a malformed prior: that is a silent rollback for
+        # every client already holding a mark for this component.
+        raise SchemaError(reason)
+    prior_revision = prior["revision"]
+    candidate = dump_str(with_revision(data, prior_revision)).encode("utf-8")
+    if candidate == prior_bytes:
+        return prior_revision
+    return prior_revision + 1
+
+
+def resolve(path, data: dict) -> dict:
+    """The exact document write() would produce, without writing anything.
+
+    Multi-manifest callers PREFLIGHT with this. next_revision now raises on a
+    malformed prior, and those callers save their state and ledger only AFTER
+    their loop — so a raise on the SECOND component would leave the first
+    manifest already rewritten with neither ledger saved, breaking the
+    "FAILED (nothing written)" contract they advertise in their own handlers.
+    """
+    return with_revision(data, next_revision(path, data))
+
+
+def write_resolved(path, resolved: dict) -> None:
+    """Write a document already resolved by resolve(), byte-exactly."""
+    with open(path, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(dump_str(resolved))
 
 
 def write(path, data: dict) -> None:
-    """Write a manifest to disk with LF newlines and no BOM."""
-    with open(path, "w", encoding="utf-8", newline="\n") as fh:
-        fh.write(dump_str(data))
+    """Resolve and write in one step — the single-manifest path.
+
+    Revision assignment lives at this boundary and not in component(): that
+    constructor takes no path and no prior manifest, so it structurally cannot
+    preserve or increment a counter.
+    """
+    write_resolved(path, resolve(path, data))
+
+
+def loads(raw) -> dict:
+    """Strict-parse manifest bytes (or text). See devxdk_manifest.strictjson."""
+    return strict_loads(raw)
 
 
 def load(path) -> dict:
-    with open(path, encoding="utf-8") as fh:
-        return json.load(fh)
+    """Strict-parse a manifest file. read_bytes so there is exactly one read and
+    no universal-newlines translation."""
+    return strict_loads(pathlib.Path(path).read_bytes())
 
 
 def is_component_manifest(data) -> bool:

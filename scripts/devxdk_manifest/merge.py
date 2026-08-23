@@ -32,6 +32,7 @@ import json
 from dataclasses import dataclass, field, replace
 
 from . import schema, versions
+from .strictjson import StrictJSONError, load as strict_load
 
 STATE_SCHEMA = 1
 TUPLE_FIELDS = ("version", "url", "sha256", "size_bytes", "channel", "released_at")
@@ -39,6 +40,21 @@ TUPLE_FIELDS = ("version", "url", "sha256", "size_bytes", "channel", "released_a
 
 class GuardError(ValueError):
     """A scrape transition violated the monotonic guard (fail closed)."""
+
+
+def _strict(path, label):
+    """Strict-parse an ordering state file, reported as a GuardError.
+
+    These two files hold the monotonic guard's OWN records, so a silently
+    dropped duplicate would discard ordering state BEFORE the parity and
+    rollback checks read it. Both loaders already fail closed with GuardError on
+    a bad schema field, so the strict parse slots in ahead of that pattern
+    rather than inventing a second refusal type for the same file.
+    """
+    try:
+        return strict_load(path)
+    except StrictJSONError as e:
+        raise GuardError(f"{label} is not strict JSON: {e}") from e
 
 
 @dataclass(frozen=True)
@@ -153,9 +169,11 @@ class ScrapeState:
 
     @staticmethod
     def load(path) -> "ScrapeState":
-        with open(path, encoding="utf-8") as fh:
-            raw = json.load(fh)
-        return ScrapeState.from_dict(raw)
+        # Strict: this file holds the monotonic guard's OWN records, so a
+        # silently-dropped duplicate would discard ordering state before the
+        # parity and rollback checks ever read it. Surfaced as GuardError, the
+        # type every caller of this loader already fails closed on.
+        return ScrapeState.from_dict(_strict(path, "scrape-versions"))
 
     @staticmethod
     def from_dict(raw: dict) -> "ScrapeState":
@@ -259,8 +277,7 @@ class LedgerState:
 
     @staticmethod
     def load(path) -> "LedgerState":
-        with open(path, encoding="utf-8") as fh:
-            raw = json.load(fh)
+        raw = _strict(path, "asset-revisions")  # ordering state — see ScrapeState.load
         if raw.get("schema") != LEDGER_SCHEMA:
             raise GuardError(f"asset-revisions schema = {raw.get('schema')!r}, want {LEDGER_SCHEMA}")
         st = LedgerState(schema=LEDGER_SCHEMA)

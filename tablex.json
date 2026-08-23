@@ -2,5 +2,6 @@
   "name": "tablex",
   "display_name": "Tablex",
   "kind": "service",
+  "revision": 1,
   "releases": []
 }
