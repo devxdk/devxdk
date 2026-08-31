@@ -1,0 +1,14 @@
+{
+  "component": "php",
+  "epoch": 1,
+  "line": "8.5",
+  "ordering_kind": "built",
+  "platform": "windows/amd64",
+  "provider": "devxdk-php-windows",
+  "revision": 1,
+  "sha256": "13c1cdbc2ed526d4e50633baec67a2754a5afa6fe3ddf0f8229b18a20dda9fc0",
+  "size_bytes": 37318641,
+  "source_version": "8.5.10",
+  "url": "https://github.com/devxdk/devxdk/releases/download/php-8.5.10/php-8.5.10-windows-amd64.zip",
+  "version": "8.5.10"
+}
