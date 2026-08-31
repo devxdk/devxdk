@@ -129,6 +129,70 @@
           "url": "https://github.com/devxdk/devxdk/releases/download/php-8.4.24/php-8.4.24-windows-amd64.zip"
         }
       },
+      "8.4.25": {
+        "darwin/arm64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "8.4",
+          "provider": "devxdk-php-spc",
+          "released_at": "2026-08-31",
+          "revoked": false,
+          "sha256": "99f82a13109d47d38b9995177cfa4495e569e35edca25b940677d85bb6c5c475",
+          "size_bytes": 49147147,
+          "source_version": "8.4.25",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.4.25/php-8.4.25-darwin-arm64.tar.gz"
+        },
+        "windows/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "8.4",
+          "provider": "devxdk-php-windows",
+          "released_at": "2026-08-31",
+          "revoked": false,
+          "sha256": "82330bdbc02e49fc5cdc99e6d3612f8140a585b443ba11255e4c41cae032d14f",
+          "size_bytes": 36346196,
+          "source_version": "8.4.25",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.4.25/php-8.4.25-windows-amd64.zip"
+        }
+      },
+      "8.5.10": {
+        "darwin/arm64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "8.5",
+          "provider": "devxdk-php-spc",
+          "released_at": "2026-08-31",
+          "revoked": false,
+          "sha256": "4c9570a2a0d36668e07a05140c691d2a73a4dca758429414e85c10e1817a488b",
+          "size_bytes": 49963033,
+          "source_version": "8.5.10",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.5.10/php-8.5.10-darwin-arm64.tar.gz"
+        },
+        "windows/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "8.5",
+          "provider": "devxdk-php-windows",
+          "released_at": "2026-08-31",
+          "revoked": false,
+          "sha256": "13c1cdbc2ed526d4e50633baec67a2754a5afa6fe3ddf0f8229b18a20dda9fc0",
+          "size_bytes": 37318641,
+          "source_version": "8.5.10",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.5.10/php-8.5.10-windows-amd64.zip"
+        }
+      },
       "8.5.8": {
         "darwin/amd64": {
           "channel": "stable",

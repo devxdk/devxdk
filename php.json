@@ -2,8 +2,25 @@
   "name": "php",
   "display_name": "PHP",
   "kind": "runtime",
-  "revision": 1,
+  "revision": 2,
   "releases": [
+    {
+      "version": "8.5.10",
+      "channel": "stable",
+      "released_at": "2026-08-31",
+      "platforms": {
+        "windows/amd64": {
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.5.10/php-8.5.10-windows-amd64.zip",
+          "sha256": "13c1cdbc2ed526d4e50633baec67a2754a5afa6fe3ddf0f8229b18a20dda9fc0",
+          "size_bytes": 37318641
+        },
+        "darwin/arm64": {
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.5.10/php-8.5.10-darwin-arm64.tar.gz",
+          "sha256": "4c9570a2a0d36668e07a05140c691d2a73a4dca758429414e85c10e1817a488b",
+          "size_bytes": 49963033
+        }
+      }
+    },
     {
       "version": "8.5.9",
       "channel": "stable",
@@ -40,6 +57,23 @@
           "url": "https://github.com/devxdk/devxdk/releases/download/php-8.5.8/php-8.5.8-darwin-arm64.tar.gz",
           "sha256": "918132ce66b620261bee7d17403103fe696ed2cd292486d2bc6fe855ba615bfc",
           "size_bytes": 49948216
+        }
+      }
+    },
+    {
+      "version": "8.4.25",
+      "channel": "stable",
+      "released_at": "2026-08-31",
+      "platforms": {
+        "windows/amd64": {
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.4.25/php-8.4.25-windows-amd64.zip",
+          "sha256": "82330bdbc02e49fc5cdc99e6d3612f8140a585b443ba11255e4c41cae032d14f",
+          "size_bytes": 36346196
+        },
+        "darwin/arm64": {
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.4.25/php-8.4.25-darwin-arm64.tar.gz",
+          "sha256": "99f82a13109d47d38b9995177cfa4495e569e35edca25b940677d85bb6c5c475",
+          "size_bytes": 49147147
         }
       }
     },
