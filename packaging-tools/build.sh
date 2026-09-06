@@ -24,6 +24,13 @@ for name,(url,digest) in lock['archives'].items():
     dest='/sources/'+name
     pathlib.Path(dest).mkdir()
     subprocess.run(['tar','xf',str(archive),'-C',dest,'--strip-components=1'],check=True)
+generator=pathlib.Path('/sources/linuxdeploy/src/core/generate-excludelist.sh')
+source=generator.read_text()
+original='wget --quiet "$url" -O -'
+assert source.count(original)==1
+source=source.replace(original,'cat /sources/excludelist/excludelist')
+source=source.replace('downloading excludelist from GitHub','reading the frozen excludelist')
+generator.write_text(source)
 PY
 
 # Keep modifications and generated source beside the original inputs.
@@ -57,18 +64,18 @@ make -j"$(nproc)" runtime CC='clang -L/usr/local/lib/mimalloc-2.0 -Wl,-Map,/work
 cp runtime /out/runtime-x86_64
 
 
-cmake -S /sources/linuxdeploy -B /work/linuxdeploy -G Ninja -DSTATIC_BUILD=ON \
-  -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_EXE_LINKER_FLAGS=-Wl,-Map,/work/linuxdeploy.map
-cmake --build /work/linuxdeploy --target linuxdeploy -j"$(nproc)"
-cmake -S /sources/plugin -B /work/plugin -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
-cmake --build /work/plugin -j"$(nproc)"
-cmake -S /sources/appimagetool -B /work/appimagetool -DBUILD_STATIC=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
-cmake --build /work/appimagetool -j"$(nproc)"
-
 cd /sources/patchelf
 ./bootstrap.sh
 ./configure --prefix=/usr/local LDFLAGS='-static -static-libgcc -static-libstdc++ -Wl,-Map,/work/patchelf.map'
 make -j"$(nproc)" install
+
+cmake -S /sources/linuxdeploy -B /work/linuxdeploy -G Ninja -DSTATIC_BUILD=ON -DBUILD_TESTING=OFF \
+  -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_EXE_LINKER_FLAGS=-Wl,-Map,/work/linuxdeploy.map
+cmake --build /work/linuxdeploy --target linuxdeploy -j"$(nproc)"
+cmake -S /sources/plugin -B /work/plugin -G Ninja -DBUILD_TESTING=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+cmake --build /work/plugin -j"$(nproc)"
+cmake -S /sources/appimagetool -B /work/appimagetool -DBUILD_STATIC=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+cmake --build /work/appimagetool -j"$(nproc)"
 
 mkdir /work/binutils
 cd /work/binutils

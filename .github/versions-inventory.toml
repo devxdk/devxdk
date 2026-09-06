@@ -536,7 +536,7 @@ tag_prefix = "win22/"
 [[rows]]
 id = "packaging-source-inputs"
 why = "The atomic source/image/snapshot lock for reproducible packaging-tool rebuilds; checked before building and changed only by review"
-value = "1c725427bf84fcc75cec5c56094d636011b7fa0a4e565490d593703236a5829f"
+value = "7656e37fb7f4f9b62d28ab6c595170d3c27df9ba09377c77bca47004b8b46b56"
 [[rows.checks]]
 kind = "scan"
 select_kind = "digest-file"
