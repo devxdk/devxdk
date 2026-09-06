@@ -27,20 +27,6 @@ for name,(url,digest) in lock['archives'].items():
 PY
 
 # Keep modifications and generated source beside the original inputs.
-cd /sources/patchelf
-./bootstrap.sh
-./configure --prefix=/usr/local LDFLAGS='-static -static-libgcc -static-libstdc++ -Wl,-Map,/work/patchelf.map'
-make -j"$(nproc)" install
-
-mkdir /work/binutils
-cd /work/binutils
-/sources/binutils/configure --prefix=/opt/binutils --disable-nls --enable-static-link \
-  --disable-shared-plugins --disable-dynamicplugin --disable-tls --disable-pie
-make -j"$(nproc)"
-make clean
-make -j"$(nproc)" LDFLAGS='-all-static -Wl,-Map,/work/binutils.map'
-make install
-
 # Build the exact patched FUSE and squashfuse sources used by the runtime.
 cd /sources/libfuse
 patch -p1 < /sources/runtime/patches/libfuse/mount.c.diff
@@ -65,11 +51,11 @@ cmake --install /work/mimalloc --prefix /usr/local
 
 cd /sources/runtime/src/runtime
 git -C /sources/runtime rev-parse --short HEAD > version
-runtime_libs="-Wl,--start-group $(pkg-config --static --libs squashfuse squashfuse_ll fuse3) -lmimalloc -Wl,--end-group"
+# squashfuse 0.5.2 omits its compressors from its .pc metadata.
+runtime_libs="-Wl,--start-group $(pkg-config --static --libs squashfuse squashfuse_ll fuse3 libzstd zlib liblzma) -lmimalloc -Wl,--end-group"
 make -j"$(nproc)" runtime CC='clang -L/usr/local/lib/mimalloc-2.0 -Wl,-Map,/work/runtime.map' LIBS="$runtime_libs"
 cp runtime /out/runtime-x86_64
-/opt/binutils/bin/strip --strip-debug --strip-unneeded /out/runtime-x86_64
-printf 'AI\002' | dd of=/out/runtime-x86_64 bs=1 count=3 seek=8 conv=notrunc
+
 
 cmake -S /sources/linuxdeploy -B /work/linuxdeploy -G Ninja -DSTATIC_BUILD=ON \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_EXE_LINKER_FLAGS=-Wl,-Map,/work/linuxdeploy.map
@@ -78,6 +64,23 @@ cmake -S /sources/plugin -B /work/plugin -G Ninja -DCMAKE_BUILD_TYPE=Release -DC
 cmake --build /work/plugin -j"$(nproc)"
 cmake -S /sources/appimagetool -B /work/appimagetool -DBUILD_STATIC=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
 cmake --build /work/appimagetool -j"$(nproc)"
+
+cd /sources/patchelf
+./bootstrap.sh
+./configure --prefix=/usr/local LDFLAGS='-static -static-libgcc -static-libstdc++ -Wl,-Map,/work/patchelf.map'
+make -j"$(nproc)" install
+
+mkdir /work/binutils
+cd /work/binutils
+/sources/binutils/configure --prefix=/opt/binutils --disable-nls --enable-static-link \
+  --disable-shared-plugins --disable-dynamicplugin --disable-tls --disable-pie
+make -j"$(nproc)"
+make clean
+make -j"$(nproc)" LDFLAGS='-all-static -Wl,-Map,/work/binutils.map'
+make install
+
+/opt/binutils/bin/strip --strip-debug --strip-unneeded /out/runtime-x86_64
+printf 'AI\002' | dd of=/out/runtime-x86_64 bs=1 count=3 seek=8 conv=notrunc
 
 appdir=/work/AppDir
 prefix="$appdir/plugins/linuxdeploy-plugin-appimage/appimagetool-prefix"
@@ -95,6 +98,7 @@ exec "$this_dir/../../appimagetool-prefix/AppRun" "$@"
 SH
 chmod +x "$appdir/plugins/linuxdeploy-plugin-appimage/usr/bin/appimagetool"
 ln -s ../../plugins/linuxdeploy-plugin-appimage/usr/bin/linuxdeploy-plugin-appimage "$appdir/usr/bin/linuxdeploy-plugin-appimage"
+export PATH="$appdir/usr/bin:$PATH"
 export LDAI_RUNTIME_FILE=/out/runtime-x86_64
 export OUTPUT=/out/linuxdeploy-x86_64.AppImage
 /work/linuxdeploy/bin/linuxdeploy --appdir "$appdir" \
