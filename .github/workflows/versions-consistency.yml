@@ -43,7 +43,8 @@ jobs:
         run: |
           set -euo pipefail
           for component in php nginx; do
-            export GNUPGHOME="$(mktemp -d)"
+            GNUPGHOME="$(mktemp -d)"
+            export GNUPGHOME
             fingerprints=$(python3 -c 'import sys,tomllib; print(" ".join(tomllib.load(open("config/tracked-versions.toml","rb"))["pins"][sys.argv[1]+"_keys"]["fingerprints"]))' "$component")
             bash scripts/ci/verify_keyring.sh "scripts/devxdk_manifest/keys/$component" "$fingerprints"
             gpgconf --kill all
