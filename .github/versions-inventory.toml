@@ -83,7 +83,7 @@ value = "3d3c42e5aac5ba805825da76410c181273ba90b1"
 kind = "scan"
 select_kind = "uses"
 select_identity = "actions/checkout"
-count = 13
+count = 14
 [rows.currency]
 api = "github-release"
 source = "actions/checkout"
@@ -100,7 +100,7 @@ value = "5fda3b95a4ea91299a34e894583c3862153e4b97"
 kind = "scan"
 select_kind = "uses"
 select_identity = "actions/setup-python"
-count = 11
+count = 12
 [rows.currency]
 api = "github-release"
 source = "actions/setup-python"
@@ -134,7 +134,7 @@ value = "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
 kind = "scan"
 select_kind = "uses"
 select_identity = "actions/upload-artifact"
-count = 3
+count = 4
 [rows.currency]
 api = "github-release"
 source = "actions/upload-artifact"
@@ -200,7 +200,7 @@ value = "3.14"
 kind = "scan"
 select_kind = "python-version"
 select_values = ["3.14"]
-count = 4
+count = 5
 [rows.currency]
 api = "python-versions"
 policy = "series-track"
@@ -507,6 +507,11 @@ kind = "scan"
 select_kind = "runner"
 select_values = ["ubuntu-22.04"]
 count = 6
+[[rows.checks]]
+kind = "scan"
+select_kind = "runs-on"
+select_values = ["ubuntu-22.04"]
+count = 1
 [rows.currency]
 api = "runner-image"
 source = "actions/runner-images"
@@ -527,3 +532,16 @@ api = "runner-image"
 source = "actions/runner-images"
 policy = "report-only"
 tag_prefix = "win22/"
+
+[[rows]]
+id = "packaging-source-inputs"
+why = "The atomic source/image/snapshot lock for reproducible packaging-tool rebuilds; checked before building and changed only by review"
+value = "1c725427bf84fcc75cec5c56094d636011b7fa0a4e565490d593703236a5829f"
+[[rows.checks]]
+kind = "scan"
+select_kind = "digest-file"
+select_identity = "keys/packaging-inputs.sha256"
+count = 1
+[rows.currency]
+api = "none"
+policy = "never"

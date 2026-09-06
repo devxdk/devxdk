@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "image": "ubuntu@sha256:79676deb51ebb02885b0b9d33788e78a37cf1045ad79d1bb04c6a222c3556b3d",
+  "snapshot": "20260901T000000Z",
+  "git": {
+    "linuxdeploy": ["https://github.com/linuxdeploy/linuxdeploy.git", "07333c6e942c7d71782b66be924c5d867f9dfdfc"],
+    "plugin": ["https://github.com/linuxdeploy/linuxdeploy-plugin-appimage.git", "536b068787179ea901964bd7dabc7bf61e4941c3"],
+    "appimagetool": ["https://github.com/AppImage/appimagetool.git", "8c8c91f762b412a19f4e8d2c4b35afb98f2d7c81"],
+    "runtime": ["https://github.com/AppImage/type2-runtime.git", "75849dce7cc37e4319b633df1f116ca895c71a12"],
+    "patchelf": ["https://github.com/NixOS/patchelf.git", "7688b17c18d16f67fa8d5a82a2404c2e3a18648d"]
+  },
+  "archives": {
+    "binutils": ["https://ftp.gnu.org/gnu/binutils/binutils-2.47.tar.xz", "154ab23b60070e8f27013c22977f1129425d67d1e8acd6e13010e617811e4cff"],
+    "libfuse": ["https://github.com/libfuse/libfuse/releases/download/fuse-3.15.0/fuse-3.15.0.tar.xz", "70589cfd5e1cff7ccd6ac91c86c01be340b227285c5e200baa284e401eea2ca0"],
+    "squashfuse": ["https://github.com/vasi/squashfuse/archive/0.5.2.tar.gz", "db0238c5981dabbd80ee09ae15387f390091668ca060a7bc38047912491443d3"]
+  }
+}

@@ -1,0 +1,31 @@
+name: Build packaging tools
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+      - name: Verify and build the frozen tool inputs
+        run: |
+          set -euo pipefail
+          sha256sum -c keys/packaging-inputs.sha256
+          cp /etc/ssl/certs/ca-certificates.crt packaging-tools/
+          image=$(python3 -c 'import json;print(json.load(open("packaging-tools/inputs.json"))["image"])')
+          snapshot=$(python3 -c 'import json;print(json.load(open("packaging-tools/inputs.json"))["snapshot"])')
+          docker build --build-arg "BUILD_IMAGE=$image" --build-arg "SNAPSHOT=$snapshot" -t devxdk-packaging-tools packaging-tools
+          mkdir -p "$RUNNER_TEMP/packaging-output"
+          docker run --rm -v "$RUNNER_TEMP/packaging-output:/out" devxdk-packaging-tools
+          python3 scripts/handoff.py write "$RUNNER_TEMP/packaging-output"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: packaging-tools
+          path: ${{ runner.temp }}/packaging-output/
+          if-no-files-found: error
+          compression-level: 0
