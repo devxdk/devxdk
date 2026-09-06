@@ -59,13 +59,13 @@ cd /sources/distro
 mimalloc_version=$(dpkg-query -W -f='${source:Version}' libmimalloc-dev)
 apt-get source "mimalloc=$mimalloc_version"
 mimalloc_source=$(find /sources/distro -maxdepth 1 -type d -name 'mimalloc-*' | head -1)
-cmake -S "$mimalloc_source" -B /work/mimalloc -DMI_BUILD_SHARED=OFF -DMI_BUILD_TESTS=OFF
+cmake -S "$mimalloc_source" -B /work/mimalloc -DMI_BUILD_SHARED=OFF -DMI_BUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 cmake --build /work/mimalloc -j"$(nproc)"
 cmake --install /work/mimalloc --prefix /usr/local
 
 cd /sources/runtime/src/runtime
 git -C /sources/runtime rev-parse --short HEAD > version
-make -j"$(nproc)" runtime CC='clang -Wl,-Map,/work/runtime.map'
+make -j"$(nproc)" runtime CC='clang -L/usr/local/lib/mimalloc-2.0 -Wl,-Map,/work/runtime.map'
 cp runtime /out/runtime-x86_64
 /opt/binutils/bin/strip --strip-debug --strip-unneeded /out/runtime-x86_64
 printf 'AI\002' | dd of=/out/runtime-x86_64 bs=1 count=3 seek=8 conv=notrunc
@@ -102,6 +102,10 @@ export OUTPUT=/out/linuxdeploy-x86_64.AppImage
   -e "$prefix/usr/bin/mksquashfs" -e "$prefix/usr/bin/zsyncmake" \
   -i /sources/linuxdeploy/resources/linuxdeploy.png -d /sources/linuxdeploy/resources/linuxdeploy.desktop \
   --output appimage
+
+# Exercise the completed bundle and its embedded runtime without requiring FUSE.
+APPIMAGE_EXTRACT_AND_RUN=1 /out/linuxdeploy-x86_64.AppImage --version
+APPIMAGE_EXTRACT_AND_RUN=1 /out/linuxdeploy-x86_64.AppImage --list-plugins
 
 # Resolve binary/source package identities, then retain exact distro sources.
 # Include development packages as well: their static archives/header code may
