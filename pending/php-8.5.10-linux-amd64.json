@@ -1,0 +1,14 @@
+{
+  "component": "php",
+  "epoch": 1,
+  "line": "8.5",
+  "ordering_kind": "built",
+  "platform": "linux/amd64",
+  "provider": "devxdk-php-spc",
+  "revision": 1,
+  "sha256": "576bb0e4bfe4227ff126a9a379017d576524c34c39dd0476aa89ef780380b658",
+  "size_bytes": 48471250,
+  "source_version": "8.5.10",
+  "url": "https://github.com/devxdk/devxdk/releases/download/php-8.5.10/php-8.5.10-linux-amd64.tar.gz",
+  "version": "8.5.10"
+}
