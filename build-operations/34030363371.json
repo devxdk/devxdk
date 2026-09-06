@@ -1,0 +1,123 @@
+{
+  "filters": {
+    "components": "nginx",
+    "platforms": "",
+    "version": ""
+  },
+  "force": true,
+  "id": "34030363371",
+  "legs": {
+    "nginx-darwin-amd64": [
+      {
+        "component": "nginx",
+        "epoch": 1,
+        "line": "1.30",
+        "mode": "build",
+        "ordering_kind": "built",
+        "platform": "darwin/amd64",
+        "provider": "devxdk-nginx-unix",
+        "recipe": "nginx-unix",
+        "revision": 3,
+        "runner": "macos-15-intel",
+        "source_version": "1.30.4",
+        "version": "1.30.4"
+      }
+    ],
+    "nginx-darwin-arm64": [
+      {
+        "component": "nginx",
+        "epoch": 1,
+        "line": "1.30",
+        "mode": "build",
+        "ordering_kind": "built",
+        "platform": "darwin/arm64",
+        "provider": "devxdk-nginx-unix",
+        "recipe": "nginx-unix",
+        "revision": 3,
+        "runner": "macos-15",
+        "source_version": "1.30.4",
+        "version": "1.30.4"
+      }
+    ],
+    "nginx-linux-amd64": [
+      {
+        "component": "nginx",
+        "epoch": 1,
+        "line": "1.30",
+        "mode": "build",
+        "ordering_kind": "built",
+        "platform": "linux/amd64",
+        "provider": "devxdk-nginx-unix",
+        "recipe": "nginx-unix",
+        "revision": 3,
+        "runner": "ubuntu-22.04",
+        "source_version": "1.30.4",
+        "version": "1.30.4"
+      }
+    ]
+  },
+  "schema": 1,
+  "source_commit": "0138a2f17999b3fa350fadd45ecd18759229485b",
+  "targets": [
+    {
+      "component": "nginx",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "1.30",
+      "mode": "build",
+      "ordering_kind": "built",
+      "platform": "darwin/amd64",
+      "provider": "devxdk-nginx-unix",
+      "recipe": "nginx-unix",
+      "revision": 3,
+      "runner": "macos-15-intel",
+      "source_version": "1.30.4",
+      "version": "1.30.4"
+    },
+    {
+      "component": "nginx",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "1.30",
+      "mode": "build",
+      "ordering_kind": "built",
+      "platform": "darwin/arm64",
+      "provider": "devxdk-nginx-unix",
+      "recipe": "nginx-unix",
+      "revision": 3,
+      "runner": "macos-15",
+      "source_version": "1.30.4",
+      "version": "1.30.4"
+    },
+    {
+      "component": "nginx",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "1.30",
+      "mode": "build",
+      "ordering_kind": "built",
+      "platform": "linux/amd64",
+      "provider": "devxdk-nginx-unix",
+      "recipe": "nginx-unix",
+      "revision": 3,
+      "runner": "ubuntu-22.04",
+      "source_version": "1.30.4",
+      "version": "1.30.4"
+    }
+  ]
+}
