@@ -65,7 +65,8 @@ cmake --install /work/mimalloc --prefix /usr/local
 
 cd /sources/runtime/src/runtime
 git -C /sources/runtime rev-parse --short HEAD > version
-make -j"$(nproc)" runtime CC='clang -L/usr/local/lib/mimalloc-2.0 -Wl,-Map,/work/runtime.map'
+runtime_libs="-Wl,--start-group $(pkg-config --static --libs squashfuse squashfuse_ll fuse3) -lmimalloc -Wl,--end-group"
+make -j"$(nproc)" runtime CC='clang -L/usr/local/lib/mimalloc-2.0 -Wl,-Map,/work/runtime.map' LIBS="$runtime_libs"
 cp runtime /out/runtime-x86_64
 /opt/binutils/bin/strip --strip-debug --strip-unneeded /out/runtime-x86_64
 printf 'AI\002' | dd of=/out/runtime-x86_64 bs=1 count=3 seek=8 conv=notrunc
