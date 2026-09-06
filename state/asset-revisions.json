@@ -130,6 +130,21 @@
         }
       },
       "8.4.25": {
+        "darwin/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "8.4",
+          "provider": "devxdk-php-spc",
+          "released_at": "2026-08-31",
+          "revoked": false,
+          "sha256": "4a3148ad646cae8591755925686b8df3141ab45ef01cb2d1f8505603d7c939f1",
+          "size_bytes": 48795872,
+          "source_version": "8.4.25",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.4.25/php-8.4.25-darwin-amd64.tar.gz"
+        },
         "darwin/arm64": {
           "channel": "stable",
           "epoch": 1,
@@ -144,6 +159,21 @@
           "source_version": "8.4.25",
           "status": "active",
           "url": "https://github.com/devxdk/devxdk/releases/download/php-8.4.25/php-8.4.25-darwin-arm64.tar.gz"
+        },
+        "linux/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "8.4",
+          "provider": "devxdk-php-spc",
+          "released_at": "2026-08-31",
+          "revoked": false,
+          "sha256": "cf28900022503521a2c81a06b329ac62b9e89cb69676900f0768da7013c55ced",
+          "size_bytes": 47787119,
+          "source_version": "8.4.25",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.4.25/php-8.4.25-linux-amd64.tar.gz"
         },
         "windows/amd64": {
           "channel": "stable",
@@ -162,6 +192,21 @@
         }
       },
       "8.5.10": {
+        "darwin/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "8.5",
+          "provider": "devxdk-php-spc",
+          "released_at": "2026-08-31",
+          "revoked": false,
+          "sha256": "578d624e44dea1f790b00fbf5f7f1a7700a6c34cc59553b602a923b698431e83",
+          "size_bytes": 49591098,
+          "source_version": "8.5.10",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.5.10/php-8.5.10-darwin-amd64.tar.gz"
+        },
         "darwin/arm64": {
           "channel": "stable",
           "epoch": 1,
@@ -176,6 +221,21 @@
           "source_version": "8.5.10",
           "status": "active",
           "url": "https://github.com/devxdk/devxdk/releases/download/php-8.5.10/php-8.5.10-darwin-arm64.tar.gz"
+        },
+        "linux/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "8.5",
+          "provider": "devxdk-php-spc",
+          "released_at": "2026-08-31",
+          "revoked": false,
+          "sha256": "576bb0e4bfe4227ff126a9a379017d576524c34c39dd0476aa89ef780380b658",
+          "size_bytes": 48471250,
+          "source_version": "8.5.10",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.5.10/php-8.5.10-linux-amd64.tar.gz"
         },
         "windows/amd64": {
           "channel": "stable",

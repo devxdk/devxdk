@@ -1,0 +1,163 @@
+{
+  "filters": {
+    "components": "php",
+    "platforms": "linux/amd64,darwin/amd64",
+    "version": ""
+  },
+  "force": false,
+  "id": "34024611683",
+  "legs": {
+    "php-darwin-amd64": [
+      {
+        "component": "php",
+        "epoch": 1,
+        "line": "8.4",
+        "mode": "build",
+        "ordering_kind": "built",
+        "platform": "darwin/amd64",
+        "provider": "devxdk-php-spc",
+        "recipe": "php-spc",
+        "revision": 1,
+        "runner": "macos-15-intel",
+        "source_sha256": "5cde1da976b728fa09e6b549a4c8afcd0c180337028dacf34f73b11be50253db",
+        "source_version": "8.4.25",
+        "version": "8.4.25"
+      },
+      {
+        "component": "php",
+        "epoch": 1,
+        "line": "8.5",
+        "mode": "build",
+        "ordering_kind": "built",
+        "platform": "darwin/amd64",
+        "provider": "devxdk-php-spc",
+        "recipe": "php-spc",
+        "revision": 1,
+        "runner": "macos-15-intel",
+        "source_sha256": "f5c0ac99b85b3d677de475c2e4f509f9b4f54663f3ee5a84d6d9481a521d4100",
+        "source_version": "8.5.10",
+        "version": "8.5.10"
+      }
+    ],
+    "php-linux-amd64": [
+      {
+        "component": "php",
+        "epoch": 1,
+        "line": "8.4",
+        "mode": "build",
+        "ordering_kind": "built",
+        "platform": "linux/amd64",
+        "provider": "devxdk-php-spc",
+        "recipe": "php-spc",
+        "revision": 1,
+        "runner": "ubuntu-22.04",
+        "source_sha256": "5cde1da976b728fa09e6b549a4c8afcd0c180337028dacf34f73b11be50253db",
+        "source_version": "8.4.25",
+        "version": "8.4.25"
+      },
+      {
+        "component": "php",
+        "epoch": 1,
+        "line": "8.5",
+        "mode": "build",
+        "ordering_kind": "built",
+        "platform": "linux/amd64",
+        "provider": "devxdk-php-spc",
+        "recipe": "php-spc",
+        "revision": 1,
+        "runner": "ubuntu-22.04",
+        "source_sha256": "f5c0ac99b85b3d677de475c2e4f509f9b4f54663f3ee5a84d6d9481a521d4100",
+        "source_version": "8.5.10",
+        "version": "8.5.10"
+      }
+    ]
+  },
+  "schema": 1,
+  "source_commit": "890188ec35a6263423c59335f470a4952330c36e",
+  "targets": [
+    {
+      "component": "php",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "8.4",
+      "mode": "build",
+      "ordering_kind": "built",
+      "platform": "darwin/amd64",
+      "provider": "devxdk-php-spc",
+      "recipe": "php-spc",
+      "revision": 1,
+      "runner": "macos-15-intel",
+      "source_sha256": "5cde1da976b728fa09e6b549a4c8afcd0c180337028dacf34f73b11be50253db",
+      "source_version": "8.4.25",
+      "version": "8.4.25"
+    },
+    {
+      "component": "php",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "8.4",
+      "mode": "build",
+      "ordering_kind": "built",
+      "platform": "linux/amd64",
+      "provider": "devxdk-php-spc",
+      "recipe": "php-spc",
+      "revision": 1,
+      "runner": "ubuntu-22.04",
+      "source_sha256": "5cde1da976b728fa09e6b549a4c8afcd0c180337028dacf34f73b11be50253db",
+      "source_version": "8.4.25",
+      "version": "8.4.25"
+    },
+    {
+      "component": "php",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "8.5",
+      "mode": "build",
+      "ordering_kind": "built",
+      "platform": "darwin/amd64",
+      "provider": "devxdk-php-spc",
+      "recipe": "php-spc",
+      "revision": 1,
+      "runner": "macos-15-intel",
+      "source_sha256": "f5c0ac99b85b3d677de475c2e4f509f9b4f54663f3ee5a84d6d9481a521d4100",
+      "source_version": "8.5.10",
+      "version": "8.5.10"
+    },
+    {
+      "component": "php",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "8.5",
+      "mode": "build",
+      "ordering_kind": "built",
+      "platform": "linux/amd64",
+      "provider": "devxdk-php-spc",
+      "recipe": "php-spc",
+      "revision": 1,
+      "runner": "ubuntu-22.04",
+      "source_sha256": "f5c0ac99b85b3d677de475c2e4f509f9b4f54663f3ee5a84d6d9481a521d4100",
+      "source_version": "8.5.10",
+      "version": "8.5.10"
+    }
+  ]
+}
