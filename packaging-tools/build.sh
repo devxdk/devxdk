@@ -105,7 +105,9 @@ exec "$this_dir/../../appimagetool-prefix/AppRun" "$@"
 SH
 chmod +x "$appdir/plugins/linuxdeploy-plugin-appimage/usr/bin/appimagetool"
 ln -s ../../plugins/linuxdeploy-plugin-appimage/usr/bin/linuxdeploy-plugin-appimage "$appdir/usr/bin/linuxdeploy-plugin-appimage"
-export PATH="$appdir/usr/bin:$PATH"
+# Expose the plugin without selecting the copies of strip/patchelf being
+# packaged. Running the destination strip would try to overwrite itself.
+export PATH="$appdir/plugins/linuxdeploy-plugin-appimage/usr/bin:/opt/binutils/bin:/usr/local/bin:$PATH"
 export LDAI_RUNTIME_FILE=/out/runtime-x86_64
 export OUTPUT=/out/linuxdeploy-x86_64.AppImage
 /work/linuxdeploy/bin/linuxdeploy --appdir "$appdir" \
