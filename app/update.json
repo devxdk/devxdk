@@ -1,15 +1,21 @@
 {
-  "revision": 1,
+  "revision": 2,
   "version": "",
   "platforms": {},
   "channels": {
     "prerelease": {
-      "version": "0.1.0-rc.3",
+      "version": "0.1.0-rc.4",
+      "notes": "DevXDK v0.1.0-rc.4 — app release.\n\n- App source: devxdk/devxdkcode@045757fa88978725df96a0096094077ac7a5687b (private repo, tag v0.1.0-rc.4).\n- The app-v0.1.0-rc.4 tag targets manifest-repo commit 2aa4c1439308487f0f1ef0bc7b236b616aa0d382.\n- Provenance: see the minisigned provenance.json asset.\n\nLinux requires glibc 2.35 or newer, GTK3, and WebKitGTK 4.1. The .deb installs\nthe runtime dependency through the package manager. Before using the AppImage\non Debian 12 / Ubuntu 22.04 or newer, run:\n\n    sudo apt install libwebkit2gtk-4.1-0\n\nThe AppImage uses the system webview and its matching helper programs.\nCorresponding sources and licenses for the embedded AppImage runtime:\nhttps://github.com/devxdk/devxdk/releases/tag/tools-linuxdeploy-20260906\n\nNOTE: the auto-generated \"Source code\" archives below are snapshots of the\nMANIFEST repository, not the app's source (the app is closed-source).",
       "platforms": {
+        "linux/amd64": {
+          "url": "https://github.com/devxdk/devxdk/releases/download/app-v0.1.0-rc.4/DevXDK-0.1.0-rc.4-x86_64.AppImage",
+          "sha256": "ce354ceb084afdd3cf628f0f775a94811ff1f71a568adb3a78338ba2fcf710ec",
+          "sig_url": "https://github.com/devxdk/devxdk/releases/download/app-v0.1.0-rc.4/DevXDK-0.1.0-rc.4-x86_64.AppImage.minisig"
+        },
         "windows/amd64": {
-          "url": "https://github.com/devxdk/devxdk/releases/download/app-v0.1.0-rc.3/devxdk-gui-0.1.0-rc.3-windows-amd64.exe",
-          "sha256": "f80ccde187720615d7ab45213458405aefa34bc8c291a26d66b342fb2b884209",
-          "sig_url": "https://github.com/devxdk/devxdk/releases/download/app-v0.1.0-rc.3/devxdk-gui-0.1.0-rc.3-windows-amd64.exe.minisig"
+          "url": "https://github.com/devxdk/devxdk/releases/download/app-v0.1.0-rc.4/devxdk-gui-0.1.0-rc.4-windows-amd64.exe",
+          "sha256": "c4d5baa0015f4dbed96943d9d5691ee05a9764507c5ad3dead757d56915b90e3",
+          "sig_url": "https://github.com/devxdk/devxdk/releases/download/app-v0.1.0-rc.4/devxdk-gui-0.1.0-rc.4-windows-amd64.exe.minisig"
         }
       }
     }
