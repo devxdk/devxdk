@@ -2,7 +2,7 @@
   "name": "nginx",
   "display_name": "Nginx",
   "kind": "service",
-  "revision": 1,
+  "revision": 2,
   "releases": [
     {
       "version": "1.30.4",
@@ -15,19 +15,19 @@
           "size_bytes": 2774788
         },
         "linux/amd64": {
-          "url": "https://github.com/devxdk/devxdk/releases/download/nginx-1.30.4-r2/nginx-1.30.4-r2-linux-amd64.tar.gz",
-          "sha256": "a082cce3afb0e50b77ecdde4c08a88b205231c2fe52d3d43c56cb10d81973d2c",
-          "size_bytes": 5687844
+          "url": "https://github.com/devxdk/devxdk/releases/download/nginx-1.30.4-r3/nginx-1.30.4-r3-linux-amd64.tar.gz",
+          "sha256": "9eff8bca3eb7c74c8a2b4de6dec7fa07cecfe6321be799ec58164c0d1d1a23c1",
+          "size_bytes": 5688569
         },
         "darwin/amd64": {
-          "url": "https://github.com/devxdk/devxdk/releases/download/nginx-1.30.4-r2/nginx-1.30.4-r2-darwin-amd64.tar.gz",
-          "sha256": "5a414938b89006827d9b6f17d3bcf4f94d69aa5b7bf148c7bf6b2b6c085167b5",
-          "size_bytes": 2973843
+          "url": "https://github.com/devxdk/devxdk/releases/download/nginx-1.30.4-r3/nginx-1.30.4-r3-darwin-amd64.tar.gz",
+          "sha256": "9b8c2ee5f5c04171028e528edd010913dc378d6cbf57ef72db6cb2e8554df459",
+          "size_bytes": 2976195
         },
         "darwin/arm64": {
-          "url": "https://github.com/devxdk/devxdk/releases/download/nginx-1.30.4-r2/nginx-1.30.4-r2-darwin-arm64.tar.gz",
-          "sha256": "c82898e8c12626e97082da1fe07ddea6372b371bb64e5edc04d6c1c9a55b4996",
-          "size_bytes": 3243240
+          "url": "https://github.com/devxdk/devxdk/releases/download/nginx-1.30.4-r3/nginx-1.30.4-r3-darwin-arm64.tar.gz",
+          "sha256": "c770179cb91142c70dfa9f884d214f8d08aa06954739ad35c5b5351dc1cd6889",
+          "size_bytes": 3246143
         }
       }
     }
