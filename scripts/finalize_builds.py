@@ -12,6 +12,7 @@ AND finalize-only legs alike. Standard library only; git/gh are shelled out.
 """
 
 import argparse
+import os
 import pathlib
 import subprocess
 import sys
@@ -19,7 +20,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 import add_built_release  # noqa: E402
-from devxdk_manifest import plan, strictjson  # noqa: E402
+from devxdk_manifest import plan, strictjson, publication, receipts, handoff, coverage, workflow_status, transactions  # noqa: E402
 
 REPO = "devxdk/devxdk"
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -73,6 +74,20 @@ def write_pending(metas_dir, repo_root=REPO_ROOT):
             raise SystemExit(f"finalize: {meta_path.name} is missing {', '.join(missing)}")
         metas.append((meta_path, meta))
 
+    operation_path = metas_dir / 'operation.json'
+    if operation_path.exists():
+        operation = publication.validate_operation(strictjson.load(operation_path))
+        expected = {publication.identity(i): i for items in operation['legs'].values() for i in items}
+        selected = []
+        for _path, meta in metas:
+            key = publication.identity(meta)
+            if key not in expected:
+                raise SystemExit('finalize: metadata is outside the planned operation')
+            selected.append(expected[key])
+            receipt = receipts.load(repo_root, meta)
+            if receipt is None or receipt['meta'] != meta:
+                raise SystemExit('finalize: metadata differs from its durable receipt')
+        publication.validate_metas(selected, [m for _, m in metas])
     written = []
     for meta_path, meta in metas:
         rc = add_built_release.main([
@@ -96,7 +111,7 @@ def write_pending(metas_dir, repo_root=REPO_ROOT):
 
 
 def _git(*args, check=True):
-    return subprocess.run(["git", *args], cwd=REPO_ROOT, capture_output=True, text=True, check=check)
+    return subprocess.run(["git", *args], cwd=REPO_ROOT, env=transactions.git_env(os.environ.get("PUSH_TOKEN")), capture_output=True, text=True, check=check)
 
 
 def _check_revision_history():
@@ -149,6 +164,7 @@ def commit_and_push(metas_dir, attempts=5):
         if not _check_revision_history():
             sys.stderr.write("finalize: revision history gate failed — not pushing\n")
             return False
+        subprocess.run([sys.executable, str(REPO_ROOT / 'scripts/ci/check_build_receipts.py'), '--base', 'FETCH_HEAD'], cwd=REPO_ROOT, check=True)
         push = _git("push", "origin", "HEAD:main", check=False)
         if push.returncode == 0:
             sys.stderr.write(f"finalize: pushed on attempt {attempt}\n")
@@ -160,20 +176,32 @@ def commit_and_push(metas_dir, attempts=5):
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Write pending records and dispatch the scrape.")
     ap.add_argument("--metas", required=True, help="downloaded finalizable-metas dir")
+    ap.add_argument("--handoff-sha256", required=True)
+    ap.add_argument("--github-output")
     ap.add_argument("--no-dispatch", action="store_true", help="write+commit only (tests/local)")
     args = ap.parse_args(argv)
 
-    import pathlib
+    if os.environ.get('GITHUB_ACTIONS') != 'true':
+        ap.error('finalization is CI-only; test the transaction through the injected Git API')
+
+    handoff.verify(args.metas, args.handoff_sha256)
+    operation = publication.validate_operation(strictjson.load(pathlib.Path(args.metas) / 'operation.json'))
     if not sorted(pathlib.Path(args.metas).glob("*.meta.json")):
         sys.stderr.write("finalize: no metas to finalize\n")
         return 0
     if not commit_and_push(args.metas):
         sys.stderr.write("finalize: exhausted push retries\n")
         return 1
-    if not args.no_dispatch:
-        subprocess.run(["gh", "workflow", "run", "scrape-and-sign.yml", "--repo", REPO], check=True)
-        sys.stderr.write("finalize: dispatched scrape-and-sign\n")
-    return 0
+    errors, _documents = coverage.check(operation, REPO_ROOT, project_pending=True)
+    run_id = workflow_status.dispatch_sign() if not args.no_dispatch else 0
+    if args.github_output:
+        with open(args.github_output, 'a', encoding='utf-8') as fh:
+            fh.write(f"sign_run_id={run_id}\n")
+            fh.write(f"has_coverage_errors={'true' if errors else 'false'}\n")
+    for error in errors:
+        print(f'finalize: {error}', file=sys.stderr)
+    print(f'finalize: dispatched signing run {run_id}', file=sys.stderr)
+    return 0 if args.github_output else int(bool(errors))
 
 
 if __name__ == "__main__":

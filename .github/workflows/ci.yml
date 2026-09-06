@@ -61,6 +61,7 @@ jobs:
           set -euo pipefail
           if [ "$EVENT" = "push" ]; then CMP="$PUSH_BEFORE"; else CMP="$PR_BASE"; fi
           python scripts/ci/check_revision_history.py --base "$CMP"
+          python scripts/ci/check_build_receipts.py --base "$CMP"
 
   signatures:
     runs-on: ubuntu-latest
@@ -103,11 +104,12 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.27.0"
+          go-version: "1.27.1"
       - name: actionlint
         # go install is checksum-verified via the Go module sumdb (L31): the
         # docker://rhysd/actionlint tag was the one mutable, un-pinned action
         # in the repo (same pattern the app repo's CI already uses).
         run: |
           go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
-          actionlint -color
+          # GitHub supports queue: max; actionlint has not learned that key yet.
+          actionlint -color -ignore 'unexpected key "queue"'

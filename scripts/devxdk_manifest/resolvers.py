@@ -298,14 +298,26 @@ def php_spc_newest(fetcher, line_id: str) -> dict:
     only resolves the plannable version. releases JSON keys are versions, newest
     first with max=1, so the single key is the newest patch."""
     data = fetcher.get_json(PHP_RELEASES_URL.format(line_id))
-    if not isinstance(data, dict) or not data:
+    if not isinstance(data, dict) or len(data) != 1:
         raise ResolveError(f"php.net releases JSON empty for branch {line_id}")
     version = next(iter(data))
     if not _in_line(version, line_id):
         raise ResolveError(f"php.net newest {version} is not in branch {line_id}")
+    release = data[version]
+    sources = release.get("source") if isinstance(release, dict) else None
+    if not isinstance(sources, list):
+        raise ResolveError(f"php.net {version}: missing source list")
+    matching = [s for s in sources if isinstance(s, dict)
+                and s.get("filename") == f"php-{version}.tar.gz"]
+    if len(matching) != 1:
+        raise ResolveError(f"php.net {version}: expected exactly one source tar.gz")
+    digest = matching[0].get("sha256")
+    if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-fA-F]{64}", digest):
+        raise ResolveError(f"php.net {version}: missing or malformed source sha256")
     return {
         "source_version": version,
         "source_url": f"https://www.php.net/distributions/php-{version}.tar.gz",
+        "source_sha256": digest.lower(),
     }
 
 

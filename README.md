@@ -91,6 +91,27 @@ manifest. The per-component recipes land with Phase 1/3.
 
 ## Recovery
 
+Runtime publication records its frozen operation in `build-operations/` and its
+verified inputs, artifact identity, and publication-member hashes in
+`build-receipts/` before uploading any public bytes. These append-only records
+are automation provenance; clients continue to trust the signed component
+manifests. CI and every automated writer reject edits or deletions to receipts.
+
+A retry recovers public bytes against their receipt. Missing uploads are restored
+from the original immutable workflow artifact while it exists. If neither copy
+exists, use a forced build at a higher revision. Existing public archives without
+a receipt cannot supply invented provenance: force a new revision instead.
+
+Successful legs still publish when another planned leg fails. The publisher
+reports missing or invalid planned results after handing off valid metadata.
+Finalization checks the projected merged coverage, and a separate secretless job
+waits for the exact signing run, verifies CI on its resulting commit, and checks
+the publicly served signed tuples. A queued signing request is not completion.
+
+PHP release-manager fingerprints are monitored daily and before PHP build work.
+The PR consistency check imports both PHP and nginx keyrings into isolated
+directories and verifies the complete pinned primary-fingerprint sets offline.
+
 The manifest is signature-gated, so most failure modes are fail-safe: a client
 that can't fetch or can't verify a manifest simply can't *install new* versions —
 already-installed runtimes/services keep working.

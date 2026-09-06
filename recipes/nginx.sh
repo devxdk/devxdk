@@ -45,26 +45,7 @@ PY
 
 # --- isolated keyring: import the committed keys, assert the pinned fprs -----
 export GNUPGHOME="$outdir/gnupg"; rm -rf "$GNUPGHOME"; mkdir -p "$GNUPGHOME"; chmod 700 "$GNUPGHOME"
-for kf in "$keydir"/*.key; do
-  gpg --batch --quiet --import "$kf" 2>/dev/null || { echo "::error::failed to import $kf" >&2; exit 1; }
-done
-# Exact-set assertion (M3): the GPG signature is nginx's SOLE trust root
-# (nginx.org ships no sha256), so the keyring must hold EXACTLY the pinned
-# fingerprints — an unpinned committed .key must never become a trusted
-# signer. PRIMARY fingerprints only: gpg --with-colons emits an fpr record for
-# every subkey too, and [pins.nginx_keys] pins primaries — a naive all-fpr set
-# equality would spuriously fail any pinned key carrying a signing subkey.
-primary=$(gpg --batch --with-colons --list-keys 2>/dev/null \
-  | awk -F: '$1=="pub"{want=1;next} $1=="fpr"{if(want)print $10; want=0; next} {want=0}' | sort -u)
-pinned=$(printf '%s\n' "$nginx_fprs" | tr ' ' '\n' | awk 'NF' | sort -u)
-[ -n "$pinned" ] || { echo "::error::[pins.nginx_keys] fingerprints is empty" >&2; exit 1; }
-if [ "$primary" != "$pinned" ]; then
-  { echo "::error::nginx keyring does not hold EXACTLY the pinned fingerprint set"
-    echo "keyring primaries:"; printf '%s\n' "$primary"
-    echo "pinned:"; printf '%s\n' "$pinned"; } >&2
-  exit 1
-fi
-echo "nginx keyring: $(printf '%s\n' "$primary" | grep -c .) keys, exactly the pinned fingerprint set"
+bash scripts/ci/verify_keyring.sh "$keydir" "$nginx_fprs"
 
 # --- static dep sources (pinned; verified before use) ----------------------
 deproot="$outdir/deps"; rm -rf "$deproot"; mkdir -p "$deproot"

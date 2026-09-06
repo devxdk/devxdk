@@ -76,14 +76,14 @@ select_kind = "uses-local"
 
 [[rows]]
 id = "action-checkout"
-why = "SHA-pinned action; eleven sites across all six workflows"
+why = "SHA-pinned checkout for CI, build, signing, and observation workflows"
 version = "v7.0.1"
 value = "3d3c42e5aac5ba805825da76410c181273ba90b1"
 [[rows.checks]]
 kind = "scan"
 select_kind = "uses"
 select_identity = "actions/checkout"
-count = 11
+count = 13
 [rows.currency]
 api = "github-release"
 source = "actions/checkout"
@@ -100,7 +100,7 @@ value = "5fda3b95a4ea91299a34e894583c3862153e4b97"
 kind = "scan"
 select_kind = "uses"
 select_identity = "actions/setup-python"
-count = 9
+count = 11
 [rows.currency]
 api = "github-release"
 source = "actions/setup-python"
@@ -127,14 +127,14 @@ verify_tag_sha = true
 
 [[rows]]
 id = "action-upload-artifact"
-why = "SHA-pinned action; two sites (build-runtime-leg.yml, build-runtimes.yml)"
+why = "SHA-pinned upload for legs, finalizable metadata, and signing results"
 version = "v7.0.1"
 value = "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
 [[rows.checks]]
 kind = "scan"
 select_kind = "uses"
 select_identity = "actions/upload-artifact"
-count = 2
+count = 3
 [rows.currency]
 api = "github-release"
 source = "actions/upload-artifact"
@@ -149,7 +149,7 @@ verify_tag_sha = true
 [[rows]]
 id = "go-toolchain"
 why = "Two sites, and one of them builds the TRUST-ROOT signer. Held equal to the app repo's GO_VERSION - a claim that used to be only a comment at scrape-and-sign.yml, and had already drifted a patch behind"
-value = "1.27.0"
+value = "1.27.1"
 [[rows.checks]]
 kind = "scan"
 select_kind = "go-version"
@@ -200,7 +200,7 @@ value = "3.14"
 kind = "scan"
 select_kind = "python-version"
 select_values = ["3.14"]
-count = 2
+count = 4
 [rows.currency]
 api = "python-versions"
 policy = "series-track"
@@ -306,8 +306,8 @@ policy = "never"
 
 [[rows]]
 id = "pins-php-keys"
-why = "TRUST MATERIAL, same rule as pins-nginx-keys: the two PHP release-manager fingerprints php-spc gpg-verifies against. Presence + well-formedness + count, never an upstream comparison"
-value = "9D7F99A0CB8F05C8A6958D6256A97AF7600A39A6,D95C03BC702BE9515344AE3374E44BC9067701A5"
+why = "TRUST MATERIAL, same rule as pins-nginx-keys: the six PHP release-manager fingerprints php-spc gpg-verifies against. Presence + well-formedness + count, never an upstream comparison"
+value = "1198C0117593497A5EC5C199286AF1F9897469DC,49D9AF6BC72A80D6691719C8AA23F5BE9C7097D4,AFD8691FDAEDF03BDF6E460563F15A9B715376CA,0616E93D95AF471243E26761770426E17EBBB3DD,9D7F99A0CB8F05C8A6958D6256A97AF7600A39A6,D95C03BC702BE9515344AE3374E44BC9067701A5"
 [[rows.checks]]
 kind = "scan"
 select_kind = "toml-pin"
@@ -325,15 +325,11 @@ policy = "never"
 # ship, and static-php-cli builds the PHP bundle. A stale pin here is not a
 # CI-hygiene item, it is a shipped-binary CVE.
 #
-# WHAT THESE ROWS DO NOT PROVE. They assert the version+digest coupling and
-# NOTHING about the shipped bytes. There is no durable artifact a scheduled
-# scanner could read to prove which zlib is inside a published asset: the leg
-# .meta.json that records it is neither published nor committed. So between
-# publications this gate can prove the PIN is current and cannot prove the
-# ARTIFACT was built from it. That gap is closed at BUILD time instead, by the
-# static-pin provenance validator in scripts/publish_legs.py - and it is why a
-# static-source pin bump is an obligation of the bump procedure (bump the pin,
-# then force-rebuild at the next -rN) rather than something left for a scanner.
+# These rows check committed pins, not historical binary contents. Publication
+# validates a fresh leg's static libraries against the run's pins and preserves
+# that evidence in append-only build receipts. A pin bump must still force the
+# three managed nginx platforms to a higher revision; coverage verifies each
+# selected platform accepted the planned revision.
 # ===========================================================================
 
 [[rows]]
@@ -365,7 +361,7 @@ compare_value = "openssl-3.5.7"
 [[rows]]
 id = "pins-pcre2"
 why = "Statically linked into the three unix nginx bundles; single active line upstream, so plain latest"
-value = "10.47"
+value = "10.48"
 [[rows.checks]]
 kind = "scan"
 select_kind = "toml-pin"
@@ -384,7 +380,7 @@ count = 1
 api = "github-release"
 source = "PCRE2Project/pcre2"
 policy = "latest"
-compare_value = "pcre2-10.47"
+compare_value = "pcre2-10.48"
 
 [[rows]]
 id = "pins-zlib"

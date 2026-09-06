@@ -48,11 +48,7 @@ def check_static_job_parity(cfg, workflow_text: str):
 
 def next_revision(existing_revisions) -> int:
     """The next unused DevXDK revision (1 = no suffix; 2 = -r2; ...)."""
-    used = set(existing_revisions)
-    r = 1
-    while r in used:
-        r += 1
-    return r
+    return max(existing_revisions, default=0) + 1
 
 
 # Per-platform runner labels (mirrors the static caller jobs in build-runtimes.yml).
@@ -80,10 +76,12 @@ def published_revisions(release_assets, component, version, platform, cap=50):
     cap only bounds a pathological store."""
     found = set()
     ext = "zip" if platform.startswith("windows/") else "tar.gz"
-    for r in range(1, cap + 1):
+    candidates = (release_assets.revisions(component, version)
+                  if hasattr(release_assets, "revisions") else range(1, cap + 1))
+    for r in candidates:
         assets = release_assets(release_tag(component, version, r))
         if assets is None:
-            break
+            continue
         if archive_name(component, version, r, platform, ext) in assets:
             found.add(r)
         # A release for the tag can exist while THIS platform's asset is
@@ -99,6 +97,8 @@ def decide(*, manifest_has, ledger_rec, pending_exists, revisions, force):
     PlanError, not a plannable state."""
     if manifest_has and ledger_rec is None:
         raise PlanError("manifest carries the tuple but the ledger has no active entry")
+    if force:
+        return ("build", next_revision(revisions))
     if pending_exists:
         return None  # finalize already queued it; the next scrape applies it
     if manifest_has:
@@ -143,7 +143,7 @@ def _pending_exists(repo_root, component, version, platform):
 
 
 def build_leg_map(cfg, repo_root, fetcher, release_assets, *,
-                  components=None, platforms=None, version_override=None, force=False):
+                  components=None, platforms=None, version_override=None, force=False, targets=None):
     """Resolve every enabled managed (component, line, platform) into leg items.
 
     Returns {leg_id: [item, ...]} containing ONLY legs with work. Providers
@@ -155,7 +155,15 @@ def build_leg_map(cfg, repo_root, fetcher, release_assets, *,
     any non-newest source, and an override alone does not rebuild an
     already-published version; add force for that); force publishes the next
     unused revision even when up to date."""
-    from . import merge, resolvers, versions
+    from . import merge, resolvers, versions, receipts, strictjson, publication
+    import pathlib
+
+    known_components = {c for c, _, _, _ in cfg.managed_keys()}
+    known_platforms = {p for _, _, p, _ in cfg.managed_keys()}
+    if components and set(components) - known_components:
+        raise PlanError(f"unknown managed component filter: {sorted(set(components) - known_components)}")
+    if platforms and set(platforms) - known_platforms:
+        raise PlanError(f"unknown platform filter: {sorted(set(platforms) - known_platforms)}")
 
     ledger = merge.LedgerState.load(f"{repo_root}/state/asset-revisions.json")
     resolved_cache = {}
@@ -185,6 +193,8 @@ def build_leg_map(cfg, repo_root, fetcher, release_assets, *,
                 f"{target} line (tracked: {tracked})")
 
     for component, line_id, platform, plat in sorted(cfg.managed_keys()):
+        if cfg.line(component, line_id).retired:
+            continue
         if components and component not in components:
             continue
         if platforms and platform not in platforms:
@@ -226,6 +236,14 @@ def build_leg_map(cfg, repo_root, fetcher, release_assets, *,
         if rec is not None and (rec.status != "active" or rec.revoked):
             continue  # tombstoned/revoked: retirement or revocation owns this key
         revisions = published_revisions(release_assets, component, version, platform)
+        saved = receipts.existing(repo_root, component, version, platform)
+        revisions.update(r['item']['revision'] for r in saved)
+        for path in (pathlib.Path(repo_root) / 'pending').glob('*.json'):
+            record = strictjson.load(path)
+            if (record.get('component'), record.get('version'), record.get('platform')) == (component, version, platform):
+                revisions.add(publication.positive(record.get('revision'), 'pending revision'))
+        if rec is not None and rec.kind == 'built':
+            revisions.add(int(rec.key))
         try:
             outcome = decide(
                 manifest_has=_manifest_has(repo_root, component, version, platform),
@@ -237,9 +255,10 @@ def build_leg_map(cfg, repo_root, fetcher, release_assets, *,
         except PlanError as e:
             raise PlanError(f"{component} {version} {platform}: {e}") from e
         if outcome is None:
-            continue
-        mode, revision = outcome
-        legs.setdefault(leg_id(component, platform), []).append({
+            mode, revision = "covered", int(rec.key) if rec and rec.kind == 'built' else 1
+        else:
+            mode, revision = outcome
+        item = {
             "component": component,
             "version": version,
             "revision": revision,
@@ -252,7 +271,30 @@ def build_leg_map(cfg, repo_root, fetcher, release_assets, *,
             "provider": plat.provider,
             "epoch": plat.epoch,
             "source_version": source_version,
-        })
+        }
+        if src.get('source_sha256'):
+            item['source_sha256'] = src['source_sha256'].lower()
+        # A pending publication still needs observation and must not become an
+        # empty successful operation. Its receipt supplies the recovery tuple.
+        if mode == 'covered' and not _manifest_has(repo_root, component, version, platform) and saved:
+            latest = max(saved, key=lambda r: r['item']['revision'])
+            item.update(revision=latest['item']['revision'], mode='finalize-only')
+            mode = 'finalize-only'
+        if mode == 'finalize-only':
+            receipt = receipts.load(repo_root, item)
+            if receipt is None:
+                raise PlanError(f"{component} {version} {platform}: published archive has no trusted build receipt; force a new revision")
+            if receipt['inputs'] != receipts.input_pins(cfg.pins, item):
+                item.update(mode='build', revision=next_revision(revisions))
+                mode = 'build'
+        if targets is not None:
+            target = dict(item)
+            target['coverage_platforms'] = sorted(cfg.line(component, line_id).platforms)
+            if mode == 'covered' and rec is not None:
+                target['accepted_asset'] = {'url': rec.url, 'sha256': rec.sha256, 'size_bytes': rec.size_bytes}
+            targets.append(target)
+        if mode != 'covered':
+            legs.setdefault(leg_id(component, platform), []).append(item)
     return legs
 
 

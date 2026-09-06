@@ -26,7 +26,7 @@ import zipfile
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from devxdk_manifest import config, handoff, plan, releasepub, schema, strictjson  # noqa: E402
+from devxdk_manifest import config, handoff, plan, releasepub, schema, strictjson, publication, receipts, transactions, current_state  # noqa: E402
 
 REPO = "devxdk/devxdk"
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -133,6 +133,7 @@ def download_artifact(artifact_id, dest):
     zip_path = dest.with_suffix(".zip")
     proc = subprocess.run(
         ["gh", "api", f"repos/{REPO}/actions/artifacts/{artifact_id}/zip"],
+        env=dict(os.environ, GH_TOKEN=os.environ.get("ARTIFACT_TOKEN", os.environ.get("GH_TOKEN", ""))),
         capture_output=True)
     if proc.returncode != 0:
         raise releasepub.ReleaseError(f"download artifact {artifact_id}: {proc.stderr.decode().strip()}")
@@ -143,20 +144,6 @@ def download_artifact(artifact_id, dest):
                 raise releasepub.ReleaseError(f"unsafe artifact member {member}")
         zf.extractall(dest)
     zip_path.unlink()
-
-
-def success_legs(needs_json):
-    """{leg: {artifact_id, manifest_sha256}} for every leg-* need that succeeded
-    and carries both outputs."""
-    out = {}
-    for job, info in strictjson.loads(needs_json).items():
-        if not job.startswith("leg-") or info.get("result") != "success":
-            continue
-        outputs = info.get("outputs") or {}
-        aid, msha = outputs.get("artifact_id"), outputs.get("manifest_sha256")
-        if aid and msha:
-            out[job[len("leg-"):]] = {"artifact_id": aid, "manifest_sha256": msha}
-    return out
 
 
 def _committed_releases(component):
@@ -193,17 +180,10 @@ def _static_pins():
 def validate_static_pins(meta, pins):
     """Return a list of error strings for meta's provenance.static_libs block.
 
-    What this proves, stated narrowly: the bytes just built used the pins
-    committed in the tree this run checked out. It attests nothing about assets
-    published earlier -- between publications the currency gate can prove the
-    PIN is current and cannot prove the ARTIFACT was built from it, because the
-    leg .meta.json is neither published nor committed (releasepub publishes only
-    what release_assets declares, and the pending/ledger record keeps identity,
-    url, sha256 and size only). Closing that would mean persisting authenticated
-    build-input provenance as a third published format, which this work's public
-    surface deliberately does not admit. That is why a static-source pin bump is
-    an obligation of the bump procedure -- bump the pin, then force-rebuild at
-    the next -rN -- and not something left for a scanner to catch later.
+    The fresh leg must use this run's checked-out pins. Durable receipts now
+    retain these validated inputs and the exact publication members, so recovery
+    can check original provenance instead of reconstructing it from today's pins.
+    A static-source bump still requires a forced build at a higher revision.
     """
     provider = meta.get("provider")
     declared = (meta.get("provenance") or {}).get("static_libs")
@@ -239,75 +219,77 @@ def validate_static_pins(meta, pins):
     return errs
 
 
-def publish(needs_json, workdir, api=None, dry=False):
-    """Reconcile every success leg's Release; return (finalizable_metas, errors)."""
+def publish(needs_json, workdir, api=None, dry=False, persist=None, state_root=None):
+    """Validate the frozen operation and publish complete, authenticated legs."""
     api = api or GhReleaseAPI()
     workdir = pathlib.Path(workdir)
-    legs = success_legs(needs_json)
+    needs, operation = publication.parse_needs(needs_json)
     pins = _static_pins()
+    state_root = state_root or REPO_ROOT
     metas, errors = [], []
-
-    for leg, ref in sorted(legs.items()):
+    for job, info in needs.items():
+        if job.startswith('leg-') and job[4:] not in operation['legs'] and info.get('result') != 'skipped':
+            errors.append(f'{job}: unplanned job executed')
+    for leg, items in sorted(operation['legs'].items()):
+        info = needs.get('leg-' + leg, {})
+        if info.get('result') != 'success':
+            errors.append(f"{leg}: planned leg ended {info.get('result', 'missing')}")
+            continue
+        ref = info.get('outputs') or {}
+        if not ref.get('artifact_id') or not ref.get('manifest_sha256'):
+            errors.append(f'{leg}: successful job omitted artifact_id or manifest_sha256')
+            continue
         legdir = workdir / leg
         try:
-            download_artifact(ref["artifact_id"], legdir)
-            handoff.verify(legdir, ref["manifest_sha256"])
-        except (releasepub.ReleaseError, handoff.HandoffError) as e:
-            errors.append(f"{leg}: artifact verify failed: {e}")
+            download_artifact(ref['artifact_id'], legdir)
+            handoff.verify(legdir, ref['manifest_sha256'])
+            leg_metas = publication.validate_metas(items, [strictjson.load(p) for p in sorted(legdir.glob('*.meta.json'))])
+            prepared = []
+            for meta in leg_metas:
+                failures = validate_static_pins(meta, pins)
+                if failures:
+                    raise publication.PublicationError('; '.join(failures))
+                item = next(i for i in items if publication.identity(i) == publication.identity(meta))
+                members = publication.members(meta, legdir)
+                old = receipts.load(state_root, item)
+                if old:
+                    if old['meta'] != meta or old['members'] != members or old['inputs'] != receipts.input_pins(pins, item):
+                        raise publication.PublicationError('recovered bytes or inputs differ from the committed receipt')
+                    receipt = old
+                else:
+                    if item['mode'] == 'finalize-only':
+                        raise publication.PublicationError('recovery requires a committed receipt')
+                    receipt = receipts.make(operation, item, meta, members, ref, pins)
+                prepared.append((meta, members, receipt))
+            # The whole leg was preflighted. Journal its exact bytes BEFORE any
+            # upload, including additions to an already-public multi-platform tag.
+            if not dry and persist:
+                persist(operation, [r for _, _, r in prepared])
+        except (releasepub.ReleaseError, handoff.HandoffError, ValueError, OSError,
+                KeyError, TypeError, zipfile.BadZipFile, subprocess.CalledProcessError) as exc:
+            errors.append(f'{leg}: verification/journal failed: {exc}')
             continue
-
-        # PASS 1 -- parse and validate EVERY meta in this leg before reconciling
-        # ANY of them. A leg really can carry several metas: each recipe builds
-        # every tracked line for its (component, platform) pair and writes one
-        # .meta.json per line (recipes/README.md:4-7), so mariadb has 5 today and
-        # php 2. nginx has one line by CONFIGURATION, not by construction -- a
-        # second nginx line would falsify a single-pass guarantee with no code
-        # change at all. Two passes make the promise true by shape: a mismatched
-        # leg uploads no asset and appends no meta, hence no pending record and
-        # no manifest entry.
-        leg_metas, leg_errors = [], []
-        for meta_path in sorted(legdir.glob("*.meta.json")):
-            try:
-                meta = strictjson.load(meta_path)
-            except (OSError, ValueError) as e:
-                leg_errors.append(f"{leg}: {meta_path.name}: unreadable: {e}")
-                continue
-            leg_errors.extend(f"{leg}: {meta_path.name}: {m}"
-                              for m in validate_static_pins(meta, pins))
-            leg_metas.append(meta)
-        if leg_errors:
-            # Failure stays PER LEG, using this function's existing idiom, because
-            # publish()'s documented contract is that one bad leg still lets the
-            # others finalize. Preflighting all LEGS before reconciling any would
-            # change that contract; preflighting all METAS within a leg does not.
-            errors.extend(leg_errors)
-            continue
-
-        # PASS 2 -- reconcile.
-        for meta in leg_metas:
-            if meta.get("ordering_kind") == "adopted":
-                # Adopt re-hosts nothing: no Release, no asset upload. The leg
-                # already self-hash-verified the upstream bytes; finalize writes a
-                # pending record pointing at the upstream URL. Pass it straight
-                # through to the finalizable set.
+        for meta, members, _receipt in prepared:
+            if meta['ordering_kind'] == 'adopted':
                 metas.append(meta)
                 continue
-            # plan.release_tag is the ONE tag rule (L37) -- a drift between the
-            # publish tag and finalize's download URL would 404 the signed
-            # manifest.
-            tag = plan.release_tag(meta["component"], meta["version"], meta["revision"])
+            tag = plan.release_tag(meta['component'], meta['version'], meta['revision'])
             try:
-                members = releasepub.build_members(meta, legdir)
-                referenced = releasepub.referenced_asset_names(
-                    _committed_releases(meta["component"]), tag)
-                prerelease = "-" in meta["version"]
                 if not dry:
-                    releasepub.reconcile_release(api, tag, prerelease=prerelease,
-                                                 members=members, referenced_names=referenced)
+                    releasepub.reconcile_release(api, tag, prerelease='-' in meta['version'],
+                        members=[(m['name'], legdir / m['name'], m['sha256'], m['object_code']) for m in members],
+                        referenced_names=releasepub.referenced_asset_names(_committed_releases(meta['component']), tag))
                 metas.append(meta)
-            except releasepub.ReleaseError as e:
-                errors.append(f"{tag}: {e}")
+            except releasepub.ReleaseError as exc:
+                errors.append(f'{tag}: {exc}')
     return metas, errors
+
+
+def journal(operation, new_receipts):
+    if os.environ.get('GITHUB_ACTIONS') != 'true':
+        raise publication.PublicationError('real publication is CI-only; use --dry locally')
+    files = receipts.additions(REPO_ROOT, operation, new_receipts)
+    transactions.append(REPO_ROOT, files, 'Record verified runtime build receipts', os.environ.get('GH_TOKEN'))
 
 
 def main(argv=None):
@@ -319,16 +301,27 @@ def main(argv=None):
     ap.add_argument("--github-output", help="path to $GITHUB_OUTPUT for the artifact-id gate")
     args = ap.parse_args(argv)
 
-    metas, errors = publish(args.needs, args.workdir, dry=args.dry)
+    try:
+        _needs, operation = publication.parse_needs(args.needs)
+        if os.environ.get('GITHUB_ACTIONS') == 'true' and operation['source_commit'] != os.environ.get('GITHUB_SHA'):
+            raise publication.PublicationError('operation belongs to another source commit')
+        with current_state.snapshot(REPO_ROOT) as state:
+            metas, errors = publish(args.needs, args.workdir, dry=args.dry, persist=journal, state_root=state)
+    except (ValueError, KeyError, TypeError) as exc:
+        sys.stderr.write(f"publish_legs: invalid operation: {exc}\n")
+        return 1
 
     out = pathlib.Path(args.out)
     if out.exists():
         shutil.rmtree(out)
     if metas:
         out.mkdir(parents=True)
+        (out / "operation.json").write_bytes(publication.encode(operation))
         for i, meta in enumerate(metas):
             (out / f"{i:03d}-{meta['component']}-{meta['version']}.meta.json").write_text(
                 json.dumps(meta, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+    handoff_sha = handoff.write(out) if metas else ""
 
     # The metas are written BEFORE the red exit so finalize still receives the
     # partial success list on a collected per-leg failure (the plan's
@@ -336,6 +329,7 @@ def main(argv=None):
     # drive a later gate step; the CLI itself returns 0 so the upload step runs.
     if args.github_output:
         with open(args.github_output, "a", encoding="utf-8") as fh:
+            fh.write(f"handoff_sha256={handoff_sha}\n")
             fh.write(f"has_metas={'true' if metas else 'false'}\n")
             fh.write(f"has_errors={'true' if errors else 'false'}\n")
 

@@ -46,13 +46,16 @@ permissions: {}
 concurrency:
   group: build-runtimes
   cancel-in-progress: false
+  queue: max
 
 jobs:
   plan:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: read
     outputs:
+      operation: ${{ steps.plan.outputs.operation }}
       legs: ${{ steps.plan.outputs.legs }}
       map: ${{ steps.plan.outputs.map }}
     steps:
@@ -74,12 +77,17 @@ jobs:
           # Static-job parity re-asserted at run time: never emit a leg no
           # caller job would consume (a silent gap under success-only reads).
           python3 scripts/plan_builds.py --check-parity .github/workflows/build-runtimes.yml
-          ARGS=(--leg-map-json)
+          ARGS=(--operation-json)
           [ -n "$COMPONENTS" ] && ARGS+=(--components "$COMPONENTS")
           [ -n "$PLATFORMS" ] && ARGS+=(--platforms "$PLATFORMS")
           [ -n "$VERSION" ] && ARGS+=(--version "$VERSION")
           [ "$FORCE" = "true" ] && ARGS+=(--force)
-          map=$(python3 scripts/plan_builds.py "${ARGS[@]}")
+          operation=$(python3 scripts/plan_builds.py "${ARGS[@]}")
+          echo "operation=$operation" >> "$GITHUB_OUTPUT"
+          map=$(printf '%s' "$operation" | python3 -c 'import json,sys;print(json.dumps(json.load(sys.stdin)["legs"]))')
+          if printf '%s' "$map" | python3 -c 'import json,sys;sys.exit(0 if any(k.startswith("php-") for k in json.load(sys.stdin)) else 1)'; then
+            python3 scripts/ci/check_php_rm_keys.py
+          fi
           echo "map=$map" >> "$GITHUB_OUTPUT"
           echo "legs=$(printf '%s' "$map" | python3 -c 'import json,sys;print(json.dumps(sorted(json.load(sys.stdin))))')" >> "$GITHUB_OUTPUT"
           printf '%s' "$map" | python3 -m json.tool
@@ -88,6 +96,7 @@ jobs:
     needs: plan
     permissions:
       contents: read
+      actions: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'nginx-darwin-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -99,6 +108,7 @@ jobs:
     needs: plan
     permissions:
       contents: read
+      actions: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'nginx-darwin-arm64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -110,6 +120,7 @@ jobs:
     needs: plan
     permissions:
       contents: read
+      actions: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'nginx-linux-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -121,6 +132,7 @@ jobs:
     needs: plan
     permissions:
       contents: read
+      actions: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'php-darwin-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -132,6 +144,7 @@ jobs:
     needs: plan
     permissions:
       contents: read
+      actions: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'php-darwin-arm64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -143,6 +156,7 @@ jobs:
     needs: plan
     permissions:
       contents: read
+      actions: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'php-linux-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -154,6 +168,7 @@ jobs:
     needs: plan
     permissions:
       contents: read
+      actions: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'php-windows-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -165,6 +180,7 @@ jobs:
     needs: plan
     permissions:
       contents: read
+      actions: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'postgres-darwin-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -176,6 +192,7 @@ jobs:
     needs: plan
     permissions:
       contents: read
+      actions: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'postgres-darwin-arm64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -187,6 +204,7 @@ jobs:
     needs: plan
     permissions:
       contents: read
+      actions: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'postgres-linux-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -198,6 +216,7 @@ jobs:
     needs: plan
     permissions:
       contents: read
+      actions: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'postgres-windows-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -209,6 +228,7 @@ jobs:
     needs: plan
     permissions:
       contents: read
+      actions: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'python-darwin-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -220,6 +240,7 @@ jobs:
     needs: plan
     permissions:
       contents: read
+      actions: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'python-darwin-arm64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -231,6 +252,7 @@ jobs:
     needs: plan
     permissions:
       contents: read
+      actions: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'python-linux-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -242,6 +264,7 @@ jobs:
     needs: plan
     permissions:
       contents: read
+      actions: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'python-windows-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -253,6 +276,7 @@ jobs:
     needs: plan
     permissions:
       contents: read
+      actions: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'redis-darwin-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -264,6 +288,7 @@ jobs:
     needs: plan
     permissions:
       contents: read
+      actions: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'redis-darwin-arm64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -275,6 +300,7 @@ jobs:
     needs: plan
     permissions:
       contents: read
+      actions: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'redis-linux-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -286,6 +312,7 @@ jobs:
     needs: plan
     permissions:
       contents: read
+      actions: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'redis-windows-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -297,6 +324,7 @@ jobs:
     needs: plan
     permissions:
       contents: read
+      actions: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'valkey-darwin-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -308,6 +336,7 @@ jobs:
     needs: plan
     permissions:
       contents: read
+      actions: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'valkey-darwin-arm64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -319,6 +348,7 @@ jobs:
     needs: plan
     permissions:
       contents: read
+      actions: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'valkey-linux-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -330,6 +360,7 @@ jobs:
     needs: plan
     permissions:
       contents: read
+      actions: read
     if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'valkey-windows-amd64') }}
     uses: ./.github/workflows/build-runtime-leg.yml
     with:
@@ -367,12 +398,16 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: read
     environment: manifest-push
     outputs:
       finalizable_artifact_id: ${{ steps.upload.outputs.artifact-id }}
+      handoff_sha256: ${{ steps.publish.outputs.handoff_sha256 }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -386,8 +421,11 @@ jobs:
         id: publish
         env:
           GH_TOKEN: ${{ secrets.DEVXDK_MANIFEST_PUSH_TOKEN }}
+          ARTIFACT_TOKEN: ${{ github.token }}
           NEEDS_JSON: ${{ toJSON(needs) }}
         run: |
+          git config user.name "devxdk-bot"
+          git config user.email "bot@devxdk.com"
           python3 scripts/publish_legs.py \
             --needs "$NEEDS_JSON" \
             --workdir "$RUNNER_TEMP/legs" \
@@ -408,6 +446,8 @@ jobs:
           exit 1
 
   finalize:
+    outputs:
+      sign_run_id: ${{ steps.finalize.outputs.sign_run_id }}
     needs: publish
     # Gate on the nonempty artifact-id ALONE (not publish success): publish goes
     # red on a per-leg error while still emitting a valid partial handoff, and
@@ -435,12 +475,12 @@ jobs:
           python-version: "3.12"
       - name: Download the finalizable-metas handoff by id
         env:
-          GH_TOKEN: ${{ secrets.DEVXDK_MANIFEST_PUSH_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ needs.publish.outputs.finalizable_artifact_id }}
         run: |
-          gh api "repos/devxdk/devxdk/actions/artifacts/${{ needs.publish.outputs.finalizable_artifact_id }}/zip" > "$RUNNER_TEMP/metas.zip"
-          mkdir -p "$RUNNER_TEMP/finalizable-metas"
-          python3 -c "import sys,zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])" "$RUNNER_TEMP/metas.zip" "$RUNNER_TEMP/finalizable-metas"
+          PYTHONPATH=scripts python3 -c 'import os; from publish_legs import download_artifact; download_artifact(os.environ["ARTIFACT_ID"], os.environ["RUNNER_TEMP"]+"/finalizable-metas")'
       - name: Write pending records, commit, and dispatch scrape-and-sign
+        id: finalize
         env:
           # The PAT pushes the pending commit to main (contents:write, and it is
           # the ruleset bypass actor); the workflow_dispatch of scrape-and-sign
@@ -452,5 +492,37 @@ jobs:
         run: |
           git config user.name "devxdk-bot"
           git config user.email "bot@devxdk.com"
-          git remote set-url origin "https://x-access-token:${PUSH_TOKEN}@github.com/devxdk/devxdk.git"
-          python3 scripts/finalize_builds.py --metas "$RUNNER_TEMP/finalizable-metas"
+          python3 scripts/finalize_builds.py --metas "$RUNNER_TEMP/finalizable-metas" \
+            --handoff-sha256 '${{ needs.publish.outputs.handoff_sha256 }}' --github-output "$GITHUB_OUTPUT"
+      - name: Report incomplete projected publication
+        if: steps.finalize.outputs.has_coverage_errors == 'true'
+        run: |
+          echo "::error::publication remains incomplete; successful records were queued and signing was dispatched"
+          exit 1
+
+  verify-publication:
+    needs: [plan, publish, finalize]
+    if: ${{ !cancelled() && needs.plan.result == 'success' && (github.event_name != 'workflow_dispatch' || !inputs.dry_run) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 95
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+      - name: Fetch the pinned reference verifier
+        run: bash scripts/ci/install_minisign.sh
+      - name: Observe signing, commit checks, and public manifests
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OPERATION: ${{ needs.plan.outputs.operation }}
+          SIGN_RUN_ID: ${{ needs.finalize.outputs.sign_run_id }}
+        run: |
+          printf '%s' "$OPERATION" > "$RUNNER_TEMP/operation.json"
+          args=()
+          [ -z "$SIGN_RUN_ID" ] || args+=(--sign-run-id "$SIGN_RUN_ID")
+          python3 scripts/verify_publication.py --operation "$RUNNER_TEMP/operation.json" \
+            --minisign "$MINISIGN" "${args[@]}"

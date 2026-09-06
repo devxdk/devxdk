@@ -217,7 +217,7 @@ class TestBuildLegMap(unittest.TestCase):
             "component": "redis", "version": "8.8.0", "revision": 1, "line": "8",
             "platform": "windows/amd64", "runner": "windows-2022", "recipe": "redis-msys2",
             "mode": "build", "ordering_kind": "built", "provider": "devxdk-redis-msys2",
-            "epoch": 1, "source_version": "8.8.0"})
+            "epoch": 1, "source_version": "8.8.0", "source_sha256": "88422181efb0c9c0abba332e3e391d409e1e13714b838931669235e5796f704b"})
         # The unix legs carry the -unix recipe/provider and their native runner;
         # redis 8.8.0 and valkey 9.1.0 resolve from the same pinned hashes repos.
         rl = legs["redis-linux-amd64"][0]
@@ -296,9 +296,8 @@ class TestBuildLegMap(unittest.TestCase):
 
     def test_published_asset_flips_to_finalize_only(self):
         assets = {"redis-8.8.0": ["redis-8.8.0-windows-amd64.zip"]}
-        legs = plan.build_leg_map(self.cfg, self.root, self.fetcher, assets.get,
-                                  components=["redis"])
-        self.assertEqual(legs["redis-windows-amd64"][0]["mode"], "finalize-only")
+        with self.assertRaisesRegex(plan.PlanError, 'no trusted build receipt'):
+            plan.build_leg_map(self.cfg, self.root, self.fetcher, assets.get, components=["redis"])
 
     def test_revoked_ledger_entry_skips(self):
         # Revocation is per-(component, version, platform): revoking the windows
@@ -464,7 +463,7 @@ class TestPhpSpcNewest(unittest.TestCase):
         return FakeFetcher(jsons={resolvers.PHP_RELEASES_URL.format(minor): payload})
 
     def test_newest_patch_from_releases_json(self):
-        f = self._fetcher("8.4", {"8.4.23": {"source": [{"filename": "php-8.4.23.tar.gz"}]}})
+        f = self._fetcher("8.4", {"8.4.23": {"source": [{"filename": "php-8.4.23.tar.gz", "sha256": "aa" * 32}]}})
         got = resolvers.php_spc_newest(f, "8.4")
         self.assertEqual(got["source_version"], "8.4.23")
         self.assertEqual(got["source_url"], "https://www.php.net/distributions/php-8.4.23.tar.gz")

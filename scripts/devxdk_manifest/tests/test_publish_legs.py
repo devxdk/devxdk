@@ -13,7 +13,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))  # sibling test
 
 import finalize_builds  # noqa: E402
 import publish_legs  # noqa: E402
-from devxdk_manifest import handoff, releasepub, resolvers  # noqa: E402
+from devxdk_manifest import handoff, releasepub, resolvers, publication, config  # noqa: E402
 from devxdk_manifest.tests.test_releasepub import FakeAPI  # noqa: E402  (reuse the fake API)
 
 # Pins the static-provenance tests validate against, so they do not move when
@@ -87,19 +87,16 @@ def _adopt_leg_dir(root, leg, component, version, url):
     return d, handoff.write(d), meta
 
 
-class TestSuccessLegs(unittest.TestCase):
-    def test_selects_success_with_outputs(self):
-        needs = json.dumps({
-            "plan": {"result": "success", "outputs": {}},
-            "leg-redis-windows-amd64": {"result": "success",
-                "outputs": {"artifact_id": "111", "manifest_sha256": "a" * 64}},
-            "leg-php-windows-amd64": {"result": "failure", "outputs": {}},
-            "leg-valkey-windows-amd64": {"result": "skipped", "outputs": {}},
-            "leg-nginx-linux-amd64": {"result": "success", "outputs": {}},  # no ids -> excluded
-        })
-        got = publish_legs.success_legs(needs)
-        self.assertEqual(set(got), {"redis-windows-amd64"})
-        self.assertEqual(got["redis-windows-amd64"]["artifact_id"], "111")
+def planned_needs(needs, staged):
+    legs = {}
+    for job, info in needs.items():
+        aid = info.get('outputs', {}).get('artifact_id')
+        if job.startswith('leg-') and aid in staged:
+            metas = [json.loads(p.read_text()) for p in sorted(staged[aid].glob('*.meta.json'))]
+            legs[job[4:]] = [dict({k: m[k] for k in publication.IDENTITY}, mode='build') for m in metas]
+    op = {'schema': 1, 'id': '123', 'source_commit': 'a' * 40, 'legs': legs,
+          'targets': [dict(i, coverage_platforms=[i['platform']]) for items in legs.values() for i in items]}
+    return json.dumps(dict(needs, plan={'result': 'success', 'outputs': {'operation': json.dumps(op)}}))
 
 
 class TestPublish(unittest.TestCase):
@@ -113,7 +110,7 @@ class TestPublish(unittest.TestCase):
         self._orig_pins = publish_legs._static_pins
         publish_legs.download_artifact = self._fake_download
         publish_legs._committed_releases = lambda _c: []
-        publish_legs._static_pins = lambda: FAKE_PINS
+        publish_legs._static_pins = lambda: {**config.load().pins, **FAKE_PINS}
         self.addCleanup(self._restore)
 
     def _restore(self):
@@ -133,11 +130,11 @@ class TestPublish(unittest.TestCase):
 
     def test_reconciles_success_legs_and_returns_metas(self):
         needs = {
-            "leg-redis-windows-amd64": self._stage("redis-windows-amd64", "redis", "8.8.0", "a1"),
-            "leg-valkey-windows-amd64": self._stage("valkey-windows-amd64", "valkey", "9.1.0", "a2"),
+            "leg-redis-windows-amd64": self._stage("redis-windows-amd64", "redis", "8.8.0", "1001"),
+            "leg-valkey-windows-amd64": self._stage("valkey-windows-amd64", "valkey", "9.1.0", "1002"),
         }
         api = FakeAPI()
-        metas, errors = publish_legs.publish(json.dumps(needs), self.root / "work", api=api)
+        metas, errors = publish_legs.publish(planned_needs(needs, self.staged), self.root / "work", api=api)
         self.assertEqual(errors, [])
         self.assertEqual({m["component"] for m in metas}, {"redis", "valkey"})
         # Both releases created as drafts and undrafted.
@@ -145,22 +142,22 @@ class TestPublish(unittest.TestCase):
         self.assertFalse(api.releases["valkey-9.1.0"]["draft"])
 
     def test_referenced_immutable_mismatch_is_collected_not_raised(self):
-        needs = {"leg-redis-windows-amd64": self._stage("redis-windows-amd64", "redis", "8.8.0", "a1")}
+        needs = {"leg-redis-windows-amd64": self._stage("redis-windows-amd64", "redis", "8.8.0", "1001")}
         # A published release already carries a DIFFERENT-bytes referenced asset.
         api = FakeAPI(releases={"redis-8.8.0": {"id": 1, "draft": False, "assets": [
             {"id": 2, "name": "redis-8.8.0-windows-amd64.zip", "size": 3,
              "digest": "sha256:" + "e" * 64, "_bytes": b"OLD"}]}})
         publish_legs._committed_releases = lambda c: [{"platforms": {"windows/amd64": {
             "url": "https://github.com/devxdk/devxdk/releases/download/redis-8.8.0/redis-8.8.0-windows-amd64.zip"}}}] if c == "redis" else []
-        metas, errors = publish_legs.publish(json.dumps(needs), self.root / "work", api=api)
+        metas, errors = publish_legs.publish(planned_needs(needs, self.staged), self.root / "work", api=api)
         self.assertEqual(metas, [])
         self.assertEqual(len(errors), 1)
         self.assertIn("immutable", errors[0].lower() + " ")  # message mentions immutability
 
     def test_dry_run_verifies_without_mutation(self):
-        needs = {"leg-redis-windows-amd64": self._stage("redis-windows-amd64", "redis", "8.8.0", "a1")}
+        needs = {"leg-redis-windows-amd64": self._stage("redis-windows-amd64", "redis", "8.8.0", "1001")}
         api = FakeAPI()
-        metas, errors = publish_legs.publish(json.dumps(needs), self.root / "work", api=api, dry=True)
+        metas, errors = publish_legs.publish(planned_needs(needs, self.staged), self.root / "work", api=api, dry=True)
         self.assertEqual(errors, [])
         self.assertEqual(len(metas), 1)
         self.assertEqual(api.releases, {})  # nothing mutated
@@ -170,11 +167,11 @@ class TestPublish(unittest.TestCase):
         # Release is created or asset uploaded.
         url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260718/x.tar.gz"
         d, msha, _ = _adopt_leg_dir(self.root / "src", "a3-python-windows-amd64", "python", "3.14.6", url)
-        self.staged["a3"] = d
+        self.staged["1003"] = d
         needs = {"leg-python-windows-amd64": {"result": "success",
-                 "outputs": {"artifact_id": "a3", "manifest_sha256": msha}}}
+                 "outputs": {"artifact_id": "1003", "manifest_sha256": msha}}}
         api = FakeAPI()
-        metas, errors = publish_legs.publish(json.dumps(needs), self.root / "work", api=api)
+        metas, errors = publish_legs.publish(planned_needs(needs, self.staged), self.root / "work", api=api)
         self.assertEqual(errors, [])
         self.assertEqual([m["component"] for m in metas], ["python"])
         self.assertEqual(metas[0]["url"], url)
@@ -246,7 +243,7 @@ class TestStaticPinProvenance(unittest.TestCase):
         self._orig_reconcile = releasepub.reconcile_release
         publish_legs.download_artifact = self._fake_download
         publish_legs._committed_releases = lambda _c: []
-        publish_legs._static_pins = lambda: FAKE_PINS
+        publish_legs._static_pins = lambda: {**config.load().pins, **FAKE_PINS}
         releasepub.reconcile_release = self._count_reconcile
         self.addCleanup(self._restore)
 
@@ -264,12 +261,12 @@ class TestStaticPinProvenance(unittest.TestCase):
         import shutil
         shutil.copytree(self.staged[artifact_id], dest, dirs_exist_ok=True)
 
-    def _needs(self, entries, artifact_id="n1"):
+    def _needs(self, entries, artifact_id="2001"):
         d, msha = _nginx_leg_dir(self.root / "src", f"{artifact_id}-nginx", entries)
         self.staged[artifact_id] = d
-        return json.dumps({"leg-nginx-linux-amd64": {
+        return planned_needs({"leg-nginx-linux-amd64": {
             "result": "success",
-            "outputs": {"artifact_id": artifact_id, "manifest_sha256": msha}}})
+            "outputs": {"artifact_id": artifact_id, "manifest_sha256": msha}}}, self.staged)
 
     def test_matching_meta_reconciles(self):
         needs = self._needs([("1.30.4", dict(FAKE_PINS_VERSIONS))])

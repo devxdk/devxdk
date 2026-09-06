@@ -35,6 +35,9 @@ LINES = {
 }
 
 # Manifest platform key -> (REST/archive file basename suffix, archive subdir).
+# The tracked upstream REST feeds publish Windows, Linux, and source archives,
+# but no macOS binaries. macOS intentionally has no MariaDB preset entry until
+# a separately reviewed provider supplies a usable native distribution.
 PLATFORMS = {
     "windows/amd64": ("winx64.zip", "winx64-packages"),
     "linux/amd64": ("linux-systemd-x86_64.tar.gz", "bintar-linux-systemd-x86_64"),

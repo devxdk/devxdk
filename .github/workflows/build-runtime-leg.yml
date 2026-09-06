@@ -39,10 +39,12 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   leg:
     runs-on: ${{ inputs.runner }}
+    timeout-minutes: 180
     # publish consumes this leg by its IMMUTABLE artifact id, never by name (an
     # artifact name is substitutable — overwrite mints a fresh id, and the
     # run-scoped token would let a sibling leg rewrite a same-named artifact). The
@@ -69,7 +71,7 @@ jobs:
           # upstream asset; the token lifts the 60/hr anonymous rate limit. Other
           # recipes ignore it. Read-only (the job's contents: read GITHUB_TOKEN).
           GITHUB_TOKEN: ${{ github.token }}
-        run: bash recipes/leg.sh "${{ inputs.leg }}"
+        run: python3 scripts/run_leg.py "${{ inputs.leg }}"
       - name: Write the member-digest manifest
         id: handoff
         shell: bash

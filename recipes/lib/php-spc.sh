@@ -68,25 +68,7 @@ SPC="$outdir/spc"
 
 # --- isolated GPG keyring: committed php keys, assert the pinned fprs -------
 export GNUPGHOME="$outdir/gnupg"; rm -rf "$GNUPGHOME"; mkdir -p "$GNUPGHOME"; chmod 700 "$GNUPGHOME"
-for kf in "$keydir"/*.key; do
-  gpg --batch --quiet --import "$kf" 2>/dev/null || { echo "::error::failed to import $kf" >&2; exit 1; }
-done
-# Exact-set assertion (M4, parity with nginx.sh's M3): the keyring must hold
-# EXACTLY the pinned fingerprints — an unpinned committed .key must never
-# become a trusted signer (the php.net sha256 is a weak second gate: it shares
-# php.net's origin). PRIMARY fingerprints only: gpg --with-colons emits an fpr
-# record for every subkey too, and the pin list is primaries.
-primary=$(gpg --batch --with-colons --list-keys 2>/dev/null \
-  | awk -F: '$1=="pub"{want=1;next} $1=="fpr"{if(want)print $10; want=0; next} {want=0}' | sort -u)
-pinned=$(printf '%s\n' "$php_fprs" | tr ' ' '\n' | awk 'NF' | sort -u)
-[ -n "$pinned" ] || { echo "::error::pinned php fingerprint list is empty" >&2; exit 1; }
-if [ "$primary" != "$pinned" ]; then
-  { echo "::error::php keyring does not hold EXACTLY the pinned fingerprint set"
-    echo "keyring primaries:"; printf '%s\n' "$primary"
-    echo "pinned:"; printf '%s\n' "$pinned"; } >&2
-  exit 1
-fi
-echo "php keyring: exactly the pinned release-manager fingerprint set"
+bash scripts/ci/verify_keyring.sh "$keydir" "$php_fprs"
 
 # --- system build tools (CWD-independent) ----------------------------------
 # Pre-install the OS tools with a FRESH apt index rather than leaning on spc
@@ -132,18 +114,14 @@ for i in $(seq 0 $((count - 1))); do
   # --- fetch php source, GPG-verify + sha256 from php.net's releases JSON ---
   src_name="php-$source_version.tar.gz"
   src_url="https://www.php.net/distributions/$src_name"
-  want_sha=$(python3 - "$minor" "$source_version" <<'PY'
-import json, sys, urllib.request
-minor, ver = sys.argv[1], sys.argv[2]
-with urllib.request.urlopen(f"https://www.php.net/releases/?json&version={minor}&max=1", timeout=30) as r:
-    d = json.load(r)
-newest = next(iter(d))
-if newest != ver:
-    sys.stderr.write(f"php.net {minor} newest is {newest}, plan wants {ver} (re-plan)\n"); sys.exit(2)
-src = next(s for s in d[ver]["source"] if s["filename"] == f"php-{ver}.tar.gz")
-print(src["sha256"])
-PY
-) || { echo "::error::$leg: php.net releases JSON did not confirm $source_version" >&2; exit 1; }
+  planned_sha=$(item source_sha256)
+  if want_sha=$(python3 scripts/ci/confirm_php_source.py "$minor" "$source_version" "$planned_sha"); then
+    :
+  else
+    status=$?
+    echo "::error::$leg: PHP source confirmation failed (exit $status)" >&2
+    exit "$status"
+  fi
 
   curl -fsSL --retry 6 --retry-max-time 300 --max-time 300 -o "$srcserve/$src_name" "$src_url"
   curl -fsSL --retry 6 --retry-max-time 300 --max-time 60 -o "$srcserve/$src_name.asc" "$src_url.asc"

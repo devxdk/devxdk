@@ -162,8 +162,8 @@ version = "3.5.7"
 sha256 = "a8c0d28a529ca480f9f36cf5792e2cd21984552a3c8e4aa11a24aa31aeac98e8"
 
 [pins.pcre2]
-version = "10.47"
-sha256 = "c08ae2388ef333e8403e670ad70c0a11f1eed021fd88308d7e02f596fcd9dc16"
+version = "10.48"
+sha256 = "ebcc25aadf2a51fa1fefa9b8bc9e7a79b3dae86870a0f1152a22e42befd46888"
 
 [pins.zlib]
 version = "1.3.2"
@@ -184,11 +184,15 @@ fingerprints = [
 
 # PHP release-manager GPG public keys. php.net signs each source tarball with a
 # detached .asc AND publishes a sha256 in its releases JSON, so php-spc verifies
-# BOTH (sha256 from the JSON + gpg against these pinned keys). Each active branch
-# has its own RM: 8.4 = Calvin Buckley, 8.5 = Daniel Scherzer. A new RM for a
-# tracked branch means adding their key here (committed under keys/php/).
+# BOTH (sha256 from the JSON + GPG against reviewed keys). Each tracked branch
+# has several release managers; every published manager is pinned. The daily
+# roster check detects drift, and the offline keyring check binds the key files.
 [pins.php_keys]
 fingerprints = [
+  "1198C0117593497A5EC5C199286AF1F9897469DC", # pierrick.key
+  "49D9AF6BC72A80D6691719C8AA23F5BE9C7097D4", # edorian.key
+  "AFD8691FDAEDF03BDF6E460563F15A9B715376CA", # ericmann.key
+  "0616E93D95AF471243E26761770426E17EBBB3DD", # saki.key
   "9D7F99A0CB8F05C8A6958D6256A97AF7600A39A6", # Calvin Buckley  (calvinb.key) — PHP 8.4
   "D95C03BC702BE9515344AE3374E44BC9067701A5", # Daniel Scherzer (daniels.key) — PHP 8.5
 ]

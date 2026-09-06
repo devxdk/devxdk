@@ -149,6 +149,7 @@ for attempt in 1 2 3 4 5; do
   # replays the whole transaction, so a check hoisted out would be validating a
   # base that no longer exists.
   python3 scripts/ci/check_revision_history.py --base FETCH_HEAD --head HEAD
+  python3 scripts/ci/check_build_receipts.py --base FETCH_HEAD --head HEAD
   if git push "$remote" HEAD:main; then
     echo "Pushed on attempt ${attempt}."
     exit 0

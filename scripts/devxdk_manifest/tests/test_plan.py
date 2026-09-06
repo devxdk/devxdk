@@ -50,7 +50,7 @@ class TestHelpers(unittest.TestCase):
         self.assertEqual(plan.next_revision([]), 1)
         self.assertEqual(plan.next_revision([1]), 2)
         self.assertEqual(plan.next_revision([1, 2, 3]), 4)
-        self.assertEqual(plan.next_revision([1, 3]), 2)
+        self.assertEqual(plan.next_revision([1, 3]), 4)
 
     def test_archive_name(self):
         self.assertEqual(plan.archive_name("redis", "8.8.0", 1, "windows/amd64", "zip"),

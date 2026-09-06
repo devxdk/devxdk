@@ -22,12 +22,34 @@ import json
 import pathlib
 import subprocess
 import sys
+import os
+import re
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from devxdk_manifest import config, fetch, plan, resolvers, strictjson  # noqa: E402
+from devxdk_manifest import config, fetch, plan, resolvers, strictjson, publication, receipts, current_state  # noqa: E402
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
+
+
+class ReleaseIndex:
+    """Enumerate tags once; cached full asset lists also handle revision gaps."""
+    def __init__(self):
+        proc = subprocess.run(['gh', 'api', '--paginate', 'repos/devxdk/devxdk/releases?per_page=100'],
+                              capture_output=True, text=True, check=True)
+        self.tags = {r['tag_name'] for page in strictjson.split_json_arrays(proc.stdout) for r in page}
+        self.cache = {}
+
+    def revisions(self, component, version):
+        pattern = re.compile(re.escape(component + '-' + version) + r'(?:-r([1-9][0-9]*))?$')
+        return sorted({int(m[1]) if m[1] else 1 for tag in self.tags if (m := pattern.fullmatch(tag))})
+
+    def __call__(self, tag):
+        if tag not in self.tags:
+            return None
+        if tag not in self.cache:
+            self.cache[tag] = gh_release_assets(tag)
+        return self.cache[tag]
 
 
 def gh_release_assets(tag):
@@ -48,6 +70,7 @@ def gh_release_assets(tag):
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Build-leg planning.")
     ap.add_argument("--leg-map-json", action="store_true", help="print the resolved leg map")
+    ap.add_argument("--operation-json", action="store_true", help="emit frozen operation targets and work map")
     ap.add_argument("--components", default="", help="comma-separated component filter")
     ap.add_argument("--platforms", default="", help="comma-separated platform filter")
     ap.add_argument("--version", default="",
@@ -62,21 +85,36 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     cfg = config.load()
-    if args.leg_map_json:
-        release_assets = (lambda _tag: None) if args.assume_no_releases else gh_release_assets
-        try:
-            legs = plan.build_leg_map(
-                cfg, REPO_ROOT, fetch.Fetcher(), release_assets,
-                components=[c for c in args.components.split(",") if c] or None,
-                platforms=[p for p in args.platforms.split(",") if p] or None,
-                version_override=args.version or None,
-                force=args.force,
-            )
-        except (plan.PlanError, resolvers.ResolveError, fetch.FetchError) as e:
-            sys.stderr.write(f"plan_builds: FAILED: {e}\n")
-            return 1
-        print(json.dumps(legs, sort_keys=True))
-        return 0
+    if args.leg_map_json or args.operation_json:
+        with current_state.snapshot(REPO_ROOT) as state_root:
+            operation_id = os.environ.get('GITHUB_RUN_ID', 'local')
+            saved = state_root / receipts.operation_path(operation_id)
+            if args.operation_json and saved.exists():
+                print(json.dumps(publication.validate_operation(strictjson.load(saved)), sort_keys=True))
+                return 0
+            release_assets = (lambda _tag: None) if args.assume_no_releases else ReleaseIndex()
+            targets = []
+            try:
+                legs = plan.build_leg_map(
+                    cfg, state_root, fetch.Fetcher(), release_assets,
+                    components=[c for c in args.components.split(",") if c] or None,
+                    platforms=[p for p in args.platforms.split(",") if p] or None,
+                    version_override=args.version or None,
+                    force=args.force,
+                    targets=targets,
+                )
+            except (plan.PlanError, resolvers.ResolveError, fetch.FetchError, ValueError) as e:
+                sys.stderr.write(f"plan_builds: FAILED: {e}\n")
+                return 1
+            if args.operation_json:
+                sha = subprocess.check_output(['git','rev-parse','HEAD'],cwd=REPO_ROOT,text=True).strip()
+                operation = {'schema': 1, 'id': operation_id, 'source_commit': sha,
+                             'legs': legs, 'targets': targets, 'force': args.force,
+                             'filters': {'components': args.components, 'platforms': args.platforms, 'version': args.version}}
+                print(json.dumps(publication.validate_operation(operation), sort_keys=True))
+            else:
+                print(json.dumps(legs, sort_keys=True))
+            return 0
     if args.leg_ids_json:
         print(json.dumps(plan.static_leg_ids(cfg)))
         return 0
