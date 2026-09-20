@@ -10,9 +10,11 @@ touches a live feed.
 import json
 import pathlib
 import unittest
+from dataclasses import replace
+from unittest import mock
 
 from devxdk_manifest import config, schema
-from devxdk_manifest.sources import composer, go, mariadb, node
+from devxdk_manifest.sources import composer, go, mariadb, nginx, node
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[3]
 
@@ -40,10 +42,14 @@ def _committed(name):
     return text, json.loads(text)
 
 
+def _lines(name, *ids, track=None):
+    base = next(iter(config.load().component(name).lines.values()))
+    return {lid: replace(base, id=lid, track=track or base.track, retired=False, historical_only=False) for lid in ids}
+
+
 class TestNodeByteIdentity(unittest.TestCase):
     def test_reproduces_committed(self):
         raw, data = _committed("node.json")
-        self.assertEqual(len(data["releases"]), 1)
         rel = data["releases"][0]
         ver = rel["version"]
         platforms = rel["platforms"]
@@ -61,8 +67,8 @@ class TestNodeByteIdentity(unittest.TestCase):
         )
         # component() never assigns a revision (write() does), so project the
         # committed one in before comparing bytes.
-        out = schema.dump_str(schema.with_revision(node.build(fetcher), data["revision"]))
-        self.assertEqual(out, raw, "node.build output must be byte-identical to committed node.json")
+        out = node.build(fetcher, lines=_lines("node", ver.split(".")[0]))
+        self.assertEqual(out["releases"], [rel], "Node must preserve the accepted release tuple")
 
     def test_selects_newest_lts_in_line(self):
         # A newer non-LTS 24.x must be skipped for the newest LTS 24.x.
@@ -80,19 +86,18 @@ class TestNodeByteIdentity(unittest.TestCase):
             size_map={f"https://nodejs.org/dist/v24.18.0/node-v24.18.0-{s}": 100
                       for s in ("win-x64.zip", "linux-x64.tar.gz", "darwin-x64.tar.gz", "darwin-arm64.tar.gz")},
         )
-        out = node.build(fetcher)
+        out = node.build(fetcher, lines=_lines("node", "24", track="lts"))
         self.assertEqual(out["releases"][0]["version"], "24.18.0")
 
     def test_no_lts_raises(self):
         fetcher = FakeFetcher(json_map={node.INDEX_URL: [{"version": "v24.0.0", "lts": False}]})
         with self.assertRaises(RuntimeError):
-            node.build(fetcher)
+            node.build(fetcher, lines=_lines("node", "24", track="lts"))
 
 
 class TestGoByteIdentity(unittest.TestCase):
     def test_reproduces_committed(self):
         raw, data = _committed("go.json")
-        self.assertEqual(len(data["releases"]), 1)
         rel = data["releases"][0]
         ver = rel["version"]
         files = [
@@ -100,8 +105,8 @@ class TestGoByteIdentity(unittest.TestCase):
             for a in rel["platforms"].values()
         ]
         fetcher = FakeFetcher(json_map={go.DL_URL: [{"version": f"go{ver}", "stable": True, "files": files}]})
-        out = schema.dump_str(schema.with_revision(go.build(fetcher), data["revision"]))
-        self.assertEqual(out, raw, "go.build output must be byte-identical to committed go.json")
+        out = go.build(fetcher, lines=_lines("go", ".".join(ver.split(".")[:2])))
+        self.assertEqual(out["releases"], [rel], "Go must preserve the accepted release tuple")
 
     def test_selects_highest_stable_numeric(self):
         def files(v):
@@ -114,7 +119,7 @@ class TestGoByteIdentity(unittest.TestCase):
             {"version": "go1.26.9", "stable": True, "files": files("1.26.9")},
             {"version": "go1.26.10", "stable": True, "files": files("1.26.10")},  # 10 > 9 numerically
         ]})
-        out = go.build(fetcher)
+        out = go.build(fetcher, lines=_lines("go", "1.26"))
         self.assertEqual(out["releases"][0]["version"], "1.26.10")
 
 
@@ -192,15 +197,16 @@ class TestMariadbScrape(unittest.TestCase):
         _raw, data = _committed("mariadb.json")
         rel = next(r for r in data["releases"] if r["version"].startswith("11.8."))
         fetcher, line = self._fixture_for(rel)
-        out = schema.dump_str(mariadb.build(fetcher, lines={line: rel["channel"]}))
+        policies = _lines("mariadb", line)
+        policies[line] = replace(policies[line], channel=rel["channel"])
+        out = schema.dump_str(mariadb.build(fetcher, lines=policies))
         expected = schema.dump_str(schema.component("mariadb", "MariaDB", "service", [rel]))
         self.assertEqual(out, expected, "mariadb.build must reproduce the committed 11.8 release exactly")
 
-    def test_lines_match_config(self):
-        cfg = config.load()
-        configured = {l for c, l, _p, _plat in cfg.scrape_keys() if c == "mariadb"}
-        self.assertEqual(set(mariadb.LINES), configured,
-                         "sources/mariadb.py LINES must match the tracked-versions.toml mariadb lines")
+    def test_uses_supplied_configuration(self):
+        fetcher = FakeFetcher(json_map={f"{mariadb.REST_BASE}/99.1/": {"releases": {}}})
+        with self.assertRaisesRegex(RuntimeError, "99.1"):
+            mariadb.build(fetcher, lines=_lines("mariadb", "99.1"))
 
     def test_newest_release_is_numeric(self):
         # 11.8.10 beats 11.8.9 numerically (a lexical sort would pick 11.8.9).
@@ -215,7 +221,7 @@ class TestMariadbScrape(unittest.TestCase):
             size_map={},
         )
         with self.assertRaises(RuntimeError):
-            mariadb.build(fetcher, lines={"11.8": "lts"})
+            mariadb.build(fetcher, lines=_lines("mariadb", "11.8"))
 
     def test_missing_archive_file_raises(self):
         # remote_size 0 (archive URL 404) is fail-closed — never a dead-URL manifest.
@@ -229,7 +235,7 @@ class TestMariadbScrape(unittest.TestCase):
             size_map={url_w: 0, url_l: 1},
         )
         with self.assertRaises(RuntimeError):
-            mariadb.build(fetcher, lines={"11.8": "lts"})
+            mariadb.build(fetcher, lines=_lines("mariadb", "11.8"))
 
 
 class TestDeterminism(unittest.TestCase):
@@ -246,9 +252,51 @@ class TestDeterminism(unittest.TestCase):
             text_map={f"https://nodejs.org/dist/v{ver}/SHASUMS256.txt": "\n".join(shl) + "\n"},
             size_map=sz,
         )
-        first = schema.dump_str(node.build(f))
-        second = schema.dump_str(node.build(f))
+        first = schema.dump_str(node.build(f, lines=_lines("node", ver.split(".")[0])))
+        second = schema.dump_str(node.build(f, lines=_lines("node", ver.split(".")[0])))
         self.assertEqual(first, second)
+
+
+class TestMultipleNodeFamilies(unittest.TestCase):
+    def test_current_and_eol_families_are_not_filtered_as_non_lts(self):
+        entries, texts, sizes = [], {}, {}
+        for ver, lts in (("16.20.2", "Gallium"), ("26.8.2", False)):
+            entries.append({"version": "v" + ver, "date": "2026-01-01", "lts": lts})
+            texts[f"https://nodejs.org/dist/v{ver}/SHASUMS256.txt"] = "\n".join(
+                f"{'a' * 64}  node-v{ver}-{suffix}" for suffix in node.PLATFORMS.values())
+            sizes.update({f"https://nodejs.org/dist/v{ver}/node-v{ver}-{suffix}": 100
+                          for suffix in node.PLATFORMS.values()})
+        lines = _lines("node", "16", "26", track="current")
+        lines["16"] = replace(lines["16"], support="ended")
+        got = node.build(FakeFetcher({node.INDEX_URL: entries}, texts, sizes), lines=lines)
+        self.assertEqual({r["version"] for r in got["releases"]}, {"16.20.2", "26.8.2"})
+
+
+class TestNginxSignatureGate(unittest.TestCase):
+    def test_rejects_unverified_zip_before_emitting_metadata(self):
+        from devxdk_manifest import resolvers
+        fetcher = mock.Mock()
+        fetcher.get_text.return_value = 'nginx-1.30.4.tar.gz'
+        fetcher.get_bytes.return_value = b"untrusted bytes"
+        with mock.patch.object(nginx, "_verify_signature", side_effect=RuntimeError("bad signature")) as verify:
+            with self.assertRaisesRegex(RuntimeError, "bad signature"):
+                nginx.build(fetcher, lines=_lines("nginx", "1.30"))
+            verify.assert_called_once()
+        fetcher.get_text.assert_called_once_with(resolvers.NGINX_DOWNLOAD)
+
+    def test_hash_is_of_the_verified_zip(self):
+        import hashlib
+        fetcher = mock.Mock()
+        fetcher.get_text.return_value = 'nginx-1.30.4.tar.gz'
+        fetcher.get_bytes.side_effect = [b"verified zip bytes", b"signature"]
+        def verify(archive, signature, _cfg):
+            self.assertEqual(archive.read_bytes(), b"verified zip bytes")
+            self.assertEqual(signature.read_bytes(), b"signature")
+        with mock.patch.object(nginx, "_verify_signature", side_effect=verify):
+            result = nginx.build(fetcher, lines=_lines("nginx", "1.30"))
+        asset = result["releases"][0]["platforms"]["windows/amd64"]
+        self.assertEqual(asset["sha256"], hashlib.sha256(b"verified zip bytes").hexdigest())
+        self.assertEqual(asset["size_bytes"], len(b"verified zip bytes"))
 
 
 if __name__ == "__main__":

@@ -91,6 +91,8 @@ def validate(repo_root=REPO_ROOT, allowlist_go=None) -> list:
 
 def _validate_component(cfg, data, name, hosts) -> list:
     errors = []
+    if len(schema.dump_str(data).encode('utf-8')) > schema.MAX_MANIFEST_BYTES:
+        errors.append(f"{name}.json: exceeds the client's 8 MiB manifest limit")
     if data.get("name") != name:
         errors.append(f"{name}.json: name field {data.get('name')!r} != filename")
     if not COMPONENT_NAME_RE.match(name) or len(name) > COMPONENT_NAME_MAX:
@@ -113,6 +115,10 @@ def _validate_component(cfg, data, name, hosts) -> list:
     tracked = name in cfg.components
     if tracked and kind != cfg.component(name).kind:
         errors.append(f"{name}.json: kind {kind!r} != config kind {cfg.component(name).kind!r}")
+    if "families" in data:
+        expected = schema.family_policy(cfg, name) if tracked else {}
+        if data["families"] != expected:
+            errors.append(f"{name}.json: family policy differs from tracked configuration")
     if not tracked and releases:
         errors.append(f"{name}.json: untracked component may not publish releases")
         return errors

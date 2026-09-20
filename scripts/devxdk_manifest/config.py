@@ -12,7 +12,10 @@ from __future__ import annotations
 
 import pathlib
 import tomllib
+import datetime
 from dataclasses import dataclass, field
+
+from . import versions
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 DEFAULT_PATH = REPO_ROOT / "config" / "tracked-versions.toml"
@@ -20,6 +23,8 @@ DEFAULT_PATH = REPO_ROOT / "config" / "tracked-versions.toml"
 VALID_KINDS = {"runtime", "service"}
 VALID_TYPES = {"scrape", "adopt", "build"}
 VALID_CHANNELS = {"stable", "lts", "prerelease"}
+VALID_TRACKS = VALID_CHANNELS | {"current", "mainline"}
+VALID_SUPPORT = {"unknown", "maintained", "security", "ended"}
 # Platform keys the manifest schema resolves (goos/goarch, darwin fallbacks, and
 # composer's "any"). Kept in sync with internal/manifest PlatformKeys.
 VALID_PLATFORM_KEYS = {
@@ -63,6 +68,12 @@ class Line:
     retain_per_line: int
     retired: bool
     platforms: dict          # key -> Platform
+    track: str = "stable"
+    support: str = "unknown"
+    support_until: str = ""
+    recommended: bool = False
+    keep_history: bool = False
+    historical_only: bool = False
 
 
 @dataclass
@@ -166,7 +177,14 @@ def _parse_component(name: str, val) -> Component:
         raise ConfigError(f"component {name!r}: no lines")
     comp = Component(name=name, kind=kind)
     for lid, lval in lines_raw.items():
+        if not versions.valid_family(str(lid)):
+            raise ConfigError(f"component {name}: invalid family {lid!r}")
+        for prior in comp.lines:
+            if versions.families_overlap(prior, str(lid)):
+                raise ConfigError(f"component {name}: overlapping families {prior} and {lid}")
         comp.lines[str(lid)] = _parse_line(name, str(lid), lval)
+    if sum(line.recommended for line in comp.lines.values()) > 1:
+        raise ConfigError(f"component {name}: multiple recommended families")
     return comp
 
 
@@ -188,7 +206,32 @@ def _parse_line(cname: str, lid: str, val) -> Line:
     platforms = {}
     for pkey, pval in plats_raw.items():
         platforms[pkey] = _parse_platform(cname, lid, pkey, pval)
-    return Line(id=lid, channel=channel, retain_per_line=retain, retired=retired, platforms=platforms)
+    track = val.get("track", channel)
+    support = val.get("support", "unknown")
+    until = val.get("support_until", "")
+    recommended = val.get("recommended", False)
+    keep_history = val.get("keep_history", False)
+    historical_only = val.get("historical_only", False)
+    if not isinstance(track, str) or track not in VALID_TRACKS or not isinstance(support, str) or support not in VALID_SUPPORT:
+        raise ConfigError(f"line {cname}/{lid}: invalid track or support status")
+    if not isinstance(until, str):
+        raise ConfigError(f"line {cname}/{lid}: support_until must be a quoted ISO date")
+    if until:
+        try:
+            if datetime.date.fromisoformat(until).isoformat() != until:
+                raise ValueError("noncanonical date")
+        except ValueError as exc:
+            raise ConfigError(f"line {cname}/{lid}: invalid support_until date") from exc
+    if any(not isinstance(value, bool) for value in (recommended, keep_history, historical_only)):
+        raise ConfigError(f"line {cname}/{lid}: recommended, keep_history and historical_only must be booleans")
+    if recommended and (retired or historical_only or support in {"unknown", "ended"} or track == "prerelease"):
+        raise ConfigError(f"line {cname}/{lid}: unsupported/retired family cannot be recommended")
+    unknown = set(val) - {"channel", "retain_per_line", "retired", "platforms", "track", "support", "support_until", "recommended", "keep_history", "historical_only"}
+    if unknown:
+        raise ConfigError(f"line {cname}/{lid}: unknown keys {sorted(unknown)}")
+    return Line(id=lid, channel=channel, retain_per_line=retain, retired=retired, platforms=platforms,
+                track=track, support=support, support_until=until,
+                recommended=recommended, keep_history=keep_history, historical_only=historical_only)
 
 
 def _parse_platform(cname: str, lid: str, pkey: str, val) -> Platform:

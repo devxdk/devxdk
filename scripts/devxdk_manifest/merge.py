@@ -425,20 +425,14 @@ def line_for(cfg, component: str, ver: str) -> str | None:
     one dot = major.minor, two dots = full version (matching the app's data-line
     derivation)."""
     comp = cfg.component(component)
-    v = versions.try_parse(ver)
-    if v is None:
+    if versions.try_parse(ver) is None:
         # An unparseable version belongs to no line (L35): the parity checks
         # feed raw committed manifest versions through here, and a raised
         # ParseError escaped validate()'s (OSError, GuardError) except into an
         # uncaught traceback instead of the collected report.
         return None
     for lid in comp.lines:
-        dots = lid.count(".")
-        if dots == 0 and v.major_string() == lid:
-            return lid
-        if dots == 1 and v.major_minor_string() == lid:
-            return lid
-        if dots == 2 and ver == lid:
+        if versions.in_family(ver, lid):
             return lid
     return None
 
@@ -492,15 +486,16 @@ def seed(cfg, repo_root) -> ScrapeState:
         if not rec.tuples:
             continue
         rec.tuples = _cmp_sort_desc(rec.tuples)
-        retain = cfg.line(cname, lid).retain_per_line
-        rec.tuples = rec.tuples[:retain]
+        line = cfg.line(cname, lid)
+        if not line.keep_history:
+            rec.tuples = rec.tuples[:line.retain_per_line]
         rec.floor_version = rec.tuples[0].version
     return state
 
 
 # -- the guard -------------------------------------------------------------
 
-def reconcile_key(record: ScrapeRecord, candidates, retain: int):
+def reconcile_key(record: ScrapeRecord, candidates, retain: int | None):
     """Apply the monotonic guard for one (component, line, platform).
 
     Returns (new_record, actions). Raises GuardError on an equal-version
@@ -536,9 +531,10 @@ def reconcile_key(record: ScrapeRecord, candidates, retain: int):
     # release (the plan's rule): removes the oldest beyond retain_per_line.
     if admits:
         result = _cmp_sort_desc(result)
-        for e in result[retain:]:
-            actions.append(("evict", e.version))
-        result = result[:retain]
+        if retain is not None:
+            for e in result[retain:]:
+                actions.append(("evict", e.version))
+            result = result[:retain]
 
     return replace(record, tuples=result, floor_version=new_floor), actions
 
@@ -597,7 +593,9 @@ def recompose(name: str, display_name: str, kind: str, cfg, state: ScrapeState, 
         e = by_version[ver]
         platforms = schema.order_platforms(e["platforms"])
         releases.append(schema.release(ver, e["channel"], e["released_at"], platforms))
-    return schema.component(name, display_name, kind, releases)
+    result = schema.component(name, display_name, kind, releases)
+    result["families"] = schema.family_policy(cfg, name)
+    return result
 
 
 def check_scrape_parity(cfg, state: ScrapeState, repo_root) -> list:
@@ -674,7 +672,8 @@ def scrape_reconcile(state: ScrapeState, cfg, candidate: dict, ledger=None):
         rec = state.get(name, lid, pkey)
         if rec is None:
             raise GuardError(f"{name} candidate targets unconfigured scrape key {lid}/{pkey}")
-        retain = cfg.line(name, lid).retain_per_line
+        line = cfg.line(name, lid)
+        retain = None if line.keep_history else line.retain_per_line
         new_rec, actions = reconcile_key(rec, cands, retain)
         state.put(name, lid, pkey, new_rec)
         all_actions.extend((name, lid, pkey, a) for a in actions)

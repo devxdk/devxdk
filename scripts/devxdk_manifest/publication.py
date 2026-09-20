@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 import hashlib
+import base64
 import json
 import pathlib
 import re
 import urllib.parse
+import zlib
 
 from . import schema, strictjson, versions
 
@@ -103,10 +105,34 @@ def parse_needs(text):
     raw = needs["plan"].get("outputs", {}).get("operation")
     if not raw:
         raise PublicationError("plan operation output is missing")
-    return needs, validate_operation(strictjson.loads(raw))
+    return needs, decode_operation(raw)
 
 
-def validate_metas(items, metas):
+def encode_operation(operation):
+    """Keep expanded plans below runner environment-variable size limits."""
+    data = encode(validate_operation(operation))
+    if len(data) > 1024 * 1024:
+        raise PublicationError('operation exceeds 1 MiB')
+    return 'op1:' + base64.b64encode(zlib.compress(data, 9)).decode('ascii')
+
+
+def decode_operation(raw):
+    if not isinstance(raw, str) or len(raw) > 2 * 1024 * 1024:
+        raise PublicationError('invalid operation transport')
+    if raw.startswith('op1:'):
+        try:
+            compressed = base64.b64decode(raw[4:], validate=True)
+            decoder = zlib.decompressobj()
+            data = decoder.decompress(compressed, 1024 * 1024 + 1)
+            if len(data) > 1024 * 1024 or not decoder.eof or decoder.unused_data:
+                raise PublicationError('invalid or oversized compressed operation')
+            raw = data.decode('utf-8')
+        except (ValueError, zlib.error) as exc:
+            raise PublicationError(f'invalid compressed operation: {exc}') from exc
+    return validate_operation(strictjson.loads(raw))
+
+
+def validate_metas(items, metas, *, allow_missing=False):
     expected = {identity(item): item for item in items}
     got = {}
     for meta in metas:
@@ -119,14 +145,14 @@ def validate_metas(items, metas):
         positive(meta.get("size_bytes"), "size_bytes")
         item = expected[key]
         # PHP source bytes are frozen by the plan as well as by the recipe.
-        if item.get("source_sha256") and item["component"] == "php":
+        if item.get("source_sha256") and item["component"] in ("php", "mariadb"):
             provenance = meta.get("provenance") or {}
             source_sha = provenance.get("source_sha256") or provenance.get("official_zip_sha256")
             if source_sha != item["source_sha256"]:
                 raise PublicationError(f"{key}: source digest differs from the plan")
         got[key] = meta
     missing = expected.keys() - got.keys()
-    if missing:
+    if missing and not allow_missing:
         raise PublicationError(f"missing planned metadata: {sorted(missing)}")
     return [got[key] for key in sorted(got)]
 

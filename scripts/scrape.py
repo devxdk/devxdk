@@ -16,6 +16,7 @@ CI (scrape-and-sign.yml) runs this, then validates and re-signs every JSON.
 """
 
 import argparse
+import copy
 import json
 import pathlib
 import sys
@@ -23,7 +24,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 from devxdk_manifest import config, fetch, merge, schema, strictjson  # noqa: E402
-from devxdk_manifest.sources import composer, go, mariadb, node  # noqa: E402
+from devxdk_manifest.sources import composer, go, mariadb, nginx, node  # noqa: E402
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 STATE_FILE = REPO_ROOT / "state" / "scrape-versions.json"
@@ -36,6 +37,7 @@ SOURCES = {
     "go": go.build,
     "composer": composer.build,
     "mariadb": mariadb.build,
+    "nginx": nginx.build,
 }
 
 
@@ -53,25 +55,42 @@ def main(argv=None):
 
     # Only components declared scrape in the config AND with an implemented
     # source are regenerated; this keeps the config the single source of truth.
-    scrape_components = {c for c, _l, _p, _plat in cfg.scrape_keys()}
+    scrape_components = {c for c, lid, _p, _plat in cfg.scrape_keys()
+                         if not cfg.line(c, lid).retired and not cfg.line(c, lid).historical_only}
+    missing = sorted(scrape_components - SOURCES.keys())
+    if missing:
+        sys.stderr.write(f"ERROR: no scrape adapter for enabled components: {', '.join(missing)}\n")
+        return 1
 
     rc = 0
     built = []
+    processed = set()
     for name in sorted(scrape_components & SOURCES.keys()):
         try:
-            candidate = SOURCES[name](fetcher)
+            candidate = SOURCES[name](fetcher, lines=cfg.component(name).lines)
             # The monotonic guard admits/evicts against committed state, rejecting
             # a feed rollback or a silent republish of a released version.
-            _state, manifest, actions = merge.scrape_reconcile(state, cfg, candidate, ledger)
+            trial = copy.deepcopy(state)
+            _state, manifest, actions = merge.scrape_reconcile(trial, cfg, candidate, ledger)
         except Exception as e:  # noqa: BLE001 - report and continue other components
             sys.stderr.write(f"ERROR scraping {name}: {e}\n")
             rc = 1
             continue
-        rel = manifest["releases"][0]
+        state = trial
+        processed.add(name)
+        rel = manifest["releases"][0] if manifest["releases"] else {"version": "none"}
         moves = ", ".join(f"{a[3][0]} {a[3][1]}" for a in actions if a[3][0] in ("admit", "evict")) or "no change"
         prefix = "[dry-run] " if args.dry_run else ""
         sys.stderr.write(f"{prefix}{name}.json -> {rel['version']} ({rel.get('released_at', '')}) [{moves}]\n")
         built.append((REPO_ROOT / f"{name}.json", manifest))
+
+    # Policy changes also apply to managed components when no new build is due.
+    # The accepted ledger remains the only source of their asset identities.
+    for name in sorted(cfg.components.keys() - processed):
+        path = REPO_ROOT / f"{name}.json"
+        original = schema.load(path)
+        manifest = merge.recompose(name, original["display_name"], original["kind"], cfg, state, ledger)
+        built.append((path, manifest))
 
     if not args.dry_run:
         # PREFLIGHT, and this script needed it most: schema.write sat OUTSIDE
@@ -91,9 +110,6 @@ def main(argv=None):
         # commit; a no-change run re-writes identical bytes (zero diff).
         state.save(STATE_FILE)
 
-    skipped = sorted(scrape_components - SOURCES.keys())
-    if skipped:
-        sys.stderr.write(f"no scrape source implemented yet (left untouched): {', '.join(skipped)}\n")
     return rc
 
 

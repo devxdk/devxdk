@@ -20,11 +20,11 @@ class TestStaticLegs(unittest.TestCase):
 
     def test_managed_only(self):
         ids = plan.static_leg_ids(self.cfg)
-        # php/redis/valkey/python/postgres are managed; go/node/composer/mariadb
-        # are scraped and must have NO leg.
+        # Go/Node/Composer are scraped; MariaDB has two native macOS legs.
         self.assertIn("redis-windows-amd64", ids)
         self.assertIn("php-linux-amd64", ids)
-        self.assertFalse(any(i.startswith(("go-", "node-", "composer-", "mariadb-")) for i in ids))
+        self.assertFalse(any(i.startswith(("go-", "node-", "composer-")) for i in ids))
+        self.assertEqual({i for i in ids if i.startswith('mariadb-')}, {'mariadb-darwin-amd64', 'mariadb-darwin-arm64'})
         # nginx: only the built Unix platforms, never the scraped Windows one.
         self.assertIn("nginx-linux-amd64", ids)
         self.assertNotIn("nginx-windows-amd64", ids)

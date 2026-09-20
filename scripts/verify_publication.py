@@ -60,7 +60,7 @@ def main():
     ap.add_argument('--timeout', type=int, default=5400)
     args = ap.parse_args()
     deadline = time.monotonic() + args.timeout
-    operation = pub.validate_operation(strictjson.load(args.operation)) if args.operation else None
+    operation = pub.decode_operation(pathlib.Path(args.operation).read_text(encoding='utf-8')) if args.operation else None
     if args.sign_run_id:
         run = workflow_status.wait_run(args.sign_run_id, deadline)
         commit = workflow_status.signing_commit(run)

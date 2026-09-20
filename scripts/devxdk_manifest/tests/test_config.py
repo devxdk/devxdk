@@ -23,7 +23,7 @@ class TestRealConfig(unittest.TestCase):
         managed = {(c, l, p) for c, l, p, _ in self.cfg.managed_keys()}
         self.assertTrue(scrape.isdisjoint(managed))
         # go/node are fully scraped; php/redis/valkey are fully build/adopt.
-        self.assertIn(("go", "1", "linux/amd64"), scrape)
+        self.assertIn(("go", "1.27", "linux/amd64"), scrape)
         self.assertIn(("php", "8.5", "windows/amd64"), managed)
         self.assertIn(("python", "3.14", "linux/amd64"), managed)
 
@@ -37,9 +37,10 @@ class TestRealConfig(unittest.TestCase):
         self.assertTrue(unix.managed)
         self.assertEqual(unix.ordering_kind, "built")
 
-    def test_php_two_minor_lines(self):
+    def test_php_selected_minor_lines(self):
         php = self.cfg.component("php")
-        self.assertEqual(set(php.lines), {"8.4", "8.5"})
+        self.assertEqual(set(php.lines), {"7.4", "8.0", "8.1", "8.2", "8.3", "8.4", "8.5"})
+        self.assertTrue(all(line.keep_history for line in php.lines.values()))
 
     def test_pins_are_concrete(self):
         pins = self.cfg.pins
@@ -52,6 +53,29 @@ class TestRealConfig(unittest.TestCase):
 
 
 class TestMalformed(unittest.TestCase):
+    def test_family_policy_validation(self):
+        import copy
+        import pathlib
+        base = {"schema": 1, "components": {"php": {"kind": "runtime", "lines": {
+            "8.5": {"channel": "stable", "retain_per_line": 1, "keep_history": True,
+                    "support": "maintained", "support_until": "2029-12-31", "recommended": True,
+                    "platforms": {"linux/amd64": {"type": "build", "provider": "devxdk-php-spc"}}}
+        }}}}
+        cfg = config._parse(base, pathlib.Path("fixture"))
+        self.assertTrue(cfg.line("php", "8.5").keep_history)
+        for key, value in (("support", "ended"), ("support", []), ("track", []),
+                           ("support_until", "2026-02-30"), ("recommended", 1),
+                           ("historical_only", True), ("keep_history", "yes")):
+            raw = copy.deepcopy(base)
+            raw["components"]["php"]["lines"]["8.5"][key] = value
+            with self.subTest(key=key, value=value), self.assertRaises(config.ConfigError):
+                config._parse(raw, pathlib.Path("fixture"))
+        for lid in ("8", "8.5.1", "08.4"):
+            raw = copy.deepcopy(base)
+            raw["components"]["php"]["lines"][lid] = copy.deepcopy(raw["components"]["php"]["lines"]["8.5"])
+            with self.subTest(lid=lid), self.assertRaises(config.ConfigError):
+                config._parse(raw, pathlib.Path("fixture"))
+
     def _load(self, body):
         import pathlib
         import tempfile

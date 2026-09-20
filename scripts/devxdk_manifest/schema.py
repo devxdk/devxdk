@@ -20,6 +20,7 @@ from .strictjson import loads as strict_loads
 # carrying 2**63 validates here, gets SIGNED, and then fails json.Unmarshal on
 # every client.
 INT64_MAX = 9223372036854775807
+MAX_MANIFEST_BYTES = 8 * 1024 * 1024
 
 # Canonical per-release and per-asset key order (mirrors the committed manifests
 # and internal/manifest's struct tags).
@@ -102,6 +103,24 @@ def component(name: str, display_name: str, kind: str, releases: list) -> dict:
         "kind": kind,
         "releases": releases,
     }
+
+
+def family_policy(cfg, name: str) -> dict:
+    """Project current policy without changing the guarded release tuples."""
+    result = {}
+    for lid, line in cfg.component(name).lines.items():
+        if line.retired:
+            continue
+        value = {"channel": line.track, "support": line.support}
+        if line.support_until:
+            value["support_until"] = line.support_until
+        if line.recommended:
+            value["recommended"] = True
+        if line.historical_only:
+            value["historical_only"] = True
+        value["platforms"] = list(order_platforms(line.platforms))
+        result[lid] = value
+    return result
 
 
 def dump_str(data: dict) -> str:

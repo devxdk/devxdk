@@ -57,5 +57,24 @@ class TestProviderKey(unittest.TestCase):
         self.assertEqual(_sign(versions.compare_provider_key("18.1-1", "17.9-9")), 1)
 
 
+class TestReleaseFamilies(unittest.TestCase):
+    def test_canonical_and_bounded(self):
+        for value in ("22", "1.26", "7.4.33", "0"):
+            self.assertTrue(versions.valid_family(value), value)
+        for value in ("", "v8", "+8", "08.2", "8.", "8.2.1.0", str(1 << 63)):
+            self.assertFalse(versions.valid_family(value), value)
+
+    def test_matching_and_overlap(self):
+        for release, family, expected in (
+            ("22.23.2", "22", True), ("1.26.8", "1.26", True),
+            ("1.27.1", "1.26", False), ("8.20.0", "8.2", False),
+            ("18.6", "18", True), ("8.6.0-rc1", "8.6", True),
+            ("7.4.34", "7.4.33", False), ("nonsense", "1", False),
+        ):
+            self.assertEqual(versions.in_family(release, family), expected)
+        self.assertTrue(versions.families_overlap("8", "8.2"))
+        self.assertFalse(versions.families_overlap("8.2", "8.20"))
+
+
 if __name__ == "__main__":
     unittest.main()

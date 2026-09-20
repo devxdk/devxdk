@@ -1,19 +1,12 @@
-"""Node.js scrape adapter — newest LTS in the tracked line from nodejs.org.
-
-A faithful reproduction of gen-manifest.py's build_node: same index selection,
-same SHASUMS256.txt parse, same platform order, same field order — so the
-generated node.json is byte-identical to what gen-manifest.py produced.
-"""
-
+"""Newest stable release of each configured Node family from the official feed."""
 from __future__ import annotations
 
-from .. import schema
+import functools
+import re
+
+from .. import config, schema, versions
 
 INDEX_URL = "https://nodejs.org/dist/index.json"
-DEFAULT_LINE_PREFIX = "v24."
-
-# Manifest platform key -> upstream archive filename suffix. Insertion order is
-# the manifest's platform order, so it must not change.
 PLATFORMS = {
     "windows/amd64": "win-x64.zip",
     "linux/amd64": "linux-x64.tar.gz",
@@ -22,45 +15,52 @@ PLATFORMS = {
 }
 
 
-def build(fetcher, line_prefix: str = DEFAULT_LINE_PREFIX) -> dict:
+def build(fetcher, lines=None) -> dict:
+    lines = config.load().component("node").lines if lines is None else lines
     index = fetcher.get_json(INDEX_URL)
-
-    # index.json is newest-first. Pick the newest entry in the tracked line whose
-    # "lts" field is a non-empty codename string (not boolean false).
-    chosen = None
-    for entry in index:
-        version = entry.get("version", "")
-        if not version.startswith(line_prefix):
+    if not isinstance(index, list):
+        raise RuntimeError("Node release index must be a list")
+    releases = []
+    for lid, line in lines.items():
+        if line.retired or line.historical_only:
             continue
-        if isinstance(entry.get("lts"), str) and entry["lts"]:
-            chosen = entry
-            break
-    if chosen is None:
-        raise RuntimeError(f"no LTS release found in the {line_prefix}x line")
-
-    ver = chosen["version"].lstrip("v")
-    released_at = chosen.get("date", "")
-
-    shasums = fetcher.get_text(f"https://nodejs.org/dist/v{ver}/SHASUMS256.txt")
-    sha_by_file = {}
-    for line in shasums.splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        parts = line.split()
-        if len(parts) >= 2:
-            sha_by_file[parts[-1]] = parts[0]
-
-    platforms = {}
-    for key, suffix in PLATFORMS.items():
-        filename = f"node-v{ver}-{suffix}"
-        sha = sha_by_file.get(filename)
-        if sha is None:
-            raise RuntimeError(f"sha256 for {filename} not in SHASUMS256.txt")
-        url = f"https://nodejs.org/dist/v{ver}/{filename}"
-        platforms[key] = schema.asset(url, sha, fetcher.remote_size(url))
-
-    return schema.component(
-        "node", "Node.js", "runtime",
-        [schema.release(ver, "lts", released_at, platforms)],
-    )
+        candidates = []
+        for entry in index:
+            raw = entry.get("version", "")
+            if not versions.in_family(raw, lid) or versions.parse(raw).is_prerelease():
+                continue
+            if line.track == "lts" and not (isinstance(entry.get("lts"), str) and entry["lts"]):
+                continue
+            candidates.append(entry)
+        if not candidates:
+            raise RuntimeError(f"no Node {line.track} release for family {lid}")
+        chosen = max(candidates, key=functools.cmp_to_key(
+            lambda a, b: versions.compare_str(a["version"], b["version"])))
+        ver = chosen["version"].removeprefix("v")
+        shasums = fetcher.get_text(f"https://nodejs.org/dist/v{ver}/SHASUMS256.txt")
+        hashes = {}
+        for raw in shasums.splitlines():
+            fields = raw.split()
+            if len(fields) != 2:
+                raise RuntimeError(f"malformed Node checksum line for {ver}")
+            sha, filename = fields
+            if not re.fullmatch(r"[0-9a-fA-F]{64}", sha) or filename in hashes:
+                raise RuntimeError(f"invalid or duplicate Node checksum for {filename}")
+            hashes[filename] = sha.lower()
+        platforms = {}
+        for key, suffix in PLATFORMS.items():
+            if key not in line.platforms:
+                continue
+            filename = f"node-v{ver}-{suffix}"
+            sha = hashes.get(filename)
+            if sha is None:
+                raise RuntimeError(f"sha256 for {filename} not in SHASUMS256.txt")
+            url = f"https://nodejs.org/dist/v{ver}/{filename}"
+            size = fetcher.remote_size(url)
+            if size <= 0:
+                raise RuntimeError(f"Node archive is missing or unsized: {url}")
+            platforms[key] = schema.asset(url, sha, size)
+        if set(platforms) != set(line.platforms):
+            raise RuntimeError(f"Node {lid}: unsupported configured platform")
+        releases.append(schema.release(ver, line.channel, chosen.get("date", ""), platforms))
+    return schema.component("node", "Node.js", "runtime", releases)

@@ -1,7 +1,10 @@
 """Adversarial operation, receipt, recovery, and observed-publication tests."""
 import copy
+import contextlib
 import json
+import os
 import pathlib
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -35,6 +38,19 @@ class Fixture(unittest.TestCase):
         return publish_legs.publish(json.dumps(needs), self.root / 'work', api=FakeAPI(), **kw)
 
 class PublicationContract(Fixture):
+    def test_compact_operation_roundtrip_and_size_guard(self):
+        import base64
+        import zlib
+        _leg, needs = self.stage_operation()
+        original = json.loads(needs['plan']['outputs']['operation'])
+        compact = pub.encode_operation(original)
+        self.assertEqual(pub.decode_operation(compact), original)
+        needs['plan']['outputs']['operation'] = compact
+        self.assertEqual(pub.parse_needs(json.dumps(needs))[1], original)
+        bomb = 'op1:' + base64.b64encode(zlib.compress(b'x' * (1024 * 1024 + 1))).decode()
+        with self.assertRaises(pub.PublicationError):
+            pub.decode_operation(bomb)
+
     def test_planned_failed_cancelled_skipped_missing_are_errors(self):
         leg, original = self.stage_operation()
         for status in ('failure', 'cancelled', 'skipped', None):
@@ -44,6 +60,7 @@ class PublicationContract(Fixture):
                     del needs['leg-' + leg]
                 else:
                     needs['leg-' + leg]['result'] = status
+                    needs['leg-' + leg]['outputs'] = {}
                 metas, errors = self.publish(needs)
                 self.assertFalse(metas)
                 self.assertEqual(len(errors), 1)
@@ -74,7 +91,9 @@ class PublicationContract(Fixture):
         operation['legs'][leg].append(missing)
         operation['targets'].append(dict(missing, coverage_platforms=['windows/amd64']))
         needs['plan']['outputs']['operation'] = json.dumps(operation)
-        self.assertIn('8.9.0', self.publish(needs)[1][0])
+        metas, errors = self.publish(needs)
+        self.assertIn('8.9.0', errors[0])
+        self.assertEqual([meta['version'] for meta in metas], ['8.8.0'])
 
     def test_duplicate_and_substituted_identity_fail_before_journal(self):
         leg, needs = self.stage_operation()
@@ -112,9 +131,53 @@ class PublicationContract(Fixture):
         needs = json.loads(planned_needs({'leg-' + leg: needs['leg-' + leg],
                                          'leg-valkey-windows-amd64': info}, self.staged))
         needs['leg-valkey-windows-amd64']['result'] = 'failure'
+        needs['leg-valkey-windows-amd64']['outputs'] = {}
         metas, errors = self.publish(needs)
         self.assertEqual([m['component'] for m in metas], ['redis'])
         self.assertEqual(len(errors), 1)
+
+    def test_failed_leg_can_preserve_authenticated_successful_families(self):
+        leg, needs = self.stage_operation()
+        needs['leg-' + leg]['result'] = 'failure'
+        operation = json.loads(needs['plan']['outputs']['operation'])
+        missing = dict(operation['legs'][leg][0], version='8.9.0', source_version='8.9.0')
+        operation['legs'][leg].append(missing)
+        operation['targets'].append(dict(missing, coverage_platforms=['windows/amd64']))
+        needs['plan']['outputs']['operation'] = json.dumps(operation)
+        metas, errors = self.publish(needs)
+        self.assertEqual([meta['version'] for meta in metas], ['8.8.0'])
+        self.assertTrue(any('ended failure' in error for error in errors))
+        self.assertTrue(any('8.9.0' in error for error in errors))
+
+
+class FamilyBuildIsolation(Fixture):
+    def test_failed_family_does_not_stop_following_family_or_publish_partial_files(self):
+        leg, needs = self.stage_operation()
+        item = json.loads(needs['plan']['outputs']['operation'])['legs'][leg][0]
+        failed = dict(item, version='8.7.0', source_version='8.7.0')
+        attempted = []
+        def build(args, **kwargs):
+            current = json.loads(kwargs['env']['LEG_ITEMS'])[0]
+            attempted.append(current['version'])
+            if current['version'] == '8.7.0':
+                raise subprocess.CalledProcessError(1, args)
+            outdir = self.root / 'build' / leg
+            for source in self.staged['1001'].iterdir():
+                if source.is_file():
+                    shutil.copyfile(source, outdir / source.name)
+            return subprocess.CompletedProcess(args, 0)
+        with (mock.patch.object(run_leg, 'ROOT', self.root),
+              mock.patch.object(run_leg.current_state, 'snapshot', return_value=contextlib.nullcontext(self.root)),
+              mock.patch.object(run_leg.receipts, 'load', return_value=None),
+              mock.patch.object(run_leg.subprocess, 'run', side_effect=build),
+              mock.patch.object(sys, 'argv', ['run_leg.py', leg]),
+              mock.patch.dict(os.environ, {'LEG_ITEMS': json.dumps([failed, item])})):
+            self.assertEqual(run_leg.main(), 1)
+        self.assertEqual(attempted, ['8.7.0', '8.8.0'])
+        handed = self.root / 'build' / leg / 'handoff'
+        metas = list(handed.glob('*.meta.json'))
+        self.assertEqual(len(metas), 1)
+        self.assertEqual(json.loads(metas[0].read_text())['version'], '8.8.0')
 
 
 class Recovery(Fixture):
