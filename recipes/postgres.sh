@@ -69,7 +69,7 @@ print(h.hexdigest())" "$asset")
   # --- extract + layout check (theseus wraps in postgresql-<ver>-<triple>/) --
   tar xzf "$asset" -C "$work"
   pgroot="$work/postgresql-$source_version-$triple"
-  for b in postgres initdb pg_ctl; do
+  for b in postgres initdb pg_ctl psql; do
     [ -f "$pgroot/bin/$b$exe" ] || { echo "::error::layout: bin/$b$exe missing under the wrapper dir" >&2; exit 1; }
   done
   if find "$pgroot" \( -name '.devxdk-complete' -o -name '.devxdk-initialized' \) | grep -q .; then
@@ -78,9 +78,12 @@ print(h.hexdigest())" "$asset")
 
   # --- smoke: real initdb + pg_ctl start/stop on the target OS --------------
   data="$work/pgdata"
+  pg_stop() { "$pgroot/bin/pg_ctl$exe" -D "$data" -m immediate -w stop >/dev/null 2>&1 || true; }
+  trap pg_stop EXIT
   "$pgroot/bin/initdb$exe" -D "$data" -U postgres -A trust --encoding=UTF8 >/dev/null 2>&1 \
     || { echo "::error::smoke: initdb failed" >&2; exit 1; }
   if [ "$is_win" = 1 ]; then
+    host=127.0.0.1
     # Windows postgres has no Unix socket; start on a TCP loopback port.
     "$pgroot/bin/pg_ctl$exe" -D "$data" -o "-p 54329 -c listen_addresses=127.0.0.1" -w start >/dev/null 2>&1 \
       || { echo "::error::smoke: pg_ctl start failed" >&2; exit 1; }
@@ -88,11 +91,16 @@ print(h.hexdigest())" "$asset")
     export LD_LIBRARY_PATH="$pgroot/lib:${LD_LIBRARY_PATH:-}"
     export DYLD_LIBRARY_PATH="$pgroot/lib:${DYLD_LIBRARY_PATH:-}"
     sock="$work/sock"; mkdir -p "$sock"
+    host="$sock"
     "$pgroot/bin/pg_ctl" -D "$data" -o "-p 54329 -k $sock -c listen_addresses=''" -w start >/dev/null 2>&1 \
       || { echo "::error::smoke: pg_ctl start failed" >&2; exit 1; }
   fi
-  "$pgroot/bin/pg_ctl$exe" -D "$data" -w stop >/dev/null 2>&1 || true
-  echo "smoke: postgres $source_version $platform initdb + pg_ctl start/stop OK"
+  query=$("$pgroot/bin/psql$exe" -X -h "$host" -p 54329 -U postgres -d postgres -At -v ON_ERROR_STOP=1 \
+    -c 'CREATE TEMP TABLE proof (id integer); INSERT INTO proof VALUES (42); SELECT id FROM proof;' | tail -1 | tr -d '\r')
+  [ "$query" = 42 ] || { echo '::error::smoke: PostgreSQL query did not return 42' >&2; exit 1; }
+  "$pgroot/bin/pg_ctl$exe" -D "$data" -w stop >/dev/null 2>&1
+  trap - EXIT
+  echo "smoke: postgres $source_version $platform initdb + SQL query + stop OK"
 
   # --- meta (adopt: version=MAJOR.MINOR, source_version=full, url=upstream) --
   URL="$url" SHA="$sha" SIZE="$got_size" VERSION="$version" PLATFORM="$platform" \

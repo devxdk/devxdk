@@ -63,6 +63,20 @@ immutability, so the committed state is never signature-invalid.
 
 ## Pipeline layout
 
+Family policy lives beside provider policy in `config/tracked-versions.toml`.
+Signed `families` metadata describes each selectable line's track, support state,
+optional exact support end date, recommended status and declared platforms.
+These labels are independent of immutable release tuples. Clients show one
+current patch per family/platform while accepted, non-revoked history remains
+available for exact project pins. A recommended version needs all its declared
+platforms; a verified partial result can still be published and recovered.
+
+The weekly source check compares reviewed cache hash-index pins with upstream
+and emits a reviewable patch instead of accepting new trust inputs automatically.
+It also checks Python's official lifecycle table. PHP release-manager drift is
+checked separately; committed keyrings are imported and compared with their
+exact pinned fingerprints in secretless CI.
+
 - `config/tracked-versions.toml` — the single source of truth: every component's
   lines and per-platform provenance (`scrape` / `adopt` / `build`), plus the
   `[pins]` the build recipes verify against. `config/signer-source.pin` pins the

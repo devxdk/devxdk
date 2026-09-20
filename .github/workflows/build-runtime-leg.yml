@@ -76,10 +76,11 @@ jobs:
         run: |
           # Python/CreateProcess otherwise finds System32's WSL stub first.
           if [ "$RUNNER_OS" = Windows ]; then
-            export DEVXDK_RECIPE_BASH="$(cygpath -w "$BASH")"
+            DEVXDK_RECIPE_BASH=$(cygpath -w "$BASH")
           else
-            export DEVXDK_RECIPE_BASH="$BASH"
+            DEVXDK_RECIPE_BASH="$BASH"
           fi
+          export DEVXDK_RECIPE_BASH
           python3 scripts/run_leg.py "${{ inputs.leg }}"
       - name: Write the member-digest manifest
         id: handoff
