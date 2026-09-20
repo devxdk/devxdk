@@ -78,7 +78,11 @@ print(h.hexdigest())" "$asset")
 
   # --- smoke: real initdb + pg_ctl start/stop on the target OS --------------
   data="$work/pgdata"
-  pg_stop() { "$pgroot/bin/pg_ctl$exe" -D "$data" -m immediate -w stop >/dev/null 2>&1 || true; }
+  sock=""
+  pg_stop() {
+    "$pgroot/bin/pg_ctl$exe" -D "$data" -m immediate -w stop >/dev/null 2>&1 || true
+    [ -z "$sock" ] || rmdir "$sock" || true
+  }
   trap pg_stop EXIT
   "$pgroot/bin/initdb$exe" -D "$data" -U postgres -A trust --encoding=UTF8 \
     || { echo "::error::smoke: initdb failed" >&2; exit 1; }
@@ -90,7 +94,9 @@ print(h.hexdigest())" "$asset")
   else
     export LD_LIBRARY_PATH="$pgroot/lib:${LD_LIBRARY_PATH:-}"
     export DYLD_LIBRARY_PATH="$pgroot/lib:${DYLD_LIBRARY_PATH:-}"
-    sock="$work/sock"; mkdir -p "$sock"
+    # macOS limits the full socket path to 103 bytes; CI workspace paths
+    # already exceed that once the version and socket filename are appended.
+    sock=$(mktemp -d /tmp/devxdk-pg.XXXXXX)
     host="$sock"
     "$pgroot/bin/pg_ctl" -D "$data" -o "-p 54329 -k $sock -c listen_addresses=''" -w start \
       || { echo "::error::smoke: pg_ctl start failed" >&2; exit 1; }
@@ -99,6 +105,7 @@ print(h.hexdigest())" "$asset")
     -c 'CREATE TEMP TABLE proof (id integer); INSERT INTO proof VALUES (42); SELECT id FROM proof;' | tail -1 | tr -d '\r')
   [ "$query" = 42 ] || { echo '::error::smoke: PostgreSQL query did not return 42' >&2; exit 1; }
   "$pgroot/bin/pg_ctl$exe" -D "$data" -w stop >/dev/null 2>&1
+  [ -z "$sock" ] || rmdir "$sock"
   trap - EXIT
   echo "smoke: postgres $source_version $platform initdb + SQL query + stop OK"
 
