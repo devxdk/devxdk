@@ -6,6 +6,7 @@ import os
 import pathlib
 import re
 import sys
+from html.parser import HTMLParser
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from devxdk_manifest import config, fetch, resolvers
@@ -52,13 +53,48 @@ def proposal(root, replacements):
     return ''.join(changes)
 
 
+def check_python_lifecycle(cfg, client):
+    class Rows(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.rows, self.row, self.cell = [], [], None
+        def handle_starttag(self, tag, attrs):
+            if tag == 'tr': self.row = []
+            elif tag in ('td', 'th'): self.cell = []
+        def handle_data(self, value):
+            if self.cell is not None: self.cell.append(value)
+        def handle_endtag(self, tag):
+            if tag in ('td', 'th') and self.cell is not None:
+                self.row.append(' '.join(''.join(self.cell).split()))
+                self.cell = None
+            elif tag == 'tr' and self.row: self.rows.append(self.row)
+    parser = Rows()
+    parser.feed(client.get_text('https://devguide.python.org/versions/'))
+    states = {'bugfix': 'maintained', 'security': 'security', 'end-of-life': 'ended'}
+    published = {}
+    for row in parser.rows:
+        if row and re.fullmatch(r'3\.\d+', row[0]):
+            status = next((states[cell] for cell in row[1:] if cell in states), None)
+            if status is not None: published[row[0]] = status
+    errors = []
+    for lid, line in cfg.component('python').lines.items():
+        if line.retired or line.historical_only: continue
+        if lid not in published:
+            errors.append(f'Python {lid}: missing or unparseable upstream support status')
+        elif published[lid] != line.support:
+            errors.append(f'Python {lid}: support policy is {line.support}, upstream is {published[lid]}; review the family metadata')
+    return errors
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--proposal-file', default='runtime-pin-update.diff')
     args = parser.parse_args()
     cfg = config.load()
     try:
-        errors, replacements = check(cfg, fetch.Fetcher())
+        client = fetch.Fetcher()
+        errors, replacements = check(cfg, client)
+        errors.extend(check_python_lifecycle(cfg, client))
         patch = proposal(cfg.path.parent.parent, replacements)
     except (fetch.FetchError, resolvers.ResolveError, ValueError, KeyError) as exc:
         print(f'Runtime source currency: {exc}', file=sys.stderr)

@@ -10,6 +10,15 @@ from devxdk_manifest import config
 
 
 class RuntimeCurrency(unittest.TestCase):
+    def test_python_support_changes_and_missing_metadata_are_loud(self):
+        from types import SimpleNamespace
+        cfg = config.load()
+        cfg.components['python'].lines = {'3.10': cfg.line('python', '3.10')}
+        ended = '<table><tr><td><p>3.10</p></td><td>schedule</td><td>end-of-life</td></tr></table>'
+        errors = currency.check_python_lifecycle(cfg, SimpleNamespace(get_text=lambda _: ended))
+        self.assertTrue(any('upstream is ended' in error for error in errors))
+        self.assertTrue(currency.check_python_lifecycle(cfg, SimpleNamespace(get_text=lambda _: '<html>unavailable</html>')))
+
     def test_stale_index_proposes_both_pin_files_without_modifying_them(self):
         cfg = config.load()
         for name, family in (('redis', '8.10'), ('valkey', '9.1')):

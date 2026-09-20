@@ -71,6 +71,9 @@ def main():
         shutil.rmtree(handoff_dir)
     handoff_dir.mkdir(parents=True)
     outcomes = []
+    bash = os.environ.get('DEVXDK_RECIPE_BASH') or shutil.which('bash')
+    if not bash:
+        raise pub.PublicationError('bash is required to run native recipes')
     os.environ.setdefault('GH_TOKEN', os.environ.get('GITHUB_TOKEN', ''))
     with current_state.snapshot(ROOT) as state:
         for item in items:
@@ -88,7 +91,7 @@ def main():
                     raise pub.PublicationError('finalize-only requires a committed receipt; force a new revision')
                 else:
                     env = dict(os.environ, LEG_ITEMS=json.dumps([item]))
-                    subprocess.run(['bash', 'recipes/leg.sh', leg], cwd=ROOT, env=env, check=True)
+                    subprocess.run([bash, 'recipes/leg.sh', leg], cwd=ROOT, env=env, check=True)
                     if item['ordering_kind'] == 'built':
                         ext = 'zip' if item['platform'].startswith('windows/') else 'tar.gz'
                         filename = archive_name(item['component'], item['version'], item['revision'], item['platform'], ext)
