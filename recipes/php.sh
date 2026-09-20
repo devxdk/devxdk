@@ -8,7 +8,7 @@
 #   compiles the GPG-verified php source with the baseline extensions built in,
 #   assembling bin/php + sbin/php-fpm + php.ini flat at the archive root.
 #
-# A leg covers BOTH tracked lines (8.4 + 8.5) sequentially; each line's item in
+# A leg covers the configured families; each line's item in
 # LEG_ITEMS names the exact version the plan resolved from releases.json, and
 # the recipe re-verifies it against the same source (single upstream truth).
 set -euo pipefail
@@ -97,6 +97,16 @@ EOF
   [ -f "$stage/ext/php_redis.dll" ] || { echo "::error::php_redis.dll not found in the PECL zip" >&2; exit 1; }
 
   cp templates/php.ini.windows "$stage/php.ini"
+  # ZIP is built in before 8.2; GD's DLL was named gd2 before 8.0.
+  # Inspect the verified bundle instead of loading a similarly named DLL
+  # from the runner's unrelated PHP installation.
+  builtin_mods=$("$stage/php.exe" -n -m)
+  if grep -qix zip <<< "$builtin_mods"; then
+    sed -i '/^extension=zip$/d' "$stage/php.ini"
+  fi
+  if [ -f "$stage/ext/php_gd2.dll" ]; then
+    sed -i 's/^extension=gd$/extension=gd2/' "$stage/php.ini"
+  fi
   # PHP 8.5 compiles opcache IN (no php_opcache.dll ships) — the template's
   # zend_extension line would then warn on EVERY invocation, so strip it when
   # the DLL is absent; the smoke still requires "Zend OPcache" in -m either way.
@@ -112,29 +122,32 @@ EOF
     echo "::error::layout: bundle must not contain DevXDK marker files" >&2; exit 1
   fi
 
-  # --- smoke (native Windows build; php.ini found beside php.exe) ---------
-  ver_out=$("$stage/php.exe" -v 2>&1)
+  # Match the application's explicit ini and isolated additional-ini search.
+  mkdir -p "$work/empty-ini"
+  export PHP_INI_SCAN_DIR="$(cygpath -w "$work/empty-ini")"
+  php() { "$stage/php.exe" -c "$stage/php.ini" "$@"; }
+  ver_out=$(php -v 2>&1)
   [[ "$ver_out" == *"PHP $source_version"* ]] \
     || { echo "::error::smoke: php -v does not report $source_version" >&2; exit 1; }
   # Warning-clean: a failed extension load warns on EVERY invocation — a
   # bundle that warns is a bundle that does not ship.
   [[ "$ver_out" != *Warning:* ]] \
     || { echo "::error::smoke: php -v emits warnings:"; printf '%s\n' "$ver_out" >&2; exit 1; }
-  mods=$("$stage/php.exe" -m 2>/dev/null)
+  mods=$(php -m 2>/dev/null)
   for ext in $BASELINE; do
     echo "$mods" | grep -qix "$ext" || { echo "::error::smoke: extension '$ext' missing from php -m" >&2; exit 1; }
   done
   echo "$mods" | grep -q "Zend OPcache" || { echo "::error::smoke: Zend OPcache missing" >&2; exit 1; }
   # Pure bash, no grep: git-bash's grep -iF ABORTS on backslash-heavy Windows
   # path patterns, and pipefail + -q would SIGPIPE-fail matching pipelines.
-  ini_out=$("$stage/php.exe" --ini)
+  ini_out=$(php --ini)
   loaded=$(printf '%s\n' "$ini_out" | sed -n 's/^Loaded Configuration File:[[:space:]]*//p')
   loaded="${loaded%\"}"; loaded="${loaded#\"}"   # PHP 8.5 quotes the path
   win_stage=$(cygpath -w "$stage")
   if [[ "${loaded,,}" != "${win_stage,,}"\\php.ini ]]; then
     echo "::error::smoke: php --ini loaded '$loaded', want '$win_stage\\php.ini'" >&2; exit 1
   fi
-  "$stage/php-cgi.exe" -v | head -1 | grep -qF "PHP $source_version" \
+  "$stage/php-cgi.exe" -c "$stage/php.ini" -v | head -1 | grep -qF "PHP $source_version" \
     || { echo "::error::smoke: php-cgi -v failed" >&2; exit 1; }
   echo "smoke: php $source_version -v/-m(baseline $(echo $BASELINE | wc -w)+opcache)/--ini/php-cgi OK"
 
