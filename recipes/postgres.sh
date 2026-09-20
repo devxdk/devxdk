@@ -80,19 +80,19 @@ print(h.hexdigest())" "$asset")
   data="$work/pgdata"
   pg_stop() { "$pgroot/bin/pg_ctl$exe" -D "$data" -m immediate -w stop >/dev/null 2>&1 || true; }
   trap pg_stop EXIT
-  "$pgroot/bin/initdb$exe" -D "$data" -U postgres -A trust --encoding=UTF8 >/dev/null 2>&1 \
+  "$pgroot/bin/initdb$exe" -D "$data" -U postgres -A trust --encoding=UTF8 \
     || { echo "::error::smoke: initdb failed" >&2; exit 1; }
   if [ "$is_win" = 1 ]; then
     host=127.0.0.1
     # Windows postgres has no Unix socket; start on a TCP loopback port.
-    "$pgroot/bin/pg_ctl$exe" -D "$data" -o "-p 54329 -c listen_addresses=127.0.0.1" -w start >/dev/null 2>&1 \
+    "$pgroot/bin/pg_ctl$exe" -D "$data" -o "-p 54329 -c listen_addresses=127.0.0.1" -w start \
       || { echo "::error::smoke: pg_ctl start failed" >&2; exit 1; }
   else
     export LD_LIBRARY_PATH="$pgroot/lib:${LD_LIBRARY_PATH:-}"
     export DYLD_LIBRARY_PATH="$pgroot/lib:${DYLD_LIBRARY_PATH:-}"
     sock="$work/sock"; mkdir -p "$sock"
     host="$sock"
-    "$pgroot/bin/pg_ctl" -D "$data" -o "-p 54329 -k $sock -c listen_addresses=''" -w start >/dev/null 2>&1 \
+    "$pgroot/bin/pg_ctl" -D "$data" -o "-p 54329 -k $sock -c listen_addresses=''" -w start \
       || { echo "::error::smoke: pg_ctl start failed" >&2; exit 1; }
   fi
   query=$("$pgroot/bin/psql$exe" -X -h "$host" -p 54329 -U postgres -d postgres -At -v ON_ERROR_STOP=1 \
