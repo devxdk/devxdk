@@ -44,3 +44,12 @@ AS_IF([$PKG_CONFIG icu-uc --atleast-version=74],[
   ])
 M4;
 $replace('ext/intl/config.m4', $before, $after);
+
+// Upstream GH-16348 fixes clang merging non-local inline-assembly labels,
+// which makes PHP <=8.0 abort at startup on Intel macOS. PHP 8.1.34 already
+// includes this fix: https://github.com/php/php-src/commit/806d2e073c1fe67dfe3c5791f4483f44dd991b28
+passthru('patch -f -F 0 -p1 -d ' . escapeshellarg(SOURCE_PATH . '/php-src')
+    . ' -i ' . escapeshellarg(__DIR__ . '/php-zend-local-labels.patch'), $status);
+if ($status !== 0) {
+    throw new RuntimeException('Could not apply the upstream Zend local-label fix');
+}
