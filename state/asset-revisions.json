@@ -47,6 +47,53 @@
           "status": "active",
           "url": "https://github.com/devxdk/devxdk/releases/download/nginx-1.30.4-r3/nginx-1.30.4-r3-linux-amd64.tar.gz"
         }
+      },
+      "1.30.5": {
+        "darwin/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "1.30",
+          "provider": "devxdk-nginx-unix",
+          "released_at": "2026-09-21",
+          "revoked": false,
+          "sha256": "4e8ae37d2df62364d7f3b7298e543fcf2a64ac28b35356835073cf359dac9aa3",
+          "size_bytes": 2976213,
+          "source_version": "1.30.5",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/nginx-1.30.5/nginx-1.30.5-darwin-amd64.tar.gz"
+        },
+        "darwin/arm64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "1.30",
+          "provider": "devxdk-nginx-unix",
+          "released_at": "2026-09-21",
+          "revoked": false,
+          "sha256": "20fa9aa22059dc602c625b2e1341d4ce9378e6c64808980c356a819370510da2",
+          "size_bytes": 3246157,
+          "source_version": "1.30.5",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/nginx-1.30.5/nginx-1.30.5-darwin-arm64.tar.gz"
+        },
+        "linux/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "1.30",
+          "provider": "devxdk-nginx-unix",
+          "released_at": "2026-09-21",
+          "revoked": false,
+          "sha256": "9112bcee70479a1a549de46fce3447e1de7f5b26ed8bf81fbeca618a7fbe9859",
+          "size_bytes": 5688701,
+          "source_version": "1.30.5",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/nginx-1.30.5/nginx-1.30.5-linux-amd64.tar.gz"
+        }
       }
     },
     "php": {
