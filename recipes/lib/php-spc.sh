@@ -149,9 +149,13 @@ for i in $(seq 0 $((count - 1))); do
       -U "php-src:http://127.0.0.1:$port/$src_name" --retry=3 \
       >"$outdir/spc-download-$version.log" 2>&1 ) \
     || { echo "::error::spc download failed"; tail -40 "$outdir/spc-download-$version.log" >&2; exit 1; }
-  ( cd "$wd" && "$SPC" build "$EXTS" --build-cli --build-fpm \
+  ( cd "$wd" && "$SPC" build "$EXTS" --build-cli --build-fpm --debug \
       >"$outdir/spc-build-$version.log" 2>&1 ) \
     || { echo "::error::spc build failed"; tail -60 "$outdir/spc-build-$version.log" >&2;
+         # Compiler diagnostics precede the final command summary. Keep them
+         # visible so a failed proof can be fixed without blind rebuilds.
+         grep -nE -C 3 'error:|fatal error:|undefined reference|Undefined symbols|Error [0-9]|not declared' \
+           "$outdir/spc-build-$version.log" | tail -180 >&2 || true;
          echo "--- downloaded sources ---" >&2; ls "$wd/downloads" 2>/dev/null | head -40 >&2;
          echo "--- buildroot/bin ---" >&2; ls "$wd/buildroot/bin" 2>/dev/null >&2;
          echo "--- system pkg-config: $(command -v pkg-config || echo MISSING) ---" >&2; exit 1; }
