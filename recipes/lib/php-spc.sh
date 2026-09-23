@@ -258,6 +258,7 @@ CONF
   fpm_ini="${fpm_ini%\"}"; fpm_ini="${fpm_ini#\"}"   # PHP 8.5 quotes the path
   [ "$fpm_ini" = "$stage/php.ini" ] || { echo "::error::smoke: php-fpm loaded ini '$fpm_ini', want '$stage/php.ini'" >&2; exit 1; }
   echo "smoke: php $source_version -v/-m(baseline $(echo $BASELINE | wc -w)+opcache)/--ini + php-fpm -v/-t/loaded-config OK"
+  python3 scripts/ci/smoke_php_fpm.py "$stage" "$source_version"
 
   # --- corresponding source (provenance; PHP License is permissive) --------
   upstream_src="php-$source_version-src.tar.gz"
