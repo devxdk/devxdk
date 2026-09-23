@@ -109,7 +109,22 @@ for i in $(seq 0 $((count - 1))); do
     linux/amd64|darwin/amd64|darwin/arm64) ;;
     *) echo "::error::$leg is the php-spc recipe; platform $platform is not its target" >&2; exit 1 ;;
   esac
-  minor="$line"   # config line id IS the major.minor (8.4 / 8.5)
+  minor="$line"
+  build_exts="$EXTS"
+  build_options=(--build-cli --build-fpm --debug)
+  if [ "$minor" = 7.4 ]; then
+    # PHP 7.4 only supports OPcache as a shared Zend extension. SPC's version
+    # guard assumes static OPcache even for --build-shared; use its explicit
+    # compatibility override only for this native shared-extension build.
+    export SPC_SKIP_PHP_VERSION_CHECK=yes
+    if [ "$os" = Linux ]; then
+      export SPC_TOOLCHAIN='SPC\toolchain\GccNativeToolchain'
+      export SPC_LIBC=glibc
+    fi
+    EXTS="$EXTS,json" # JSON was optional before PHP 8.
+    build_exts="${EXTS/,opcache/}"
+    build_options+=(--build-shared=opcache --disable-opcache-jit)
+  fi
 
   # --- fetch php source, GPG-verify + sha256 from php.net's releases JSON ---
   src_name="php-$source_version.tar.gz"
@@ -149,7 +164,7 @@ for i in $(seq 0 $((count - 1))); do
       -U "php-src:http://127.0.0.1:$port/$src_name" --retry=3 \
       >"$outdir/spc-download-$version.log" 2>&1 ) \
     || { echo "::error::spc download failed"; tail -40 "$outdir/spc-download-$version.log" >&2; exit 1; }
-  ( cd "$wd" && "$SPC" build "$EXTS" --build-cli --build-fpm --debug \
+  ( cd "$wd" && "$SPC" build "$build_exts" "${build_options[@]}" \
       >"$outdir/spc-build-$version.log" 2>&1 ) \
     || { echo "::error::spc build failed"; tail -60 "$outdir/spc-build-$version.log" >&2;
          # Compiler diagnostics precede the final command summary. Keep them
@@ -171,6 +186,11 @@ for i in $(seq 0 $((count - 1))); do
   cp "$fpm_bin" "$stage/sbin/php-fpm"
   chmod 0755 "$stage/bin/php" "$stage/sbin/php-fpm"
   cp templates/php.ini.unix "$stage/php.ini"
+  if [ "$minor" = 7.4 ]; then
+    mkdir -p "$stage/modules"
+    cp "$wd/buildroot/modules/opcache.so" "$stage/modules/opcache.so"
+    printf '\nzend_extension="${DEVXDK_PHP_ROOT}/modules/opcache.so"\n' >> "$stage/php.ini"
+  fi
   # Complete license notices for php + every statically-linked library.
   ( cd "$wd" && "$SPC" dump-license --for-extensions="$EXTS" --dump-dir="$stage/licenses" \
       >"$outdir/spc-license-$version.log" 2>&1 ) \
@@ -186,7 +206,10 @@ for i in $(seq 0 $((count - 1))); do
   fi
 
   # --- smoke: php -v/-m/--ini + php-fpm -v/-t/loaded-config ----------------
-  ver_out=$("$stage/bin/php" -v 2>&1)
+  export DEVXDK_PHP_ROOT="$stage"
+  mkdir -p "$outdir/empty-ini"
+  export PHP_INI_SCAN_DIR="$outdir/empty-ini"
+  ver_out=$("$stage/bin/php" -c "$stage/php.ini" -v 2>&1)
   printf '%s\n' "$ver_out" | grep -q "PHP $source_version" \
     || { echo "::error::smoke: php -v does not report $source_version" >&2; printf '%s\n' "$ver_out" >&2; exit 1; }
   printf '%s\n' "$ver_out" | grep -qi "warning" \
