@@ -111,7 +111,7 @@ for i in $(seq 0 $((count - 1))); do
   esac
   minor="$line"
   build_exts="$EXTS"
-  build_options=(--build-cli --build-fpm --debug)
+  build_options=(--build-cli --build-fpm --debug --with-added-patch="$repo_root/recipes/lib/php-build-patches.php")
   if [ "$minor" = 7.4 ]; then
     # PHP 7.4 only supports OPcache as a shared Zend extension. SPC's version
     # guard assumes static OPcache even for --build-shared; use its explicit
