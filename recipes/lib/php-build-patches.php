@@ -3,6 +3,34 @@
 declare(strict_types=1);
 
 // SPC executes this hook against the GPG/hash-verified source after extraction.
+if ($this->getPatchPoint() === 'before-sanity-check' && $this->getPHPVersionID() < 80000 && PHP_OS_FAMILY === 'Linux') {
+    // Shared-extension builds also test an embed library. SPC 2.8.5 copies
+    // archive headings/unquoted names from nm into GNU ld's dynamic list.
+    // Parse only defined symbol records and quote their names; keep the test.
+    $archive = BUILD_LIB_PATH . '/libphp.a';
+    $rows = [];
+    exec('nm -g --defined-only -P ' . escapeshellarg($archive), $rows, $status);
+    if ($status !== 0) {
+        throw new RuntimeException('Could not read the PHP embed symbol table');
+    }
+    $symbols = [];
+    foreach ($rows as $row) {
+        if (preg_match('/^(\S+)\s+[A-Za-z]\s+[0-9a-fA-F]+(?:\s+[0-9a-fA-F]+)?$/', trim($row), $match)) {
+            $symbols[] = '  "' . addcslashes(explode('@', $match[1])[0], "\\\"") . '";';
+        }
+    }
+    $symbols = array_unique($symbols);
+    if (!$symbols) {
+        throw new RuntimeException('PHP embed symbol table has no defined exports');
+    }
+    sort($symbols);
+    $list = "{\n" . implode("\n", $symbols) . "\n};\n";
+    if (file_put_contents($archive . '.dynsym', $list) !== strlen($list)) {
+        throw new RuntimeException('Could not write the PHP embed symbol list');
+    }
+    return;
+}
+
 if ($this->getPatchPoint() !== 'after-php-extract' || $this->getPHPVersionID() >= 80100) {
     return;
 }
