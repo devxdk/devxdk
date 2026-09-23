@@ -25,7 +25,8 @@ if [ ! -f "$tls_prefix/.complete" ]; then
   echo "$tls_sha  $tls_work/source.tar.gz" | shasum -a 256 -c -
   tar xzf "$tls_work/source.tar.gz" -C "$tls_work"
   ( cd "$tls_work/openssl-$tls_version"
-    MACOSX_DEPLOYMENT_TARGET=12.0 ./Configure no-shared no-tests no-module --prefix="$tls_prefix" --libdir=lib
+    export MACOSX_DEPLOYMENT_TARGET=12.0
+    ./Configure no-shared no-tests no-module --prefix="$tls_prefix" --libdir=lib
     make -j3
     make install_sw
   )

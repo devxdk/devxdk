@@ -334,7 +334,7 @@ policy = "never"
 
 [[rows]]
 id = "pins-openssl"
-why = "Statically linked into the three DevXDK-built unix nginx bundles (recipes/nginx.sh is the ONLY reader of this pin - redis/valkey take OpenSSL from the runner's package manager, and in php-spc 'openssl' is an extension NAME, so a grep for the word is misleading)"
+why = "Statically linked into the three unix nginx bundles and both native macOS MariaDB bundles. A pin change requires forced rebuilds of both components. Redis/Valkey use runner packages; php-spc resolves its own dependencies."
 value = "3.5.7"
 [[rows.checks]]
 kind = "scan"

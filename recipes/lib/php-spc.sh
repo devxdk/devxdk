@@ -171,6 +171,10 @@ for i in $(seq 0 $((count - 1))); do
          # visible so a failed proof can be fixed without blind rebuilds.
          grep -nE -C 3 'error:|fatal error:|undefined reference|Undefined symbols|Error [0-9]|not declared' \
            "$outdir/spc-build-$version.log" | tail -180 >&2 || true;
+         if [ -f "$wd/source/php-src/config.log" ]; then
+           grep -nE -C 6 'error:|dyld\[|Abort trap|Segmentation fault|cannot run|Undefined symbols' \
+             "$wd/source/php-src/config.log" | tail -160 >&2 || true;
+         fi;
          echo "--- downloaded sources ---" >&2; ls "$wd/downloads" 2>/dev/null | head -40 >&2;
          echo "--- buildroot/bin ---" >&2; ls "$wd/buildroot/bin" 2>/dev/null >&2;
          echo "--- system pkg-config: $(command -v pkg-config || echo MISSING) ---" >&2; exit 1; }

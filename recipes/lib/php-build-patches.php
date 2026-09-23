@@ -20,3 +20,23 @@ $patched = str_replace($before, 'int compression ZEND_ATTRIBUTE_UNUSED)', $sourc
 if (file_put_contents($file, $patched) !== strlen($patched)) {
     throw new RuntimeException('Could not write the PHP libxml build patch');
 }
+
+// Backport the ICU language-standard check from PHP 8.1.34. ICU 74+ headers
+// require C++17; PHP 7.4/8.0 otherwise force C++11 even with a newer compiler.
+$file = SOURCE_PATH . '/php-src/ext/intl/config.m4';
+$source = file_get_contents($file);
+$before = 'PHP_CXX_COMPILE_STDCXX(11, mandatory, PHP_INTL_STDCXX)';
+$after = <<<'M4'
+AS_IF([$PKG_CONFIG icu-uc --atleast-version=74],[
+    PHP_CXX_COMPILE_STDCXX(17, mandatory, PHP_INTL_STDCXX)
+  ],[
+    PHP_CXX_COMPILE_STDCXX(11, mandatory, PHP_INTL_STDCXX)
+  ])
+M4;
+if ($source === false || substr_count($source, $before) !== 1) {
+    throw new RuntimeException('Unexpected PHP intl source; review the build patch');
+}
+$patched = str_replace($before, $after, $source);
+if (file_put_contents($file, $patched) !== strlen($patched)) {
+    throw new RuntimeException('Could not write the PHP intl build patch');
+}
