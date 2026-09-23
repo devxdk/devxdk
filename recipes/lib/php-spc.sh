@@ -110,6 +110,14 @@ for i in $(seq 0 $((count - 1))); do
     *) echo "::error::$leg is the php-spc recipe; platform $platform is not its target" >&2; exit 1 ;;
   esac
   minor="$line"
+  case "$minor" in
+    7.4|8.0|8.1)
+      # Autoconf 2.73 can select C23, which removed the K&R definitions still
+      # present in these PHP sources. Let its ordinary C11/C99 probes choose
+      # the supported dialect; this does not relax compiler diagnostics.
+      export ac_cv_prog_cc_c23=no
+      ;;
+  esac
   build_exts="$EXTS"
   build_options=(--build-cli --build-fpm --debug --with-added-patch="$repo_root/recipes/lib/php-build-patches.php")
   if [ "$minor" = 7.4 ]; then
