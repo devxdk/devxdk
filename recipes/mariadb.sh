@@ -20,7 +20,7 @@ tls_work="$out/openssl-$tls_version"
 tls_prefix="$tls_work/install"
 if [ ! -f "$tls_prefix/.complete" ]; then
   mkdir -p "$tls_work"
-  curl -fsSL --retry 6 --max-time 900 -o "$tls_work/source.tar.gz" \
+  curl -fsSL --retry 6 --retry-all-errors --retry-max-time 300 --connect-timeout 30 --max-time 900 -o "$tls_work/source.tar.gz" \
     "https://github.com/openssl/openssl/releases/download/openssl-$tls_version/openssl-$tls_version.tar.gz"
   echo "$tls_sha  $tls_work/source.tar.gz" | shasum -a 256 -c -
   tar xzf "$tls_work/source.tar.gz" -C "$tls_work"
@@ -51,7 +51,7 @@ PY
   work="$out/work-$ver"
   mkdir -p "$work"
   src="$out/mariadb-$ver-src.tar.gz"
-  curl -fsSL --retry 6 --max-time 900 -o "$src" "$url"
+  curl -fsSL --retry 6 --retry-all-errors --retry-max-time 300 --connect-timeout 30 --max-time 900 -o "$src" "$url"
   echo "$sha  $src" | shasum -a 256 -c -
   tar xzf "$src" -C "$work"
   prefix="$work/bundle/mariadb-$ver"

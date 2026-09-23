@@ -19,6 +19,14 @@ $replace = static function (string $relative, string $before, string $after, int
     }
 };
 
+$apply = static function (string $name): void {
+    passthru('patch -f -F 0 -p1 -d ' . escapeshellarg(SOURCE_PATH . '/php-src')
+        . ' -i ' . escapeshellarg(__DIR__ . '/' . $name), $status);
+    if ($status !== 0) {
+        throw new RuntimeException('Could not apply the upstream PHP patch ' . $name);
+    }
+};
+
 if ($this->getPHPVersionID() < 80000) {
     // PHP 7 calls its embed library libphp7, while SPC's install/export/test
     // pipeline expects libphp. Match PHP 8's build names so SPC inspects the
@@ -26,6 +34,9 @@ if ($this->getPHPVersionID() < 80000) {
     $replace('configure.ac', 'libphp[]$PHP_MAJOR_VERSION', 'libphp', 3);
     $replace('build/php.m4', 'libphp[]$PHP_MAJOR_VERSION', 'libphp', 3);
     $replace('build/Makefile.global', 'libphp$(PHP_MAJOR_VERSION)', 'libphp', 9);
+    // PHP 8 tests GD's build by linking instead of executing a dummy foobar
+    // function. The finished bundle separately exercises GD at runtime.
+    $apply('php74-gd-link-check.patch');
 }
 
 // libxml2 removed its public ATTRIBUTE_UNUSED macro. PHP 7.4/8.0 already
@@ -48,8 +59,4 @@ $replace('ext/intl/config.m4', $before, $after);
 // Upstream GH-16348 fixes clang merging non-local inline-assembly labels,
 // which makes PHP <=8.0 abort at startup on Intel macOS. PHP 8.1.34 already
 // includes this fix: https://github.com/php/php-src/commit/806d2e073c1fe67dfe3c5791f4483f44dd991b28
-passthru('patch -f -F 0 -p1 -d ' . escapeshellarg(SOURCE_PATH . '/php-src')
-    . ' -i ' . escapeshellarg(__DIR__ . '/php-zend-local-labels.patch'), $status);
-if ($status !== 0) {
-    throw new RuntimeException('Could not apply the upstream Zend local-label fix');
-}
+$apply('php-zend-local-labels.patch');

@@ -103,6 +103,7 @@ def main():
                     shutil.copyfile(outdir / member['name'], handoff_dir / member['name'])
                 (handoff_dir / f"{item['component']}-{item['version']}.meta.json").write_bytes(pub.encode(meta))
                 outcomes.append({'version': item['version'], 'result': 'success'})
+                print(f"::notice::{leg} {item['version']}: verified metadata and archive members", flush=True)
             except Exception as exc:
                 outcomes.append({'version': item['version'], 'result': 'failure', 'error': str(exc)})
                 print(f"::error::{leg} {item['version']}: {exc}", file=sys.stderr)

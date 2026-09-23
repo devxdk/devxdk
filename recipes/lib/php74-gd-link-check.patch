@@ -1,0 +1,16 @@
+--- a/build/php.m4
++++ b/build/php.m4
+@@ -1646,5 +1646,5 @@
+   old_LIBS=$LIBS
+   LIBS="$4 $LIBS"
+-  AC_RUN_IFELSE([AC_LANG_SOURCE([[
++  AC_LINK_IFELSE([AC_LANG_SOURCE([[
+     $5
+     char $1();
+@@ -1659,6 +1659,4 @@
+     LIBS=$old_LIBS
+     $3
+-  ],[
+-    LIBS=$old_LIBS
+   ])
+ ])

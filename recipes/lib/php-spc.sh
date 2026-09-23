@@ -235,6 +235,12 @@ for i in $(seq 0 $((count - 1))); do
     printf '%s\n' "$mods" | grep -qix "$ext" || { echo "::error::smoke: extension '$ext' missing from php -m" >&2; exit 1; }
   done
   printf '%s\n' "$mods" | grep -q "Zend OPcache" || { echo "::error::smoke: Zend OPcache missing from php -m" >&2; exit 1; }
+  "$stage/bin/php" -c "$stage/php.ini" -r '
+    $image = imagecreatetruecolor(2, 2);
+    if (!$image) { exit(1); }
+    ob_start(); $ok = imagepng($image); $png = ob_get_clean();
+    if (!$ok || substr($png, 0, 8) !== "\x89PNG\r\n\x1a\n") { exit(1); }
+  ' || { echo '::error::smoke: GD could not encode a PNG' >&2; exit 1; }
   ini_loaded=$("$stage/bin/php" -c "$stage/php.ini" --ini 2>/dev/null | sed -n 's/^Loaded Configuration File:[[:space:]]*//p')
   ini_loaded="${ini_loaded%\"}"; ini_loaded="${ini_loaded#\"}"   # PHP 8.5 quotes the path
   [ "$ini_loaded" = "$stage/php.ini" ] || { echo "::error::smoke: php --ini loaded '$ini_loaded', want '$stage/php.ini'" >&2; exit 1; }
