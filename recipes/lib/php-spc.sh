@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # Unix static PHP build via static-php-cli (devxdk-php-spc, Phase 3). Linux+macOS.
 #
-# Each PHP minor is its own line (8.4, 8.5); a leg builds every line for its
+# Each PHP minor is its own line; a leg builds every planned line for its
 # platform sequentially. Per line: verify the pinned spc builder binary
 # (config [pins.static_php_cli]); GPG-verify the php source tarball against the
 # pinned php.net release-manager keys (keys/php/*.key + [pins.php_keys]) AND its
 # sha256 from php.net's releases JSON; feed exactly those verified bytes to spc
 # over a loopback URL (-U php-src:...) so spc compiles the audited source; build
-# the baseline extension set STATICALLY (`spc build ... --build-cli --build-fpm`);
+# the baseline extensions (PHP 7.4 requires shared OPcache; Linux then uses
+# the runner's glibc baseline, while later PHP uses a fully static musl build);
 # assemble the flat bundle the app contract expects (ArchiveStrip=0 -> archive
 # root == version dir): bin/php + sbin/php-fpm + php.ini (templates/php.ini.unix)
 # + licenses/ (spc dump-license). Smoke: php -v/-m(baseline+opcache)/--ini +
@@ -202,6 +203,9 @@ for i in $(seq 0 $((count - 1))); do
     mkdir -p "$stage/modules"
     cp "$wd/buildroot/modules/opcache.so" "$stage/modules/opcache.so"
     printf '\nzend_extension="${DEVXDK_PHP_ROOT}/modules/opcache.so"\n' >> "$stage/php.ini"
+    if [ "$os" = Darwin ]; then
+      python3 scripts/ci/verify_macos_bundle.py "$stage"
+    fi
   fi
   # Complete license notices for php + every statically-linked library.
   ( cd "$wd" && "$SPC" dump-license --for-extensions="$EXTS" --dump-dir="$stage/licenses" \
