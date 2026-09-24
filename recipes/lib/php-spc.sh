@@ -241,6 +241,13 @@ for i in $(seq 0 $((count - 1))); do
     ob_start(); $ok = imagepng($image); $png = ob_get_clean();
     if (!$ok || substr($png, 0, 8) !== "\x89PNG\r\n\x1a\n") { exit(1); }
   ' || { echo '::error::smoke: GD could not encode a PNG' >&2; exit 1; }
+  "$stage/bin/php" -c "$stage/php.ini" -r '
+    libxml_use_internal_errors(true);
+    $document = new DOMDocument();
+    if (!$document->loadXML("<root>42</root>") || $document->documentElement->textContent !== "42") { exit(1); }
+    if ($document->loadXML("<root>") !== false || !libxml_get_last_error()) { exit(1); }
+    libxml_clear_errors();
+  ' || { echo '::error::smoke: libxml parsing or error callbacks failed' >&2; exit 1; }
   ini_loaded=$("$stage/bin/php" -c "$stage/php.ini" --ini 2>/dev/null | sed -n 's/^Loaded Configuration File:[[:space:]]*//p')
   ini_loaded="${ini_loaded%\"}"; ini_loaded="${ini_loaded#\"}"   # PHP 8.5 quotes the path
   [ "$ini_loaded" = "$stage/php.ini" ] || { echo "::error::smoke: php --ini loaded '$ini_loaded', want '$stage/php.ini'" >&2; exit 1; }

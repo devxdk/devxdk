@@ -37,6 +37,9 @@ if ($this->getPHPVersionID() < 80000) {
     // PHP 8 tests GD's build by linking instead of executing a dummy foobar
     // function. The finished bundle separately exercises GD at runtime.
     $apply('php74-gd-link-check.patch');
+    // SPC carries these libxml2 2.12 API/header adaptations for PHP 8.0 but
+    // skips PHP 7.4. Backport the same const-correct callbacks and includes.
+    $apply('php74-libxml2.patch');
 }
 
 // libxml2 removed its public ATTRIBUTE_UNUSED macro. PHP 7.4/8.0 already
