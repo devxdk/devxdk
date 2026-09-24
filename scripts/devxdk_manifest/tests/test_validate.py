@@ -44,6 +44,11 @@ class TestRealManifests(unittest.TestCase):
 
 
 class TestComponentRules(unittest.TestCase):
+    def test_manifest_growth_cannot_exceed_client_limit(self):
+        data = _manifest()
+        data['notes'] = 'x' * (8 * 1024 * 1024)
+        self.assertTrue(any('8 MiB' in error for error in self._errs(data)))
+
     def setUp(self):
         self.cfg = config.load()
 
@@ -127,12 +132,10 @@ class TestComponentRules(unittest.TestCase):
         self.assertTrue(any("invalid platform key" in e for e in errs))
 
     def test_platform_not_in_line(self):
-        # darwin/amd64 is not a configured node platform in line 24? It IS. Use a
-        # platform valid globally but not configured for this component/line:
-        # mariadb has no darwin platform.
+        # Universal is a valid key, but MariaDB declares separate native arches.
         m = {"name": "mariadb", "display_name": "MariaDB", "kind": "service", "revision": 1, "releases": [
             {"version": "11.8.8", "channel": "lts", "released_at": "",
-             "platforms": {"darwin/arm64": _asset(url="https://archive.mariadb.org/x.tar.gz")}},
+             "platforms": {"darwin/universal": _asset(url="https://archive.mariadb.org/x.tar.gz")}},
         ]}
         errs = vm._validate_component(self.cfg, m, "mariadb", HOSTS)
         self.assertTrue(any("not configured for line" in e for e in errs))

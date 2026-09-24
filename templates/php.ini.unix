@@ -1,7 +1,7 @@
 ; Default php.ini for the DevXDK Unix PHP bundle (php-spc, Linux/macOS).
 ; The bundle layout is bin/php, sbin/php-fpm, php.ini at the archive root.
-; On Unix the baseline extension set is compiled in STATICALLY (static-php-cli),
-; so there are no extension= lines to load — the extensions are always on. The
+; The baseline extensions are compiled in; the recipe adds a matching shared
+; OPcache module directive for PHP 7.4, which cannot build it statically. The
 ; php/composer shims pin PHPRC to this file (bin/php would not otherwise find a
 ; bundle-root php.ini), and php-fpm launches with -c <version-dir>/php.ini.
 

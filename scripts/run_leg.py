@@ -10,7 +10,7 @@ import tempfile
 
 from devxdk_manifest import config, current_state, fetch, handoff, publication as pub, receipts, strictjson
 from publish_legs import GhReleaseAPI, download_artifact
-from devxdk_manifest.plan import release_tag
+from devxdk_manifest.plan import archive_name, release_tag
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
@@ -63,7 +63,17 @@ def main():
     leg = pub.basename(sys.argv[1])
     items = strictjson.loads(os.environ['LEG_ITEMS'])
     pins = config.load().pins
-    builds = []
+    outdir = ROOT / 'build' / leg
+    handoff_dir = outdir / 'handoff'
+    if not handoff_dir.resolve().is_relative_to((ROOT / 'build').resolve()):
+        raise pub.PublicationError('handoff directory escapes build root')
+    if handoff_dir.exists():
+        shutil.rmtree(handoff_dir)
+    handoff_dir.mkdir(parents=True)
+    outcomes = []
+    bash = os.environ.get('DEVXDK_RECIPE_BASH') or shutil.which('bash')
+    if not bash:
+        raise pub.PublicationError('bash is required to run native recipes')
     os.environ.setdefault('GH_TOKEN', os.environ.get('GITHUB_TOKEN', ''))
     with current_state.snapshot(ROOT) as state:
         for item in items:
@@ -71,19 +81,34 @@ def main():
             from devxdk_manifest.plan import leg_id
             if leg_id(item['component'], item['platform']) != leg:
                 raise pub.PublicationError('item belongs to another leg')
-            receipt = receipts.load(state, item)
-            if receipt:
-                if receipt['inputs'] != receipts.input_pins(pins, item):
-                    raise pub.PublicationError('recorded build inputs changed; start a new operation')
-                recover(receipt, ROOT / 'build' / leg)
-            elif item['mode'] == 'finalize-only':
-                raise pub.PublicationError('finalize-only requires a committed receipt; force a new revision')
-            else:
-                builds.append(item)
-    if builds:
-        env = dict(os.environ, LEG_ITEMS=json.dumps(builds))
-        return subprocess.run(['bash', 'recipes/leg.sh', leg], cwd=ROOT, env=env).returncode
-    return 0
+            try:
+                receipt = receipts.load(state, item)
+                if receipt:
+                    if receipt['inputs'] != receipts.input_pins(pins, item):
+                        raise pub.PublicationError('recorded build inputs changed; start a new operation')
+                    meta = recover(receipt, outdir)
+                elif item['mode'] == 'finalize-only':
+                    raise pub.PublicationError('finalize-only requires a committed receipt; force a new revision')
+                else:
+                    env = dict(os.environ, LEG_ITEMS=json.dumps([item]))
+                    subprocess.run([bash, 'recipes/leg.sh', leg], cwd=ROOT, env=env, check=True)
+                    if item['ordering_kind'] == 'built':
+                        ext = 'zip' if item['platform'].startswith('windows/') else 'tar.gz'
+                        filename = archive_name(item['component'], item['version'], item['revision'], item['platform'], ext)
+                    else:
+                        filename = f"{item['component']}-{item['version']}-{item['platform'].replace('/', '-')}"
+                    meta = strictjson.load(outdir / (filename + '.meta.json'))
+                pub.validate_metas([item], [meta])
+                for member in pub.members(meta, outdir):
+                    shutil.copyfile(outdir / member['name'], handoff_dir / member['name'])
+                (handoff_dir / f"{item['component']}-{item['version']}.meta.json").write_bytes(pub.encode(meta))
+                outcomes.append({'version': item['version'], 'result': 'success'})
+                print(f"::notice::{leg} {item['version']}: verified metadata and archive members", flush=True)
+            except Exception as exc:
+                outcomes.append({'version': item['version'], 'result': 'failure', 'error': str(exc)})
+                print(f"::error::{leg} {item['version']}: {exc}", file=sys.stderr)
+    (handoff_dir / 'outcomes.json').write_bytes(pub.encode(outcomes))
+    return int(any(outcome['result'] != 'success' for outcome in outcomes))
 
 
 if __name__ == '__main__':

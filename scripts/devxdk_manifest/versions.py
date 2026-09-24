@@ -21,6 +21,28 @@ Standard library only.
 
 from __future__ import annotations
 
+import re
+
+
+def valid_family(family: str) -> bool:
+    return (isinstance(family, str)
+            and re.fullmatch(r"(?:0|[1-9][0-9]*)(?:\.(?:0|[1-9][0-9]*)){0,2}", family) is not None
+            and all(int(part) <= (1 << 63) - 1 for part in family.split(".")))
+
+
+def in_family(ver: str, family: str) -> bool:
+    if not isinstance(ver, str) or not valid_family(family):
+        return False
+    value = try_parse(ver)
+    if value is None:
+        return False
+    actual = (value.major, value.minor, value.patch)
+    return all(actual[i] == int(part) for i, part in enumerate(family.split(".")))
+
+
+def families_overlap(a: str, b: str) -> bool:
+    return a == b or a.startswith(b + ".") or b.startswith(a + ".")
+
 
 def _cmp_int(a: int, b: int) -> int:
     if a < b:

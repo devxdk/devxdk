@@ -14,25 +14,10 @@ unscraped.
 
 from __future__ import annotations
 
-from .. import schema
+from .. import config, schema
 
 REST_BASE = "https://downloads.mariadb.org/rest-api/mariadb"
 ARCHIVE_BASE = "https://archive.mariadb.org"
-
-# Tracked major.minor lines -> manifest channel. 11.8 is the lts channel so it
-# stays the RecommendedPreset default (the app prefers the newest lts release);
-# 11.8.8 was seeded stable and promoted to lts by a one-shot revocation record,
-# so the adapter now emits lts to match. 12.3 is the rolling stable line — safe
-# to add above 11.8 precisely because 11.8 is lts, so the newer stable 12.x never
-# wins the preset default. The older 11.4/10.11/10.6 stay stable (installable,
-# never the default).
-LINES = {
-    "12.3": "stable",
-    "11.8": "lts",
-    "11.4": "stable",
-    "10.11": "stable",
-    "10.6": "stable",
-}
 
 # Manifest platform key -> (REST/archive file basename suffix, archive subdir).
 # The tracked upstream REST feeds publish Windows, Linux, and source archives,
@@ -58,9 +43,11 @@ def _sha256(file_entry: dict) -> str:
 
 
 def build(fetcher, lines: dict | None = None) -> dict:
-    lines = lines if lines is not None else LINES
+    lines = lines if lines is not None else config.load().component("mariadb").lines
     releases = []
-    for line, channel in lines.items():
+    for line, policy in lines.items():
+        if policy.retired or policy.historical_only:
+            continue
         data = fetcher.get_json(f"{REST_BASE}/{line}/")
         rel_map = data.get("releases") or {}
         if not rel_map:
@@ -69,7 +56,10 @@ def build(fetcher, lines: dict | None = None) -> dict:
         files = {f.get("file_name"): f for f in rel_map[ver].get("files", [])}
 
         platforms = {}
+        expected = {p for p, value in policy.platforms.items() if value.type == "scrape"}
         for pkey, (suffix, subdir) in PLATFORMS.items():
+            if pkey not in expected:
+                continue
             fname = f"mariadb-{ver}-{suffix}"
             entry = files.get(fname)
             if entry is None:
@@ -82,6 +72,8 @@ def build(fetcher, lines: dict | None = None) -> dict:
             platforms[pkey] = schema.asset(url, sha, size)
 
         # No release date in the metadata used here; released_at stays empty.
-        releases.append(schema.release(ver, channel, "", platforms))
+        if set(platforms) != expected:
+            raise RuntimeError(f"mariadb {line}: unsupported configured scrape platform")
+        releases.append(schema.release(ver, policy.channel, "", platforms))
 
     return schema.component("mariadb", "MariaDB", "service", releases)

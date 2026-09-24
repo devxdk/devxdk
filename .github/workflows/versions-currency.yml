@@ -14,9 +14,8 @@ name: versions-currency
 
 on:
   schedule:
-    # Monthly, early on the 1st. The consistency job is what catches inventory
-    # rot between runs; this one only answers "has upstream moved".
-    - cron: "17 6 1 * *"
+    # Sunday, before Monday's runtime builds.
+    - cron: "17 6 * * 0"
   workflow_dispatch:
 
 permissions:
@@ -40,3 +39,8 @@ jobs:
           # the rate limit; proxy.golang.org and registry.npmjs.org need none.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python scripts/ci/check_versions.py --mode currency
+      - name: Runtime source currency and reviewed pin proposal
+        if: ${{ !cancelled() }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/ci/check_runtime_sources.py --proposal-file "$RUNNER_TEMP/runtime-pin-update.diff"

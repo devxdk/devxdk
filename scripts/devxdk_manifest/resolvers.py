@@ -32,6 +32,7 @@ ENABLED_PROVIDERS = {
     "devxdk-php-windows",
     "astral",    # python adopt (recipes/python.sh)
     "theseus",   # postgres adopt on every platform (recipes/postgres.sh)
+    "devxdk-mariadb-macos",
 }
 
 _HASH_LINE = re.compile(r"^hash (\S+)-(\d[\w.\-]*)\.tar\.gz sha256 ([0-9a-f]{64}) (\S+)$")
@@ -39,20 +40,6 @@ _HASH_LINE = re.compile(r"^hash (\S+)-(\d[\w.\-]*)\.tar\.gz sha256 ([0-9a-f]{64}
 
 class ResolveError(RuntimeError):
     """A provider source could not answer the newest-version question."""
-
-
-def _in_line(ver: str, line_id: str) -> bool:
-    """Whether a version belongs to a tracked line (same dotted-shape rule as
-    merge.line_for: no dot = major, one dot = major.minor, two = exact)."""
-    v = versions.try_parse(ver)
-    if v is None:
-        return False
-    dots = line_id.count(".")
-    if dots == 0:
-        return v.major_string() == line_id
-    if dots == 1:
-        return v.major_minor_string() == line_id
-    return ver == line_id
 
 
 def hashes_newest(fetcher, repo: str, ref: str, component: str, line_id: str) -> dict:
@@ -68,7 +55,7 @@ def hashes_newest(fetcher, repo: str, ref: str, component: str, line_id: str) ->
         if not m or m.group(1) != component:
             continue
         ver, sha, url = m.group(2), m.group(3), m.group(4)
-        if not _in_line(ver, line_id):
+        if not versions.in_family(ver, line_id):
             continue
         if versions.parse(ver).is_prerelease():
             continue
@@ -128,6 +115,20 @@ def _gh_headers() -> dict:
     return headers
 
 
+def _release_pages(fetcher, repo, headers, max_pages=10):
+    """Bounded release search; an exhausted budget is an error, not no results."""
+    base = f"https://api.github.com/repos/{repo}/releases?per_page=100"
+    for page_number in range(1, max_pages + 1):
+        url = base if page_number == 1 else f"{base}&page={page_number}"
+        page = fetcher.get_json(url, headers)
+        if not isinstance(page, list):
+            raise ResolveError(f"{repo}: release list is not an array")
+        yield page
+        if len(page) < 100:
+            return
+    raise ResolveError(f"{repo}: release search exceeded {max_pages} pages")
+
+
 def _astral_digest_sha256(asset: dict) -> str:
     """The published sha256 from an asset's ``digest`` field ("sha256:<hex>"),
     fail-closed on any other/absent algorithm (astral ships no .sha256 sidecar,
@@ -158,6 +159,24 @@ def astral_newest(fetcher, line_id: str) -> dict:
     assets = fetcher.get_json_paginated(
         f"https://api.github.com/repos/{ASTRAL_REPO}/releases/{release['id']}/assets", headers)
 
+    result = _astral_release(assets, line_id, tag)
+    if result is not None:
+        return result
+    # Do not silently substitute an older build when this release contains an
+    # incomplete upload of the requested family. Only an absent family searches.
+    for page in _release_pages(fetcher, ASTRAL_REPO, headers):
+        for older in page:
+            if older.get("draft") or older.get("prerelease") or older.get("id") == release["id"]:
+                continue
+            older_assets = fetcher.get_json_paginated(
+                f"https://api.github.com/repos/{ASTRAL_REPO}/releases/{older['id']}/assets", headers)
+            result = _astral_release(older_assets, line_id, older["tag_name"])
+            if result is not None:
+                return result
+    raise ResolveError(f"no published cpython family {line_id} found in {ASTRAL_REPO}")
+
+
+def _astral_release(assets, line_id, tag):
     triple_to_key = {v: k for k, v in _ASTRAL_TRIPLES.items()}
     by_version: dict = {}
     for asset in assets:
@@ -166,9 +185,15 @@ def astral_newest(fetcher, line_id: str) -> dict:
             continue
         ver, triple = m.group(1), m.group(2)
         pkey = triple_to_key.get(triple)
-        if pkey is None or not _in_line(ver, line_id):
+        if pkey is None or not versions.in_family(ver, line_id):
             continue
-        by_version.setdefault(ver, {})[pkey] = asset
+        group = by_version.setdefault(ver, {})
+        if pkey in group:
+            raise ResolveError(f"duplicate cpython {ver} {pkey} in release {tag}")
+        group[pkey] = asset
+
+    if not by_version:
+        return None
 
     complete = [v for v, plats in by_version.items() if set(plats) == set(_ASTRAL_TRIPLES)]
     if not complete:
@@ -209,20 +234,16 @@ def theseus_newest(fetcher, line_id: str) -> dict:
     release present on all four platforms is plannable — a partial upload must
     never yield a platform-incomplete release."""
     headers = _gh_headers()
-    # First page only: the GitHub releases list is newest-first and theseus has
-    # hundreds of releases across every postgres major, so the newest release in
-    # a currently-tracked line is always among the ~100 most recent — paginating
-    # to exhaustion would be hundreds of wasted calls into the rate limit.
-    releases = fetcher.get_json(
-        f"https://api.github.com/repos/{THESEUS_REPO}/releases?per_page=100", headers)
-
     best_rel, best = None, None
-    for rel in releases:
-        full = rel.get("tag_name", "")
-        if not _in_line(full, line_id) or versions.parse(full).is_prerelease():
-            continue
-        if best is None or versions.compare_str(full, best) > 0:
-            best_rel, best = rel, full
+    for page in _release_pages(fetcher, THESEUS_REPO, headers):
+        for rel in page:
+            full = rel.get("tag_name", "")
+            if rel.get("draft") or rel.get("prerelease") or not versions.in_family(full, line_id) or versions.parse(full).is_prerelease():
+                continue
+            if best is None or versions.compare_str(full, best) > 0:
+                best_rel, best = rel, full
+        if best is not None:
+            break
     if best is None:
         raise ResolveError(f"no postgres release for line {line_id} in {THESEUS_REPO}")
 
@@ -270,7 +291,7 @@ def nginx_newest(fetcher, line_id: str) -> dict:
     best = None
     for m in _NGINX_TARBALL.finditer(text):
         ver = m.group(1)
-        if not _in_line(ver, line_id) or versions.parse(ver).is_prerelease():
+        if not versions.in_family(ver, line_id) or versions.parse(ver).is_prerelease():
             continue
         if best is None or versions.compare_str(ver, best) > 0:
             best = ver
@@ -301,7 +322,7 @@ def php_spc_newest(fetcher, line_id: str) -> dict:
     if not isinstance(data, dict) or len(data) != 1:
         raise ResolveError(f"php.net releases JSON empty for branch {line_id}")
     version = next(iter(data))
-    if not _in_line(version, line_id):
+    if not versions.in_family(version, line_id):
         raise ResolveError(f"php.net newest {version} is not in branch {line_id}")
     release = data[version]
     sources = release.get("source") if isinstance(release, dict) else None
@@ -336,8 +357,27 @@ def resolve(provider: str, cfg, component: str, line_id: str, fetcher) -> dict:
         return astral_newest(fetcher, line_id)
     if provider == "theseus":
         return theseus_newest(fetcher, line_id)
+    if provider == "devxdk-mariadb-macos":
+        return mariadb_source_newest(fetcher, line_id)
     if provider == "devxdk-nginx-unix":
         return nginx_newest(fetcher, line_id)
     if provider == "devxdk-php-spc":
         return php_spc_newest(fetcher, line_id)
     raise ResolveError(f"no resolver for provider {provider!r}")
+
+
+def mariadb_source_newest(fetcher, line_id):
+    from .sources import mariadb
+    data = fetcher.get_json(f"{mariadb.REST_BASE}/{line_id}/")
+    releases = data.get("releases") or {}
+    if not releases:
+        raise ResolveError(f"MariaDB has no source release for {line_id}")
+    ver = mariadb._newest_release(releases)
+    if not versions.in_family(ver, line_id):
+        raise ResolveError(f"MariaDB {ver} is outside {line_id}")
+    filename = f"mariadb-{ver}.tar.gz"
+    matches = [entry for entry in releases[ver].get("files", []) if entry.get("file_name") == filename]
+    if len(matches) != 1:
+        raise ResolveError(f"MariaDB {ver}: missing or duplicate source tarball")
+    return {"source_version": ver, "source_sha256": mariadb._sha256(matches[0]),
+            "source_url": f"{mariadb.ARCHIVE_BASE}/mariadb-{ver}/source/{filename}"}

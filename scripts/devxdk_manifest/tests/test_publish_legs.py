@@ -185,7 +185,7 @@ class TestWritePending(unittest.TestCase):
             metas.mkdir()
             meta = {
                 "component": "redis", "version": "8.8.0", "platform": "windows/amd64",
-                "line": "8", "ordering_kind": "built", "provider": "devxdk-redis-msys2",
+                "line": "8.8", "ordering_kind": "built", "provider": "devxdk-redis-msys2",
                 "epoch": 1, "revision": 1, "source_version": "8.8.0",
                 "archive": "redis-8.8.0-windows-amd64.zip", "sha256": "a" * 64, "size_bytes": 100,
             }

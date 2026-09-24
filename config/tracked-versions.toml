@@ -20,8 +20,7 @@
 # bump in the same commit (absent epoch = 1).
 #
 # `line` is the scrape/retention bucket (a monotonic floor + `retain_per_line`
-# eviction). For services it matches the app's data-compatibility line (major,
-# or major.minor for mariadb); for stateless components it is just the series.
+# eviction). Family selection is independent of the app's engine-specific storage policy.
 #
 # [pins] holds the source/toolchain hashes the Phase-1/3 build recipes verify
 # against. Every value is concrete and reviewed — a bump is a normal PR.
@@ -30,126 +29,429 @@ schema = 1
 
 # ---- Scraped runtimes (official per-platform binaries; upstream publishes hashes)
 
+
+# Lifecycle/track policy may change independently of immutable release tuples.
+# keep_history preserves exact project reinstalls; the client groups the picker.
+
+
 [components.go]
 kind = "runtime"
-[components.go.lines."1"]
+
+[components.go.lines."1.26"]
 channel = "stable"
 retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "maintained"
 platforms = { "windows/amd64" = { type = "scrape", provider = "golang" }, "linux/amd64" = { type = "scrape", provider = "golang" }, "darwin/amd64" = { type = "scrape", provider = "golang" }, "darwin/arm64" = { type = "scrape", provider = "golang" } }
+
+[components.go.lines."1.27"]
+channel = "stable"
+retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "maintained"
+recommended = true
+platforms = { "windows/amd64" = { type = "scrape", provider = "golang" }, "linux/amd64" = { type = "scrape", provider = "golang" }, "darwin/amd64" = { type = "scrape", provider = "golang" }, "darwin/arm64" = { type = "scrape", provider = "golang" } }
+
 
 [components.node]
 kind = "runtime"
+
+[components.node.lines."16"]
+channel = "lts"
+retain_per_line = 1
+keep_history = true
+track = "lts"
+support = "ended"
+support_until = "2023-09-11"
+platforms = { "windows/amd64" = { type = "scrape", provider = "nodejs" }, "linux/amd64" = { type = "scrape", provider = "nodejs" }, "darwin/amd64" = { type = "scrape", provider = "nodejs" }, "darwin/arm64" = { type = "scrape", provider = "nodejs" } }
+
+[components.node.lines."18"]
+channel = "lts"
+retain_per_line = 1
+keep_history = true
+track = "lts"
+support = "ended"
+support_until = "2025-04-30"
+platforms = { "windows/amd64" = { type = "scrape", provider = "nodejs" }, "linux/amd64" = { type = "scrape", provider = "nodejs" }, "darwin/amd64" = { type = "scrape", provider = "nodejs" }, "darwin/arm64" = { type = "scrape", provider = "nodejs" } }
+
+[components.node.lines."20"]
+channel = "lts"
+retain_per_line = 1
+keep_history = true
+track = "lts"
+support = "ended"
+support_until = "2026-04-30"
+platforms = { "windows/amd64" = { type = "scrape", provider = "nodejs" }, "linux/amd64" = { type = "scrape", provider = "nodejs" }, "darwin/amd64" = { type = "scrape", provider = "nodejs" }, "darwin/arm64" = { type = "scrape", provider = "nodejs" } }
+
+[components.node.lines."22"]
+channel = "lts"
+retain_per_line = 1
+keep_history = true
+track = "lts"
+support = "maintained"
+support_until = "2027-04-30"
+platforms = { "windows/amd64" = { type = "scrape", provider = "nodejs" }, "linux/amd64" = { type = "scrape", provider = "nodejs" }, "darwin/amd64" = { type = "scrape", provider = "nodejs" }, "darwin/arm64" = { type = "scrape", provider = "nodejs" } }
+
 [components.node.lines."24"]
 channel = "lts"
 retain_per_line = 1
+keep_history = true
+track = "lts"
+support = "maintained"
+support_until = "2028-04-30"
+recommended = true
 platforms = { "windows/amd64" = { type = "scrape", provider = "nodejs" }, "linux/amd64" = { type = "scrape", provider = "nodejs" }, "darwin/amd64" = { type = "scrape", provider = "nodejs" }, "darwin/arm64" = { type = "scrape", provider = "nodejs" } }
+
+[components.node.lines."26"]
+channel = "stable"
+retain_per_line = 1
+keep_history = true
+track = "current"
+support = "maintained"
+support_until = "2029-04-30"
+platforms = { "windows/amd64" = { type = "scrape", provider = "nodejs" }, "linux/amd64" = { type = "scrape", provider = "nodejs" }, "darwin/amd64" = { type = "scrape", provider = "nodejs" }, "darwin/arm64" = { type = "scrape", provider = "nodejs" } }
+
 
 [components.composer]
 kind = "runtime"
-# Phase 0 hosts a hand-seeded release; Phase 2 folds composer into scrape.py
-# (getcomposer.org/versions for discovery + the per-version .sha256sum file).
+
 [components.composer.lines."2"]
 channel = "stable"
 retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "maintained"
+recommended = true
 platforms = { "any" = { type = "scrape", provider = "getcomposer" } }
 
-# ---- Services (scraped where an upstream binary exists, else DevXDK-built)
 
 [components.mariadb]
 kind = "service"
-# Scraped from downloads.mariadb.org's REST API (publishes sha256); durable URLs
-# on archive.mariadb.org. 11.8 is the lts channel (the RecommendedPreset default;
-# 11.8.8 was promoted stable->lts by a one-shot revocation), so the newer rolling
-# 12.3 stable line is safe to track above it — the preset prefers the newest lts.
-# 11.4/10.11/10.6 stay stable (installable, never the default). sources/mariadb.py
-# LINES is parity-checked against these entries.
+
 [components.mariadb.lines."12.3"]
 channel = "stable"
-retain_per_line = 3
-platforms = { "windows/amd64" = { type = "scrape", provider = "mariadb" }, "linux/amd64" = { type = "scrape", provider = "mariadb" } }
+retain_per_line = 1
+keep_history = true
+track = "lts"
+support = "maintained"
+support_until = "2029-06-12"
+recommended = true
+platforms = { "windows/amd64" = { type = "scrape", provider = "mariadb" }, "linux/amd64" = { type = "scrape", provider = "mariadb" }, "darwin/amd64" = { type = "build", provider = "devxdk-mariadb-macos" }, "darwin/arm64" = { type = "build", provider = "devxdk-mariadb-macos" } }
+
 [components.mariadb.lines."11.8"]
 channel = "lts"
-retain_per_line = 3
-platforms = { "windows/amd64" = { type = "scrape", provider = "mariadb" }, "linux/amd64" = { type = "scrape", provider = "mariadb" } }
+retain_per_line = 1
+keep_history = true
+track = "lts"
+support = "maintained"
+support_until = "2028-06-04"
+platforms = { "windows/amd64" = { type = "scrape", provider = "mariadb" }, "linux/amd64" = { type = "scrape", provider = "mariadb" }, "darwin/amd64" = { type = "build", provider = "devxdk-mariadb-macos" }, "darwin/arm64" = { type = "build", provider = "devxdk-mariadb-macos" } }
+
 [components.mariadb.lines."11.4"]
 channel = "stable"
-retain_per_line = 3
-platforms = { "windows/amd64" = { type = "scrape", provider = "mariadb" }, "linux/amd64" = { type = "scrape", provider = "mariadb" } }
+retain_per_line = 1
+keep_history = true
+track = "lts"
+support = "maintained"
+support_until = "2029-05-29"
+platforms = { "windows/amd64" = { type = "scrape", provider = "mariadb" }, "linux/amd64" = { type = "scrape", provider = "mariadb" }, "darwin/amd64" = { type = "build", provider = "devxdk-mariadb-macos" }, "darwin/arm64" = { type = "build", provider = "devxdk-mariadb-macos" } }
+
 [components.mariadb.lines."10.11"]
 channel = "stable"
-retain_per_line = 3
-platforms = { "windows/amd64" = { type = "scrape", provider = "mariadb" }, "linux/amd64" = { type = "scrape", provider = "mariadb" } }
+retain_per_line = 1
+keep_history = true
+track = "lts"
+support = "maintained"
+support_until = "2028-02-16"
+platforms = { "windows/amd64" = { type = "scrape", provider = "mariadb" }, "linux/amd64" = { type = "scrape", provider = "mariadb" }, "darwin/amd64" = { type = "build", provider = "devxdk-mariadb-macos" }, "darwin/arm64" = { type = "build", provider = "devxdk-mariadb-macos" } }
+
 [components.mariadb.lines."10.6"]
 channel = "stable"
-retain_per_line = 3
-platforms = { "windows/amd64" = { type = "scrape", provider = "mariadb" }, "linux/amd64" = { type = "scrape", provider = "mariadb" } }
+retain_per_line = 1
+keep_history = true
+track = "lts"
+support = "ended"
+support_until = "2026-07-06"
+platforms = { "windows/amd64" = { type = "scrape", provider = "mariadb" }, "linux/amd64" = { type = "scrape", provider = "mariadb" }, "darwin/amd64" = { type = "build", provider = "devxdk-mariadb-macos" }, "darwin/arm64" = { type = "build", provider = "devxdk-mariadb-macos" } }
+
 
 [components.nginx]
 kind = "service"
-# Windows = official nginx.org zip (scrape); Unix = DevXDK source build (Phase 3).
+
 [components.nginx.lines."1.30"]
 channel = "stable"
-retain_per_line = 3
+retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "maintained"
+recommended = true
 platforms = { "windows/amd64" = { type = "scrape", provider = "nginx" }, "linux/amd64" = { type = "build", provider = "devxdk-nginx-unix" }, "darwin/amd64" = { type = "build", provider = "devxdk-nginx-unix" }, "darwin/arm64" = { type = "build", provider = "devxdk-nginx-unix" } }
 
-# ---- DevXDK-built runtimes/services (no usable upstream binary)
+[components.nginx.lines."1.31"]
+channel = "stable"
+retain_per_line = 1
+keep_history = true
+track = "mainline"
+support = "maintained"
+platforms = { "windows/amd64" = { type = "scrape", provider = "nginx" }, "linux/amd64" = { type = "build", provider = "devxdk-nginx-unix" }, "darwin/amd64" = { type = "build", provider = "devxdk-nginx-unix" }, "darwin/arm64" = { type = "build", provider = "devxdk-nginx-unix" } }
+
 
 [components.php]
 kind = "runtime"
-# Windows = repackaged official build + PECL DLLs; Unix = static-php-cli source
-# build. Each PHP minor is its own line (extensions are ABI-locked per minor).
+
 [components.php.lines."8.5"]
 channel = "stable"
-retain_per_line = 3
+retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "maintained"
+support_until = "2029-12-31"
+recommended = true
 platforms = { "windows/amd64" = { type = "build", provider = "devxdk-php-windows" }, "linux/amd64" = { type = "build", provider = "devxdk-php-spc" }, "darwin/amd64" = { type = "build", provider = "devxdk-php-spc" }, "darwin/arm64" = { type = "build", provider = "devxdk-php-spc" } }
+
 [components.php.lines."8.4"]
 channel = "stable"
-retain_per_line = 3
+retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "maintained"
+support_until = "2028-12-31"
 platforms = { "windows/amd64" = { type = "build", provider = "devxdk-php-windows" }, "linux/amd64" = { type = "build", provider = "devxdk-php-spc" }, "darwin/amd64" = { type = "build", provider = "devxdk-php-spc" }, "darwin/arm64" = { type = "build", provider = "devxdk-php-spc" } }
+
+[components.php.lines."8.3"]
+channel = "stable"
+retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "security"
+support_until = "2027-12-31"
+platforms = { "windows/amd64" = { type = "build", provider = "devxdk-php-windows" }, "linux/amd64" = { type = "build", provider = "devxdk-php-spc" }, "darwin/amd64" = { type = "build", provider = "devxdk-php-spc" }, "darwin/arm64" = { type = "build", provider = "devxdk-php-spc" } }
+
+[components.php.lines."8.2"]
+channel = "stable"
+retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "security"
+support_until = "2026-12-31"
+platforms = { "windows/amd64" = { type = "build", provider = "devxdk-php-windows" }, "linux/amd64" = { type = "build", provider = "devxdk-php-spc" }, "darwin/amd64" = { type = "build", provider = "devxdk-php-spc" }, "darwin/arm64" = { type = "build", provider = "devxdk-php-spc" } }
+
+[components.php.lines."8.1"]
+channel = "stable"
+retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "ended"
+support_until = "2025-12-31"
+platforms = { "windows/amd64" = { type = "build", provider = "devxdk-php-windows" }, "linux/amd64" = { type = "build", provider = "devxdk-php-spc" }, "darwin/amd64" = { type = "build", provider = "devxdk-php-spc" }, "darwin/arm64" = { type = "build", provider = "devxdk-php-spc" } }
+
+[components.php.lines."8.0"]
+channel = "stable"
+retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "ended"
+support_until = "2023-11-26"
+platforms = { "windows/amd64" = { type = "build", provider = "devxdk-php-windows" }, "linux/amd64" = { type = "build", provider = "devxdk-php-spc" }, "darwin/amd64" = { type = "build", provider = "devxdk-php-spc" }, "darwin/arm64" = { type = "build", provider = "devxdk-php-spc" } }
+
+[components.php.lines."7.4"]
+channel = "stable"
+retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "ended"
+support_until = "2022-11-28"
+platforms = { "windows/amd64" = { type = "build", provider = "devxdk-php-windows" }, "linux/amd64" = { type = "build", provider = "devxdk-php-spc" }, "darwin/amd64" = { type = "build", provider = "devxdk-php-spc" }, "darwin/arm64" = { type = "build", provider = "devxdk-php-spc" } }
+
 
 [components.python]
 kind = "runtime"
-# astral python-build-standalone on every platform (adopt: self-hash + smoke).
+
+[components.python.lines."3.10"]
+channel = "stable"
+retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "security"
+platforms = { "windows/amd64" = { type = "adopt", provider = "astral" }, "linux/amd64" = { type = "adopt", provider = "astral" }, "darwin/amd64" = { type = "adopt", provider = "astral" }, "darwin/arm64" = { type = "adopt", provider = "astral" } }
+
+[components.python.lines."3.11"]
+channel = "stable"
+retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "security"
+platforms = { "windows/amd64" = { type = "adopt", provider = "astral" }, "linux/amd64" = { type = "adopt", provider = "astral" }, "darwin/amd64" = { type = "adopt", provider = "astral" }, "darwin/arm64" = { type = "adopt", provider = "astral" } }
+
+[components.python.lines."3.12"]
+channel = "stable"
+retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "security"
+platforms = { "windows/amd64" = { type = "adopt", provider = "astral" }, "linux/amd64" = { type = "adopt", provider = "astral" }, "darwin/amd64" = { type = "adopt", provider = "astral" }, "darwin/arm64" = { type = "adopt", provider = "astral" } }
+
+[components.python.lines."3.13"]
+channel = "stable"
+retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "maintained"
+platforms = { "windows/amd64" = { type = "adopt", provider = "astral" }, "linux/amd64" = { type = "adopt", provider = "astral" }, "darwin/amd64" = { type = "adopt", provider = "astral" }, "darwin/arm64" = { type = "adopt", provider = "astral" } }
+
 [components.python.lines."3.14"]
 channel = "stable"
-retain_per_line = 3
+retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "maintained"
+recommended = true
 platforms = { "windows/amd64" = { type = "adopt", provider = "astral" }, "linux/amd64" = { type = "adopt", provider = "astral" }, "darwin/amd64" = { type = "adopt", provider = "astral" }, "darwin/arm64" = { type = "adopt", provider = "astral" } }
+
 
 [components.postgres]
 kind = "service"
-# theseus-rs binaries on every platform (adopt: sha256 published via .sha256
-# sidecars, native builds including aarch64 macOS — no EDB re-hosting needed).
-# Manifest version = MAJOR.MINOR.
+
+[components.postgres.lines."14"]
+channel = "stable"
+retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "maintained"
+support_until = "2026-11-12"
+platforms = { "windows/amd64" = { type = "adopt", provider = "theseus" }, "linux/amd64" = { type = "adopt", provider = "theseus" }, "darwin/amd64" = { type = "adopt", provider = "theseus" }, "darwin/arm64" = { type = "adopt", provider = "theseus" } }
+
+[components.postgres.lines."15"]
+channel = "stable"
+retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "maintained"
+support_until = "2027-11-11"
+platforms = { "windows/amd64" = { type = "adopt", provider = "theseus" }, "linux/amd64" = { type = "adopt", provider = "theseus" }, "darwin/amd64" = { type = "adopt", provider = "theseus" }, "darwin/arm64" = { type = "adopt", provider = "theseus" } }
+
+[components.postgres.lines."16"]
+channel = "stable"
+retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "maintained"
+support_until = "2028-11-09"
+platforms = { "windows/amd64" = { type = "adopt", provider = "theseus" }, "linux/amd64" = { type = "adopt", provider = "theseus" }, "darwin/amd64" = { type = "adopt", provider = "theseus" }, "darwin/arm64" = { type = "adopt", provider = "theseus" } }
+
+[components.postgres.lines."17"]
+channel = "stable"
+retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "maintained"
+support_until = "2029-11-08"
+platforms = { "windows/amd64" = { type = "adopt", provider = "theseus" }, "linux/amd64" = { type = "adopt", provider = "theseus" }, "darwin/amd64" = { type = "adopt", provider = "theseus" }, "darwin/arm64" = { type = "adopt", provider = "theseus" } }
+
 [components.postgres.lines."18"]
 channel = "stable"
-retain_per_line = 3
+retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "maintained"
+support_until = "2030-11-14"
+recommended = true
 platforms = { "windows/amd64" = { type = "adopt", provider = "theseus" }, "linux/amd64" = { type = "adopt", provider = "theseus" }, "darwin/amd64" = { type = "adopt", provider = "theseus" }, "darwin/arm64" = { type = "adopt", provider = "theseus" } }
+
 
 [components.redis]
 kind = "service"
-# DevXDK-built on every platform (public recipes = AGPL source-offer compliance).
-[components.redis.lines."8"]
+
+[components.redis.lines."6.2"]
 channel = "stable"
-retain_per_line = 3
+retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "maintained"
+support_until = "2027-04-01"
 platforms = { "windows/amd64" = { type = "build", provider = "devxdk-redis-msys2" }, "linux/amd64" = { type = "build", provider = "devxdk-redis-unix" }, "darwin/amd64" = { type = "build", provider = "devxdk-redis-unix" }, "darwin/arm64" = { type = "build", provider = "devxdk-redis-unix" } }
+
+[components.redis.lines."7.2"]
+channel = "stable"
+retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "maintained"
+support_until = "2029-12-01"
+platforms = { "windows/amd64" = { type = "build", provider = "devxdk-redis-msys2" }, "linux/amd64" = { type = "build", provider = "devxdk-redis-unix" }, "darwin/amd64" = { type = "build", provider = "devxdk-redis-unix" }, "darwin/arm64" = { type = "build", provider = "devxdk-redis-unix" } }
+
+[components.redis.lines."7.4"]
+channel = "stable"
+retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "maintained"
+support_until = "2029-12-01"
+platforms = { "windows/amd64" = { type = "build", provider = "devxdk-redis-msys2" }, "linux/amd64" = { type = "build", provider = "devxdk-redis-unix" }, "darwin/amd64" = { type = "build", provider = "devxdk-redis-unix" }, "darwin/arm64" = { type = "build", provider = "devxdk-redis-unix" } }
+
+[components.redis.lines."8.2"]
+channel = "stable"
+retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "maintained"
+support_until = "2030-09-01"
+platforms = { "windows/amd64" = { type = "build", provider = "devxdk-redis-msys2" }, "linux/amd64" = { type = "build", provider = "devxdk-redis-unix" }, "darwin/amd64" = { type = "build", provider = "devxdk-redis-unix" }, "darwin/arm64" = { type = "build", provider = "devxdk-redis-unix" } }
+
+[components.redis.lines."8.8"]
+channel = "stable"
+retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "maintained"
+historical_only = true
+platforms = { "windows/amd64" = { type = "build", provider = "devxdk-redis-msys2" }, "linux/amd64" = { type = "build", provider = "devxdk-redis-unix" }, "darwin/amd64" = { type = "build", provider = "devxdk-redis-unix" }, "darwin/arm64" = { type = "build", provider = "devxdk-redis-unix" } }
+
+[components.redis.lines."8.10"]
+channel = "stable"
+retain_per_line = 1
+keep_history = true
+track = "current"
+support = "maintained"
+recommended = true
+platforms = { "windows/amd64" = { type = "build", provider = "devxdk-redis-msys2" }, "linux/amd64" = { type = "build", provider = "devxdk-redis-unix" }, "darwin/amd64" = { type = "build", provider = "devxdk-redis-unix" }, "darwin/arm64" = { type = "build", provider = "devxdk-redis-unix" } }
+
 
 [components.valkey]
 kind = "service"
-[components.valkey.lines."9"]
+
+[components.valkey.lines."7.2"]
 channel = "stable"
-retain_per_line = 3
+retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "maintained"
+support_until = "2029-04-16"
 platforms = { "windows/amd64" = { type = "build", provider = "devxdk-valkey-msys2" }, "linux/amd64" = { type = "build", provider = "devxdk-valkey-unix" }, "darwin/amd64" = { type = "build", provider = "devxdk-valkey-unix" }, "darwin/arm64" = { type = "build", provider = "devxdk-valkey-unix" } }
 
-# tablex is deferred for v1 (tablex.json stays releases: []); no tracked lines.
-# php-fpm is served by the php bundle (FollowsRuntime); php-fpm.json is never
-# downloaded and has no tracked lines.
+[components.valkey.lines."8.1"]
+channel = "stable"
+retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "maintained"
+support_until = "2030-03-31"
+platforms = { "windows/amd64" = { type = "build", provider = "devxdk-valkey-msys2" }, "linux/amd64" = { type = "build", provider = "devxdk-valkey-unix" }, "darwin/amd64" = { type = "build", provider = "devxdk-valkey-unix" }, "darwin/arm64" = { type = "build", provider = "devxdk-valkey-unix" } }
 
-# =====================================================================
-# Build pins — concrete, reviewed source/toolchain hashes the Phase-1/3
-# recipes verify against. Updating one is a normal reviewed PR.
-# =====================================================================
+[components.valkey.lines."9.1"]
+channel = "stable"
+retain_per_line = 1
+keep_history = true
+track = "stable"
+support = "maintained"
+support_until = "2031-05-19"
+recommended = true
+platforms = { "windows/amd64" = { type = "build", provider = "devxdk-valkey-msys2" }, "linux/amd64" = { type = "build", provider = "devxdk-valkey-unix" }, "darwin/amd64" = { type = "build", provider = "devxdk-valkey-unix" }, "darwin/arm64" = { type = "build", provider = "devxdk-valkey-unix" } }
 
-# static-php-cli (php-spc, Phase 3) — the `spc` static builder binary per runner.
+
+# Reviewed build inputs.
 [pins.static_php_cli]
 version = "2.8.5"
 sha256_linux_x86_64 = "523ba4279c54c7a377156c0dd3a36adf92ee64b01e9a7f5e9e2ec084b8e458e5"
@@ -189,21 +491,30 @@ fingerprints = [
 # roster check detects drift, and the offline keyring check binds the key files.
 [pins.php_keys]
 fingerprints = [
-  "1198C0117593497A5EC5C199286AF1F9897469DC", # pierrick.key
-  "49D9AF6BC72A80D6691719C8AA23F5BE9C7097D4", # edorian.key
-  "AFD8691FDAEDF03BDF6E460563F15A9B715376CA", # ericmann.key
-  "0616E93D95AF471243E26761770426E17EBBB3DD", # saki.key
-  "9D7F99A0CB8F05C8A6958D6256A97AF7600A39A6", # Calvin Buckley  (calvinb.key) — PHP 8.4
-  "D95C03BC702BE9515344AE3374E44BC9067701A5", # Daniel Scherzer (daniels.key) — PHP 8.5
+  "1198C0117593497A5EC5C199286AF1F9897469DC",
+  "49D9AF6BC72A80D6691719C8AA23F5BE9C7097D4",
+  "AFD8691FDAEDF03BDF6E460563F15A9B715376CA",
+  "0616E93D95AF471243E26761770426E17EBBB3DD",
+  "9D7F99A0CB8F05C8A6958D6256A97AF7600A39A6",
+  "D95C03BC702BE9515344AE3374E44BC9067701A5",
+  "C28D937575603EB4ABB725861C0779DC5C0A9DE4",
+  "39B641343D8C104B2B146DC3F9C39DC0B9698544",
+  "E60913E4DF209907D8E30D96659A97C9CF2A795A",
+  "528995BFEDFBA7191D46839EF9BA0ADA31CBD89E",
+  "F1F692238FBC1666E5A5CCD4199F9DFEF6FFBAFD",
+  "1729F83938DA44E27BA0F4D3DBDB397470D12172",
+  "2C16C765DBE54A088130F1BC4B9B5F600B55F3B4",
+  "5A52880781F755608BF815FC910DEB46F53EA312",
+  "42670A7FE4D0441C8E4632349E4FDC074A4EF02D",
 ]
 
 # Upstream hash-verification repos: the redis/valkey SOURCE tarballs the msys2 +
 # unix builds compile are checked against the sha256 published at this pinned ref.
 [pins.redis_hashes]
-ref = "4323436a86cb5562449bab143a0a91a0dea3f476"
+ref = "1ae1e93d5c6234bb991f2dd74e6f89abaeb6ba11"
 
 [pins.valkey_hashes]
-ref = "4d68b09df13b9f58cf4a10c9d52263e4fdd32f16"
+ref = "f008568f8490576f183f736cf702d26e1caa9036"
 
 # php_redis PECL DLLs per PHP line (Windows repack; NTS x64, VS17 for 8.4/8.5).
 [pins.php_redis]
@@ -214,3 +525,23 @@ sha256 = "6db881ed172703962002d7e02dacc8ddb3f789904c648fee3e6ceec1319679cd"
 [pins.php_redis.dll."8.5"]
 file = "php_redis-6.3.0-8.5-nts-vs17-x64.zip"
 sha256 = "481d6d1af45060ab41af6abe250faa270276fc47a493badc2e178024cdf6e255"
+
+[pins.php_redis.dll."7.4"]
+file = "php_redis-6.3.0-7.4-nts-vc15-x64.zip"
+sha256 = "c74f1fb5500b493050839330b4cbfb84dafc07da99b898939ac4b690fe74de1a"
+
+[pins.php_redis.dll."8.0"]
+file = "php_redis-6.3.0-8.0-nts-vs16-x64.zip"
+sha256 = "9d3143049d3c27e715ea92a023dfab92389df985aec224d6ed9d092b4ba5ea9a"
+
+[pins.php_redis.dll."8.1"]
+file = "php_redis-6.3.0-8.1-nts-vs16-x64.zip"
+sha256 = "952ec845408e343f273eab109e62a9c7732178d93985120736da4a171d41b9b0"
+
+[pins.php_redis.dll."8.2"]
+file = "php_redis-6.3.0-8.2-nts-vs16-x64.zip"
+sha256 = "b2b730b99b97352212b338c01f7dde577857e31c5f8e1d011ec2871e63f8f87c"
+
+[pins.php_redis.dll."8.3"]
+file = "php_redis-6.3.0-8.3-nts-vs16-x64.zip"
+sha256 = "519fc1bdf54323d3ab08443c66f77e783d314c13b532e27cc8b390def7f81b60"

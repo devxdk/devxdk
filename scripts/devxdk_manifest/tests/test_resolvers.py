@@ -5,6 +5,7 @@ import pathlib
 import sys
 import tempfile
 import unittest
+from dataclasses import replace
 
 SCRIPTS = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(SCRIPTS))
@@ -148,6 +149,12 @@ class TestPublishedRevisions(unittest.TestCase):
 class TestBuildLegMap(unittest.TestCase):
     def setUp(self):
         self.cfg = config.load()
+        # Exercise planner behavior on this fixture's finite source universe;
+        # adding production families must not require fabricating their feeds.
+        wanted = {"php": ("8.4", "8.5"), "python": ("3.14",), "postgres": ("18",), "nginx": ("1.30",),
+                  "redis": ("8.8",), "valkey": ("9.1",), "mariadb": ("11.8",)}
+        for name, ids in wanted.items():
+            self.cfg.components[name].lines = {lid: replace(self.cfg.line(name, lid), historical_only=False) for lid in ids}
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.root = pathlib.Path(self.tmp.name)
@@ -167,6 +174,9 @@ class TestBuildLegMap(unittest.TestCase):
                 resolvers.NGINX_DOWNLOAD: NGINX_LISTING,
             },
             jsons={
+                "https://downloads.mariadb.org/rest-api/mariadb/11.8/": {"releases": {"11.8.9": {"files": [
+                    {"file_name": "mariadb-11.8.9.tar.gz", "checksum": {"sha256sum": "a" * 64}}
+                ]}}},
                 "https://downloads.php.net/~windows/releases/releases.json": PHP_RELEASES,
                 # php-spc unix resolver reads php.net's own releases JSON per branch.
                 "https://www.php.net/releases/?json&version=8.4&max=1": {"8.4.23": {"source": [
@@ -190,6 +200,7 @@ class TestBuildLegMap(unittest.TestCase):
         # (windows repack + unix spc), redis/valkey (msys2 + unix), nginx (unix
         # only — windows nginx is scraped), python + postgres (adopt, all four).
         self.assertEqual(set(legs), {
+            "mariadb-darwin-amd64", "mariadb-darwin-arm64",
             "redis-windows-amd64", "redis-linux-amd64",
             "redis-darwin-amd64", "redis-darwin-arm64",
             "valkey-windows-amd64", "valkey-linux-amd64",
@@ -214,7 +225,7 @@ class TestBuildLegMap(unittest.TestCase):
                          ("18.4", "18.4.0", "adopted", "theseus"))
         item = legs["redis-windows-amd64"][0]
         self.assertEqual(item, {
-            "component": "redis", "version": "8.8.0", "revision": 1, "line": "8",
+            "component": "redis", "version": "8.8.0", "revision": 1, "line": "8.8",
             "platform": "windows/amd64", "runner": "windows-2022", "recipe": "redis-msys2",
             "mode": "build", "ordering_kind": "built", "provider": "devxdk-redis-msys2",
             "epoch": 1, "source_version": "8.8.0", "source_sha256": "88422181efb0c9c0abba332e3e391d409e1e13714b838931669235e5796f704b"})
@@ -345,6 +356,20 @@ _TRIPLES = {
 
 
 class TestAstralNewest(unittest.TestCase):
+    def test_missing_family_searches_older_provider_releases(self):
+        f = self._fetcher(self._full("3.14.6"))
+        listing = f"https://api.github.com/repos/{resolvers.ASTRAL_REPO}/releases?per_page=100"
+        f.jsons[listing] = [{"id": 99, "tag_name": "20260601"}]
+        f.paginated[f"https://api.github.com/repos/{resolvers.ASTRAL_REPO}/releases/99/assets"] = self._full("3.10.19")
+        got = resolvers.astral_newest(f, "3.10")
+        self.assertEqual(got["source_version"], "3.10.19")
+        self.assertEqual(got["release_tag"], "20260601")
+
+    def test_duplicate_assets_do_not_select_last_writer(self):
+        full = self._full("3.14.6")
+        with self.assertRaisesRegex(resolvers.ResolveError, "duplicate"):
+            resolvers.astral_newest(self._fetcher(full + [full[0]]), "3.14")
+
     def _fetcher(self, assets):
         return FakeFetcher(
             jsons={ASTRAL_LATEST: {"id": 356187877, "tag_name": "20260718"}},
@@ -419,6 +444,18 @@ def _theseus_fetcher():
 
 
 class TestTheseusNewest(unittest.TestCase):
+    def test_older_major_beyond_first_page(self):
+        f = FakeFetcher(jsons={
+            THESEUS_RELEASES: [_theseus_release("18.4.0")] * 100,
+            THESEUS_RELEASES + "&page=2": [_theseus_release("14.24.0")],
+        }, texts=_theseus_sidecars("14.24.0"))
+        self.assertEqual(resolvers.theseus_newest(f, "14")["manifest_version"], "14.24")
+
+    def test_release_budget_fails_explicitly(self):
+        f = FakeFetcher(jsons={THESEUS_RELEASES: ["placeholder"] * 100})
+        with self.assertRaisesRegex(resolvers.ResolveError, "exceeded"):
+            list(resolvers._release_pages(f, resolvers.THESEUS_REPO, {}, max_pages=1))
+
     def test_newest_in_line_normalizes_manifest_version_all_platforms(self):
         got = resolvers.theseus_newest(_theseus_fetcher(), "18")
         self.assertEqual(got["source_version"], "18.4.0")   # full = ordering key

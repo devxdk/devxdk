@@ -64,6 +64,8 @@ jobs:
       # which cannot parse the handoff step (the first drill failed exactly there
       # after the recipe itself had already built and smoked green).
       - name: Build, layout-check, smoke, and write .meta.json
+        id: build
+        continue-on-error: true
         shell: bash
         env:
           LEG_ITEMS: ${{ inputs.items }}
@@ -71,18 +73,32 @@ jobs:
           # upstream asset; the token lifts the 60/hr anonymous rate limit. Other
           # recipes ignore it. Read-only (the job's contents: read GITHUB_TOKEN).
           GITHUB_TOKEN: ${{ github.token }}
-        run: python3 scripts/run_leg.py "${{ inputs.leg }}"
+        run: |
+          # Python/CreateProcess otherwise finds System32's WSL stub first.
+          if [ "$RUNNER_OS" = Windows ]; then
+            DEVXDK_RECIPE_BASH=$(cygpath -w "$BASH")
+          else
+            DEVXDK_RECIPE_BASH="$BASH"
+          fi
+          export DEVXDK_RECIPE_BASH
+          python3 scripts/run_leg.py "${{ inputs.leg }}"
       - name: Write the member-digest manifest
         id: handoff
         shell: bash
         run: |
-          sha="$(python3 scripts/handoff.py write "build/${{ inputs.leg }}")"
+          sha="$(python3 scripts/handoff.py write "build/${{ inputs.leg }}/handoff")"
           echo "manifest_sha256=${sha}" >> "$GITHUB_OUTPUT"
       - name: Upload the leg artifact
         id: upload
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ inputs.leg }}-build
-          path: build/${{ inputs.leg }}/
+          path: build/${{ inputs.leg }}/handoff/
           if-no-files-found: error
           overwrite: true
+      - name: Fail after handing off verified families
+        if: steps.build.outcome == 'failure'
+        shell: bash
+        run: |
+          echo '::error::One or more planned families failed; see outcomes.json. Verified families were retained.'
+          exit 1

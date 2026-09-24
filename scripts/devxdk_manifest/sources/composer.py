@@ -10,11 +10,10 @@ committed composer.json this reproduces byte-for-byte.
 
 from __future__ import annotations
 
-from .. import schema
+from .. import config, schema
 
 BASE = "https://getcomposer.org"
 VERSIONS_URL = f"{BASE}/versions"
-DEFAULT_LINE_PREFIX = "2."
 
 
 def _checksum(body: str) -> str:
@@ -31,7 +30,13 @@ def _checksum(body: str) -> str:
     return sha
 
 
-def build(fetcher, line_prefix: str = DEFAULT_LINE_PREFIX) -> dict:
+def build(fetcher, lines=None) -> dict:
+    lines = config.load().component("composer").lines if lines is None else lines
+    enabled = [(lid, line) for lid, line in lines.items() if not line.retired and not line.historical_only]
+    if len(enabled) != 1:
+        raise RuntimeError("Composer requires exactly one configured family")
+    lid, policy = enabled[0]
+    line_prefix = lid + "."
     versions = fetcher.get_json(VERSIONS_URL)
     stable = versions.get("stable") if isinstance(versions, dict) else None
     if not stable:
@@ -61,5 +66,5 @@ def build(fetcher, line_prefix: str = DEFAULT_LINE_PREFIX) -> dict:
     platforms = {"any": schema.asset(url, sha, size)}
     return schema.component(
         "composer", "Composer", "runtime",
-        [schema.release(version, "stable", "", platforms)],
+        [schema.release(version, policy.channel, "", platforms)],
     )

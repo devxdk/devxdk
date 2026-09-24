@@ -83,7 +83,7 @@ value = "3d3c42e5aac5ba805825da76410c181273ba90b1"
 kind = "scan"
 select_kind = "uses"
 select_identity = "actions/checkout"
-count = 14
+count = 16
 [rows.currency]
 api = "github-release"
 source = "actions/checkout"
@@ -100,7 +100,7 @@ value = "5fda3b95a4ea91299a34e894583c3862153e4b97"
 kind = "scan"
 select_kind = "uses"
 select_identity = "actions/setup-python"
-count = 12
+count = 14
 [rows.currency]
 api = "github-release"
 source = "actions/setup-python"
@@ -134,7 +134,7 @@ value = "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
 kind = "scan"
 select_kind = "uses"
 select_identity = "actions/upload-artifact"
-count = 4
+count = 6
 [rows.currency]
 api = "github-release"
 source = "actions/upload-artifact"
@@ -200,7 +200,7 @@ value = "3.14"
 kind = "scan"
 select_kind = "python-version"
 select_values = ["3.14"]
-count = 5
+count = 7
 [rows.currency]
 api = "python-versions"
 policy = "series-track"
@@ -263,7 +263,7 @@ policy = "never"
 [[rows]]
 id = "pins-redis-hashes"
 why = "A git ref into the upstream hash-publishing repo the redis recipes verify tarballs against. There is no 'latest version' to compare - the row asserts a well-formed 40-hex ref and nothing more"
-value = "4323436a86cb5562449bab143a0a91a0dea3f476"
+value = "1ae1e93d5c6234bb991f2dd74e6f89abaeb6ba11"
 [[rows.checks]]
 kind = "scan"
 select_kind = "toml-pin"
@@ -281,7 +281,7 @@ policy = "never"
 [[rows]]
 id = "pins-valkey-hashes"
 why = "Same shape as pins-redis-hashes: a reviewed upstream git ref, never auto-latest"
-value = "4d68b09df13b9f58cf4a10c9d52263e4fdd32f16"
+value = "f008568f8490576f183f736cf702d26e1caa9036"
 [[rows.checks]]
 kind = "scan"
 select_kind = "toml-pin"
@@ -306,8 +306,8 @@ policy = "never"
 
 [[rows]]
 id = "pins-php-keys"
-why = "TRUST MATERIAL, same rule as pins-nginx-keys: the six PHP release-manager fingerprints php-spc gpg-verifies against. Presence + well-formedness + count, never an upstream comparison"
-value = "1198C0117593497A5EC5C199286AF1F9897469DC,49D9AF6BC72A80D6691719C8AA23F5BE9C7097D4,AFD8691FDAEDF03BDF6E460563F15A9B715376CA,0616E93D95AF471243E26761770426E17EBBB3DD,9D7F99A0CB8F05C8A6958D6256A97AF7600A39A6,D95C03BC702BE9515344AE3374E44BC9067701A5"
+why = "TRUST MATERIAL, same rule as pins-nginx-keys: the reviewed active and final-release PHP signer fingerprints php-spc gpg-verifies against. Presence + well-formedness + count, never an upstream comparison"
+value = "1198C0117593497A5EC5C199286AF1F9897469DC,49D9AF6BC72A80D6691719C8AA23F5BE9C7097D4,AFD8691FDAEDF03BDF6E460563F15A9B715376CA,0616E93D95AF471243E26761770426E17EBBB3DD,9D7F99A0CB8F05C8A6958D6256A97AF7600A39A6,D95C03BC702BE9515344AE3374E44BC9067701A5,C28D937575603EB4ABB725861C0779DC5C0A9DE4,39B641343D8C104B2B146DC3F9C39DC0B9698544,E60913E4DF209907D8E30D96659A97C9CF2A795A,528995BFEDFBA7191D46839EF9BA0ADA31CBD89E,F1F692238FBC1666E5A5CCD4199F9DFEF6FFBAFD,1729F83938DA44E27BA0F4D3DBDB397470D12172,2C16C765DBE54A088130F1BC4B9B5F600B55F3B4,5A52880781F755608BF815FC910DEB46F53EA312,42670A7FE4D0441C8E4632349E4FDC074A4EF02D"
 [[rows.checks]]
 kind = "scan"
 select_kind = "toml-pin"
@@ -334,7 +334,7 @@ policy = "never"
 
 [[rows]]
 id = "pins-openssl"
-why = "Statically linked into the three DevXDK-built unix nginx bundles (recipes/nginx.sh is the ONLY reader of this pin - redis/valkey take OpenSSL from the runner's package manager, and in php-spc 'openssl' is an extension NAME, so a grep for the word is misleading)"
+why = "Statically linked into the three unix nginx bundles and both native macOS MariaDB bundles. A pin change requires forced rebuilds of both components. Redis/Valkey use runner packages; php-spc resolves its own dependencies."
 value = "3.5.7"
 [[rows.checks]]
 kind = "scan"
@@ -432,13 +432,13 @@ compare_value = "2.8.5"
 
 [[rows]]
 id = "pins-php-redis"
-why = "The php_redis PECL DLLs per PHP line. COUPLING row: the version is embedded in each `file` name, so bumping `version` alone fails NOTHING today - the two downloads still resolve, their digests still match, and the bump ships the OLD extension forever. This row asserts each `file` contains the pinned version as a substring. A grep for every `file =`/`url =` field in tracked-versions.toml returns exactly these two lines, so this is the whole class"
+why = "Every PHP family DLL filename must match the pinned phpredis version; cover all seven ABI/compiler variants and their digests."
 value = "6.3.0"
 [[rows.checks]]
 kind = "scan"
 select_kind = "toml-pin"
 select_identity = "pins.php_redis"
-count = 5
+count = 15
 # Coverage only: this table's fields are a version and its digest(s),
 # which cannot share one expected value.
 assert_value = false
@@ -451,8 +451,8 @@ count = 1
 [[rows.checks]]
 kind = "file"
 file = "config/tracked-versions.toml"
-regex = "file = \"php_redis-([0-9.]+)-8\\.[45]-nts-vs17-x64\\.zip\""
-count = 2
+regex = "file = \"php_redis-([0-9.]+)-(?:7\\.4|8\\.[0-5])-nts-(?:vc15|vs16|vs17)-x64\\.zip\""
+count = 7
 [rows.currency]
 api = "github-release"
 source = "phpredis/phpredis"
@@ -476,7 +476,7 @@ value = "macos-15"
 kind = "scan"
 select_kind = "runner"
 select_values = ["macos-15"]
-count = 6
+count = 8
 [rows.currency]
 api = "runner-image"
 source = "actions/runner-images"
@@ -491,7 +491,7 @@ value = "macos-15-intel"
 kind = "scan"
 select_kind = "runner"
 select_values = ["macos-15-intel"]
-count = 6
+count = 8
 [rows.currency]
 api = "runner-image"
 source = "actions/runner-images"
@@ -506,7 +506,7 @@ value = "ubuntu-22.04"
 kind = "scan"
 select_kind = "runner"
 select_values = ["ubuntu-22.04"]
-count = 6
+count = 7
 [[rows.checks]]
 kind = "scan"
 select_kind = "runs-on"
@@ -526,7 +526,7 @@ value = "windows-2022"
 kind = "scan"
 select_kind = "runner"
 select_values = ["windows-2022"]
-count = 5
+count = 6
 [rows.currency]
 api = "runner-image"
 source = "actions/runner-images"

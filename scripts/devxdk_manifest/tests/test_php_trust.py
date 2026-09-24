@@ -59,7 +59,8 @@ class Roster(unittest.TestCase):
         self.cfg = config.load()
         key = self.cfg.pins["php_keys"]["fingerprints"][0]
         self.html = ''.join(f'<h3>PHP {line}</h3><pre>pub rsa4096\n {key}\nuid Manager</pre>'
-                            for line in ("8.4", "8.5"))
+                            for line, policy in self.cfg.component("php").lines.items()
+                            if policy.support != "ended")
 
     def test_all_sections_required(self):
         self.assertEqual(roster.check(self.html, self.cfg), [])

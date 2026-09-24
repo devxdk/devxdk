@@ -47,11 +47,11 @@ def check(html, cfg):
     pinned = set(cfg.pins["php_keys"]["fingerprints"])
     errors = []
     for line in cfg.component("php").lines.values():
-        if line.retired:
+        if line.retired or line.support == "ended":
             continue
         section = "".join(parser.sections.get(line.id, []))
         blocks = re.findall(r"(?m)^\s*pub\s+[^\n]*\n\s*([^\n]+)", section)
-        fingerprints = [re.sub(r"\s+", "", value).upper() for value in blocks]
+        fingerprints = [re.sub(r"\s+", "", re.sub(r"^\s*Key fingerprint\s*=\s*", "", value)).upper() for value in blocks]
         if not fingerprints or any(not re.fullmatch(r"[0-9A-F]{40}", value) for value in fingerprints):
             errors.append(f"PHP {line.id}: missing or malformed release-manager section")
             continue

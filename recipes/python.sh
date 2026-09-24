@@ -77,7 +77,19 @@ print(h.hexdigest())" "$asset")
     || { echo "::error::smoke: python -V does not report $source_version" >&2; exit 1; }
   "$pybin" -m pip --version >/dev/null 2>&1 \
     || { echo "::error::smoke: 'python -m pip' failed" >&2; exit 1; }
-  echo "smoke: python $source_version -V + -m pip OK"
+  "$pybin" - "$work/venv" <<'PY'
+import bz2, ctypes, hashlib, lzma, pathlib, sqlite3, ssl, subprocess, sys, venv, zlib
+assert ssl.OPENSSL_VERSION
+assert sqlite3.connect(':memory:').execute('SELECT 6 * 7').fetchone() == (42,)
+assert bz2.decompress(bz2.compress(b'proof')) == b'proof'
+assert lzma.decompress(lzma.compress(b'proof')) == b'proof'
+assert zlib.decompress(zlib.compress(b'proof')) == b'proof'
+venv.create(sys.argv[1], with_pip=True)
+executable = pathlib.Path(sys.argv[1]) / ('Scripts/python.exe' if sys.platform == 'win32' else 'bin/python')
+subprocess.run([str(executable), '-m', 'pip', '--version'], check=True)
+subprocess.run([str(executable), '-c', 'import sys; assert sys.prefix != sys.base_prefix'], check=True)
+PY
+  echo "smoke: python $source_version native extensions + venv + pip OK"
 
   # --- meta (adopt: url=upstream, no archive) -------------------------------
   URL="$url" SHA="$sha" SIZE="$got_size" VERSION="$version" PLATFORM="$platform" \

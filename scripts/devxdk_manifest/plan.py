@@ -193,13 +193,15 @@ def build_leg_map(cfg, repo_root, fetcher, release_assets, *,
                 f"{target} line (tracked: {tracked})")
 
     for component, line_id, platform, plat in sorted(cfg.managed_keys()):
-        if cfg.line(component, line_id).retired:
+        if cfg.line(component, line_id).retired or cfg.line(component, line_id).historical_only:
             continue
         if components and component not in components:
             continue
         if platforms and platform not in platforms:
             continue
         if plat.provider not in resolvers.ENABLED_PROVIDERS:
+            continue
+        if version_override and not _in_line_of(cfg, component, line_id, version_override):
             continue
 
         cache_key = (plat.provider, component, line_id)

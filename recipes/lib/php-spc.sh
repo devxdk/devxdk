@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # Unix static PHP build via static-php-cli (devxdk-php-spc, Phase 3). Linux+macOS.
 #
-# Each PHP minor is its own line (8.4, 8.5); a leg builds every line for its
+# Each PHP minor is its own line; a leg builds every planned line for its
 # platform sequentially. Per line: verify the pinned spc builder binary
 # (config [pins.static_php_cli]); GPG-verify the php source tarball against the
 # pinned php.net release-manager keys (keys/php/*.key + [pins.php_keys]) AND its
 # sha256 from php.net's releases JSON; feed exactly those verified bytes to spc
 # over a loopback URL (-U php-src:...) so spc compiles the audited source; build
-# the baseline extension set STATICALLY (`spc build ... --build-cli --build-fpm`);
+# the baseline extensions (PHP 7.4 requires shared OPcache; Linux then uses
+# the runner's glibc baseline, while later PHP uses a fully static musl build);
 # assemble the flat bundle the app contract expects (ArchiveStrip=0 -> archive
 # root == version dir): bin/php + sbin/php-fpm + php.ini (templates/php.ini.unix)
 # + licenses/ (spc dump-license). Smoke: php -v/-m(baseline+opcache)/--ini +
@@ -109,7 +110,30 @@ for i in $(seq 0 $((count - 1))); do
     linux/amd64|darwin/amd64|darwin/arm64) ;;
     *) echo "::error::$leg is the php-spc recipe; platform $platform is not its target" >&2; exit 1 ;;
   esac
-  minor="$line"   # config line id IS the major.minor (8.4 / 8.5)
+  minor="$line"
+  case "$minor" in
+    7.4|8.0|8.1)
+      # Autoconf 2.73 can select C23, which removed the K&R definitions still
+      # present in these PHP sources. Let its ordinary C11/C99 probes choose
+      # the supported dialect; this does not relax compiler diagnostics.
+      export ac_cv_prog_cc_c23=no
+      ;;
+  esac
+  build_exts="$EXTS"
+  build_options=(--build-cli --build-fpm --debug --with-added-patch="$repo_root/recipes/lib/php-build-patches.php")
+  if [ "$minor" = 7.4 ]; then
+    # PHP 7.4 only supports OPcache as a shared Zend extension. SPC's version
+    # guard assumes static OPcache even for --build-shared; use its explicit
+    # compatibility override only for this native shared-extension build.
+    export SPC_SKIP_PHP_VERSION_CHECK=yes
+    if [ "$os" = Linux ]; then
+      export SPC_TOOLCHAIN='SPC\toolchain\GccNativeToolchain'
+      export SPC_LIBC=glibc
+    fi
+    EXTS="$EXTS,json" # JSON was optional before PHP 8.
+    build_exts="${EXTS/,opcache/}"
+    build_options+=(--build-shared=opcache --disable-opcache-jit)
+  fi
 
   # --- fetch php source, GPG-verify + sha256 from php.net's releases JSON ---
   src_name="php-$source_version.tar.gz"
@@ -149,9 +173,17 @@ for i in $(seq 0 $((count - 1))); do
       -U "php-src:http://127.0.0.1:$port/$src_name" --retry=3 \
       >"$outdir/spc-download-$version.log" 2>&1 ) \
     || { echo "::error::spc download failed"; tail -40 "$outdir/spc-download-$version.log" >&2; exit 1; }
-  ( cd "$wd" && "$SPC" build "$EXTS" --build-cli --build-fpm \
+  ( cd "$wd" && "$SPC" build "$build_exts" "${build_options[@]}" \
       >"$outdir/spc-build-$version.log" 2>&1 ) \
     || { echo "::error::spc build failed"; tail -60 "$outdir/spc-build-$version.log" >&2;
+         # Compiler diagnostics precede the final command summary. Keep them
+         # visible so a failed proof can be fixed without blind rebuilds.
+         grep -nE -C 3 'error:|fatal error:|undefined reference|Undefined symbols|Error [0-9]|not declared' \
+           "$outdir/spc-build-$version.log" | tail -180 >&2 || true;
+         if [ -f "$wd/source/php-src/config.log" ]; then
+           grep -nE -C 6 'error:|dyld\[|Abort trap|Segmentation fault|cannot run|Undefined symbols' \
+             "$wd/source/php-src/config.log" | tail -160 >&2 || true;
+         fi;
          echo "--- downloaded sources ---" >&2; ls "$wd/downloads" 2>/dev/null | head -40 >&2;
          echo "--- buildroot/bin ---" >&2; ls "$wd/buildroot/bin" 2>/dev/null >&2;
          echo "--- system pkg-config: $(command -v pkg-config || echo MISSING) ---" >&2; exit 1; }
@@ -167,6 +199,14 @@ for i in $(seq 0 $((count - 1))); do
   cp "$fpm_bin" "$stage/sbin/php-fpm"
   chmod 0755 "$stage/bin/php" "$stage/sbin/php-fpm"
   cp templates/php.ini.unix "$stage/php.ini"
+  if [ "$minor" = 7.4 ]; then
+    mkdir -p "$stage/modules"
+    cp "$wd/buildroot/modules/opcache.so" "$stage/modules/opcache.so"
+    printf '\nzend_extension="${DEVXDK_PHP_ROOT}/modules/opcache.so"\n' >> "$stage/php.ini"
+    if [ "$os" = Darwin ]; then
+      python3 scripts/ci/verify_macos_bundle.py "$stage"
+    fi
+  fi
   # Complete license notices for php + every statically-linked library.
   ( cd "$wd" && "$SPC" dump-license --for-extensions="$EXTS" --dump-dir="$stage/licenses" \
       >"$outdir/spc-license-$version.log" 2>&1 ) \
@@ -182,7 +222,10 @@ for i in $(seq 0 $((count - 1))); do
   fi
 
   # --- smoke: php -v/-m/--ini + php-fpm -v/-t/loaded-config ----------------
-  ver_out=$("$stage/bin/php" -v 2>&1)
+  export DEVXDK_PHP_ROOT="$stage"
+  mkdir -p "$outdir/empty-ini"
+  export PHP_INI_SCAN_DIR="$outdir/empty-ini"
+  ver_out=$("$stage/bin/php" -c "$stage/php.ini" -v 2>&1)
   printf '%s\n' "$ver_out" | grep -q "PHP $source_version" \
     || { echo "::error::smoke: php -v does not report $source_version" >&2; printf '%s\n' "$ver_out" >&2; exit 1; }
   printf '%s\n' "$ver_out" | grep -qi "warning" \
@@ -192,6 +235,19 @@ for i in $(seq 0 $((count - 1))); do
     printf '%s\n' "$mods" | grep -qix "$ext" || { echo "::error::smoke: extension '$ext' missing from php -m" >&2; exit 1; }
   done
   printf '%s\n' "$mods" | grep -q "Zend OPcache" || { echo "::error::smoke: Zend OPcache missing from php -m" >&2; exit 1; }
+  "$stage/bin/php" -c "$stage/php.ini" -r '
+    $image = imagecreatetruecolor(2, 2);
+    if (!$image) { exit(1); }
+    ob_start(); $ok = imagepng($image); $png = ob_get_clean();
+    if (!$ok || substr($png, 0, 8) !== "\x89PNG\r\n\x1a\n") { exit(1); }
+  ' || { echo '::error::smoke: GD could not encode a PNG' >&2; exit 1; }
+  "$stage/bin/php" -c "$stage/php.ini" -r '
+    libxml_use_internal_errors(true);
+    $document = new DOMDocument();
+    if (!$document->loadXML("<root>42</root>") || $document->documentElement->textContent !== "42") { exit(1); }
+    if ($document->loadXML("<root>") !== false || !libxml_get_last_error()) { exit(1); }
+    libxml_clear_errors();
+  ' || { echo '::error::smoke: libxml parsing or error callbacks failed' >&2; exit 1; }
   ini_loaded=$("$stage/bin/php" -c "$stage/php.ini" --ini 2>/dev/null | sed -n 's/^Loaded Configuration File:[[:space:]]*//p')
   ini_loaded="${ini_loaded%\"}"; ini_loaded="${ini_loaded#\"}"   # PHP 8.5 quotes the path
   [ "$ini_loaded" = "$stage/php.ini" ] || { echo "::error::smoke: php --ini loaded '$ini_loaded', want '$stage/php.ini'" >&2; exit 1; }
@@ -215,6 +271,7 @@ CONF
   fpm_ini="${fpm_ini%\"}"; fpm_ini="${fpm_ini#\"}"   # PHP 8.5 quotes the path
   [ "$fpm_ini" = "$stage/php.ini" ] || { echo "::error::smoke: php-fpm loaded ini '$fpm_ini', want '$stage/php.ini'" >&2; exit 1; }
   echo "smoke: php $source_version -v/-m(baseline $(echo $BASELINE | wc -w)+opcache)/--ini + php-fpm -v/-t/loaded-config OK"
+  python3 scripts/ci/smoke_php_fpm.py "$stage" "$source_version"
 
   # --- corresponding source (provenance; PHP License is permissive) --------
   upstream_src="php-$source_version-src.tar.gz"

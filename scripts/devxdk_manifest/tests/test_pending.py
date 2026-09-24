@@ -17,7 +17,7 @@ REDIS_URL = "https://github.com/devxdk/devxdk/releases/download/redis-8.8.0/redi
 
 
 def _prec(**kw):
-    d = dict(component="redis", version="8.8.0", platform="windows/amd64", line="8",
+    d = dict(component="redis", version="8.8.0", platform="windows/amd64", line="8.8",
              ordering_kind="built", provider="devxdk-redis-msys2", epoch=1, revision=1,
              source_version="8.8.0", url=REDIS_URL, sha256="a" * 64, size_bytes=100)
     d.update(kw)
@@ -39,7 +39,7 @@ def _temp_cfg(epoch=1, provider="devxdk-redis-msys2", ptype="build"):
         schema = 1
         [components.redis]
         kind = "service"
-        [components.redis.lines."8"]
+        [components.redis.lines."8.8"]
         channel = "stable"
         retain_per_line = 3
         platforms = {{ "windows/amd64" = {{ type = "{ptype}", provider = "{provider}", epoch = {epoch} }} }}

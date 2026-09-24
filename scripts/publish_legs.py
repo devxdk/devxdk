@@ -234,7 +234,8 @@ def publish(needs_json, workdir, api=None, dry=False, persist=None, state_root=N
         info = needs.get('leg-' + leg, {})
         if info.get('result') != 'success':
             errors.append(f"{leg}: planned leg ended {info.get('result', 'missing')}")
-            continue
+            if info.get('result') != 'failure' or not all((info.get('outputs') or {}).get(k) for k in ('artifact_id', 'manifest_sha256')):
+                continue
         ref = info.get('outputs') or {}
         if not ref.get('artifact_id') or not ref.get('manifest_sha256'):
             errors.append(f'{leg}: successful job omitted artifact_id or manifest_sha256')
@@ -243,7 +244,11 @@ def publish(needs_json, workdir, api=None, dry=False, persist=None, state_root=N
         try:
             download_artifact(ref['artifact_id'], legdir)
             handoff.verify(legdir, ref['manifest_sha256'])
-            leg_metas = publication.validate_metas(items, [strictjson.load(p) for p in sorted(legdir.glob('*.meta.json'))])
+            leg_metas = publication.validate_metas(items, [strictjson.load(p) for p in sorted(legdir.glob('*.meta.json'))], allow_missing=True)
+            present = {publication.identity(meta) for meta in leg_metas}
+            missing = [publication.identity(item) for item in items if publication.identity(item) not in present]
+            if missing:
+                errors.append(f'{leg}: missing planned metadata: {missing}')
             prepared = []
             for meta in leg_metas:
                 failures = validate_static_pins(meta, pins)

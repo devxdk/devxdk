@@ -1,6 +1,7 @@
 """Tests for the scrape-versions monotonic guard, seeding, parity, and recompose."""
 
 import pathlib
+import tempfile
 import unittest
 
 from devxdk_manifest import config, merge, schema
@@ -56,7 +57,7 @@ class TestLineFor(unittest.TestCase):
     def test_matches(self):
         cases = {
             ("node", "24.18.0"): "24",
-            ("go", "1.26.5"): "1",
+            ("go", "1.26.5"): "1.26",
             ("mariadb", "11.8.10"): "11.8",
             ("nginx", "1.30.5"): "1.30",
             ("php", "8.5.6"): "8.5",
@@ -79,6 +80,17 @@ class TestLineFor(unittest.TestCase):
 
 
 class TestGuard(unittest.TestCase):
+    def test_keep_history_preserves_exact_lookup_and_revocation_guard(self):
+        r = _rec(floor="24.17.0", tuples=[_tup("24.17.0")], revoked=[_tup("24.16.0")])
+        new, actions = merge.reconcile_key(r, [_tup("24.18.0")], retain=None)
+        self.assertEqual([t.version for t in new.tuples], ["24.18.0", "24.17.0"])
+        self.assertEqual(new.floor_version, "24.18.0")
+        self.assertFalse(any(action[0] == "evict" for action in actions))
+        with self.assertRaises(merge.GuardError):
+            merge.reconcile_key(new, [_tup("24.16.0")], retain=None)
+        with self.assertRaises(merge.GuardError):
+            merge.reconcile_key(new, [_tup("24.17.0", sha="b" * 64)], retain=None)
+
     def test_admit_newer_and_evict(self):
         r = _rec(floor="24.17.0", tuples=[_tup("24.17.0")])
         new, actions = merge.reconcile_key(r, [_tup("24.18.0")], retain=1)
@@ -140,26 +152,26 @@ class TestReconcileRecompose(unittest.TestCase):
             path = REPO_ROOT / f"{name}.json"
             comp = schema.load(path)
             rebuilt = merge.recompose(name, comp["display_name"], comp["kind"], self.cfg, state, ledger)
-            # Through schema.resolve, which is what write() would do. That makes
-            # this assertion strictly stronger than the raw dump it replaces: it
-            # proves byte-identity AND that a no-change rebuild preserves the
-            # revision instead of bumping it.
-            self.assertEqual(
-                schema.dump_str(schema.resolve(path, rebuilt)),
-                path.read_text(encoding="utf-8"),
-                f"recompose({name}) must reproduce the committed manifest byte-for-byte",
-            )
-            self.assertEqual(schema.resolve(path, rebuilt)["revision"], comp["revision"],
-                             f"a no-change recompose({name}) must not bump the revision")
+            self.assertEqual(rebuilt["releases"], comp["releases"], "policy must not mutate accepted asset tuples")
+            self.assertEqual(rebuilt["families"], schema.family_policy(self.cfg, name))
+            with tempfile.TemporaryDirectory() as directory:
+                projected = pathlib.Path(directory) / path.name
+                projected.write_bytes(path.read_bytes())
+                schema.write(projected, rebuilt)
+                accepted = projected.read_bytes()
+                schema.write(projected, rebuilt)
+                self.assertEqual(projected.read_bytes(), accepted, "a second policy projection must be byte-identical")
 
     def test_scrape_reconcile_idempotent(self):
         # Reconciling the committed node manifest against the state changes nothing.
         state = merge.ScrapeState.load(STATE_FILE)
         node = schema.load(REPO_ROOT / "node.json")
         _st, manifest, actions = merge.scrape_reconcile(state, self.cfg, node)
-        path = REPO_ROOT / "node.json"
-        self.assertEqual(schema.dump_str(schema.resolve(path, manifest)),
-                         path.read_text(encoding="utf-8"))
+        self.assertEqual(manifest["releases"], node["releases"])
+        self.assertEqual(manifest["families"], schema.family_policy(self.cfg, "node"))
+        _st, again, repeated = merge.scrape_reconcile(state, self.cfg, node)
+        self.assertEqual(schema.dump_str(again), schema.dump_str(manifest))
+        self.assertFalse(repeated)
         self.assertFalse(any(a[3][0] in ("admit", "evict") for a in actions))
 
     def test_scrape_reconcile_admits_newer(self):

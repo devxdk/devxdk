@@ -170,6 +170,9 @@ class TestScrape(unittest.TestCase):
     def _run(self, resolve_side_effect):
         cfg = mock.Mock()
         cfg.scrape_keys.return_value = [(c, "l", "p", "plat") for c in TWO]
+        cfg.line.return_value.retired = False
+        cfg.line.return_value.historical_only = False
+        cfg.components = {c: mock.Mock() for c in TWO}
         state = mock.Mock()
         err = io.StringIO()
         patches = [
@@ -177,7 +180,8 @@ class TestScrape(unittest.TestCase):
             mock.patch.object(scrape.fetch, "Fetcher", return_value=mock.Mock()),
             mock.patch.object(scrape.merge.ScrapeState, "load", return_value=state),
             mock.patch.object(scrape.merge.LedgerState, "load", return_value=mock.Mock()),
-            mock.patch.dict(scrape.SOURCES, {c: (lambda _f: None) for c in TWO}, clear=True),
+            mock.patch.dict(scrape.SOURCES, {c: (lambda _f, **_kw: None) for c in TWO}, clear=True),
+            mock.patch.object(scrape.copy, "deepcopy", return_value=state),
             mock.patch.object(scrape.merge, "scrape_reconcile",
                               side_effect=lambda st, c, cand, led: (
                                   st, {"releases": [{"version": "1", "released_at": ""}]}, [])),

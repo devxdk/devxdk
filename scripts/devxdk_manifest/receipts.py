@@ -20,6 +20,7 @@ def input_pins(pins, item):
     provider = item["provider"]
     names = {
         "devxdk-nginx-unix": ("openssl", "pcre2", "zlib", "nginx_keys"),
+        "devxdk-mariadb-macos": ("openssl",),
         "devxdk-php-spc": ("static_php_cli", "php_keys"),
         "devxdk-php-windows": ("php_redis",),
         "devxdk-redis-unix": ("redis_hashes",),

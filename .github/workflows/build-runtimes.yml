@@ -44,7 +44,7 @@ on:
 permissions: {}
 
 concurrency:
-  group: build-runtimes
+  group: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && format('build-runtimes-proof-{0}', github.run_id) || 'build-runtimes' }}
   cancel-in-progress: false
   queue: max
 
@@ -83,7 +83,8 @@ jobs:
           [ -n "$VERSION" ] && ARGS+=(--version "$VERSION")
           [ "$FORCE" = "true" ] && ARGS+=(--force)
           operation=$(python3 scripts/plan_builds.py "${ARGS[@]}")
-          echo "operation=$operation" >> "$GITHUB_OUTPUT"
+          compact=$(printf '%s' "$operation" | python3 -c 'import sys,json;sys.path.insert(0,"scripts");from devxdk_manifest.publication import encode_operation;print(encode_operation(json.load(sys.stdin)))')
+          echo "operation=$compact" >> "$GITHUB_OUTPUT"
           map=$(printf '%s' "$operation" | python3 -c 'import json,sys;print(json.dumps(json.load(sys.stdin)["legs"]))')
           if printf '%s' "$map" | python3 -c 'import json,sys;sys.exit(0 if any(k.startswith("php-") for k in json.load(sys.stdin)) else 1)'; then
             python3 scripts/ci/check_php_rm_keys.py
@@ -91,6 +92,30 @@ jobs:
           echo "map=$map" >> "$GITHUB_OUTPUT"
           echo "legs=$(printf '%s' "$map" | python3 -c 'import json,sys;print(json.dumps(sorted(json.load(sys.stdin))))')" >> "$GITHUB_OUTPUT"
           printf '%s' "$map" | python3 -m json.tool
+
+  leg-mariadb-darwin-amd64:
+    needs: plan
+    permissions:
+      contents: read
+      actions: read
+    if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'mariadb-darwin-amd64') }}
+    uses: ./.github/workflows/build-runtime-leg.yml
+    with:
+      leg: mariadb-darwin-amd64
+      runner: macos-15-intel
+      items: ${{ toJSON(fromJSON(needs.plan.outputs.map)['mariadb-darwin-amd64']) }}
+
+  leg-mariadb-darwin-arm64:
+    needs: plan
+    permissions:
+      contents: read
+      actions: read
+    if: ${{ contains(fromJSON(needs.plan.outputs.legs), 'mariadb-darwin-arm64') }}
+    uses: ./.github/workflows/build-runtime-leg.yml
+    with:
+      leg: mariadb-darwin-arm64
+      runner: macos-15
+      items: ${{ toJSON(fromJSON(needs.plan.outputs.map)['mariadb-darwin-arm64']) }}
 
   leg-nginx-darwin-amd64:
     needs: plan
@@ -371,6 +396,8 @@ jobs:
   publish:
     needs:
       - plan
+      - leg-mariadb-darwin-amd64
+      - leg-mariadb-darwin-arm64
       - leg-nginx-darwin-amd64
       - leg-nginx-darwin-arm64
       - leg-nginx-linux-amd64
