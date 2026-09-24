@@ -83,7 +83,7 @@ value = "3d3c42e5aac5ba805825da76410c181273ba90b1"
 kind = "scan"
 select_kind = "uses"
 select_identity = "actions/checkout"
-count = 14
+count = 16
 [rows.currency]
 api = "github-release"
 source = "actions/checkout"
@@ -100,7 +100,7 @@ value = "5fda3b95a4ea91299a34e894583c3862153e4b97"
 kind = "scan"
 select_kind = "uses"
 select_identity = "actions/setup-python"
-count = 12
+count = 14
 [rows.currency]
 api = "github-release"
 source = "actions/setup-python"
@@ -134,7 +134,7 @@ value = "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
 kind = "scan"
 select_kind = "uses"
 select_identity = "actions/upload-artifact"
-count = 4
+count = 6
 [rows.currency]
 api = "github-release"
 source = "actions/upload-artifact"
@@ -200,7 +200,7 @@ value = "3.14"
 kind = "scan"
 select_kind = "python-version"
 select_values = ["3.14"]
-count = 5
+count = 7
 [rows.currency]
 api = "python-versions"
 policy = "series-track"
@@ -476,7 +476,7 @@ value = "macos-15"
 kind = "scan"
 select_kind = "runner"
 select_values = ["macos-15"]
-count = 7
+count = 8
 [rows.currency]
 api = "runner-image"
 source = "actions/runner-images"
@@ -491,7 +491,7 @@ value = "macos-15-intel"
 kind = "scan"
 select_kind = "runner"
 select_values = ["macos-15-intel"]
-count = 7
+count = 8
 [rows.currency]
 api = "runner-image"
 source = "actions/runner-images"
@@ -506,7 +506,7 @@ value = "ubuntu-22.04"
 kind = "scan"
 select_kind = "runner"
 select_values = ["ubuntu-22.04"]
-count = 6
+count = 7
 [[rows.checks]]
 kind = "scan"
 select_kind = "runs-on"
@@ -526,7 +526,7 @@ value = "windows-2022"
 kind = "scan"
 select_kind = "runner"
 select_values = ["windows-2022"]
-count = 5
+count = 6
 [rows.currency]
 api = "runner-image"
 source = "actions/runner-images"

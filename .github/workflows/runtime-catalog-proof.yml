@@ -1,0 +1,69 @@
+name: runtime-catalog-proof
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  catalog:
+    runs-on: ubuntu-latest
+    outputs:
+      artifact_id: ${{ steps.upload.outputs.artifact-id }}
+      manifest_sha256: ${{ steps.handoff.outputs.manifest_sha256 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+      - name: Resolve official archives through the existing adapters
+        run: python scripts/ci/smoke_scraped.py prepare build/catalog-proof
+      - name: Bind the candidate catalog to this job
+        id: handoff
+        run: |
+          sha=$(python scripts/handoff.py write build/catalog-proof)
+          echo "manifest_sha256=$sha" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        id: upload
+        with:
+          name: catalog-proof
+          path: build/catalog-proof/
+          if-no-files-found: error
+
+  native:
+    needs: catalog
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-22.04
+          - platform: windows/amd64
+            runner: windows-2022
+          - platform: darwin/amd64
+            runner: macos-15-intel
+          - platform: darwin/arm64
+            runner: macos-15
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+      - name: Check versions, SDK commands and database queries natively
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ needs.catalog.outputs.artifact_id }}
+          DIGEST: ${{ needs.catalog.outputs.manifest_sha256 }}
+          PLATFORM: ${{ matrix.platform }}
+        shell: bash
+        run: python scripts/ci/smoke_scraped.py verify --artifact-id "$ARTIFACT_ID" --digest "$DIGEST" --platform "$PLATFORM" --output build/catalog-results.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ !cancelled() }}
+        with:
+          name: catalog-results-${{ strategy.job-index }}
+          path: build/catalog-results.json
+          if-no-files-found: error

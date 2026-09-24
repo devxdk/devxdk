@@ -23,6 +23,13 @@ initialize a cluster and execute SQL. PHP must load every baseline extension
 without startup warnings. A configured target is not supported until these
 native proofs and authenticated publication succeed.
 
+`runtime-catalog-proof.yml` checks the official prebuilt families on all four
+native platforms without publishing anything. It resolves metadata once through
+the existing adapters, binds that catalog by artifact ID and digest, then verifies
+archive bytes and exercises Node/npm, Go compilation, MariaDB initialization/SQL
+and Windows Nginx configuration. Built/adopted targets remain covered by their
+existing build-runtimes recipes.
+
 Until a recipe exists, `recipes/leg.sh` fails a planned leg loudly rather than
 publishing nothing. The pins the recipes verify against live in
 `config/tracked-versions.toml` under `[pins]`.
