@@ -33,9 +33,13 @@ def smoke(prefix, expected):
     with tempfile.TemporaryDirectory(prefix='mdb-') as temporary:
         work = pathlib.Path(temporary)
         data, socket = work / 'data', work / 'mysql.sock'
-        initialize = [str(initializer), '--no-defaults', f'--basedir={prefix}', f'--datadir={data}']
-        if not windows:
-            initialize.append('--auth-root-authentication-method=normal')
+        if windows:
+            # The EXE derives basedir from its own path and bootstraps with its
+            # generated my.ini. It does not accept the Unix script's options.
+            initialize = [str(initializer), f'--datadir={data}']
+        else:
+            initialize = [str(initializer), '--no-defaults', f'--basedir={prefix}',
+                          f'--datadir={data}', '--auth-root-authentication-method=normal']
         subprocess.run(initialize, check=True, env=env)
         if windows:
             with network_socket.socket() as probe:

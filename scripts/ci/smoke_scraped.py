@@ -58,7 +58,8 @@ def smoke(name, version, asset, target):
             digest = hashlib.file_digest(stream, 'sha256').hexdigest()
         if digest != asset['sha256'] or archive.stat().st_size != asset['size_bytes']:
             raise ValueError('upstream archive bytes differ from verified metadata')
-        prefix = extract(archive, work / 'unpacked')
+        # Nginx rejects Windows 8.3 aliases when validating configuration paths.
+        prefix = extract(archive, work / 'unpacked').resolve()
         suffix = '.exe' if target.startswith('windows/') else ''
         env = dict(os.environ)
         if name == 'node':
