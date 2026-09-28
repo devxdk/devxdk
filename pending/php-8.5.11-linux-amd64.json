@@ -1,0 +1,14 @@
+{
+  "component": "php",
+  "epoch": 1,
+  "line": "8.5",
+  "ordering_kind": "built",
+  "platform": "linux/amd64",
+  "provider": "devxdk-php-spc",
+  "revision": 1,
+  "sha256": "4f38c91d44e844f3c654a3166f56e4d5d1fddb258da3c602fe45c1d4552e2105",
+  "size_bytes": 48480558,
+  "source_version": "8.5.11",
+  "url": "https://github.com/devxdk/devxdk/releases/download/php-8.5.11/php-8.5.11-linux-amd64.tar.gz",
+  "version": "8.5.11"
+}
