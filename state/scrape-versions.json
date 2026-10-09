@@ -25,7 +25,7 @@
       "1": {
         "darwin/amd64": {
           "epoch": 1,
-          "floor_version": "1.27.1",
+          "floor_version": "1.27.2",
           "provider": "golang",
           "revoked": [],
           "status": "active",
@@ -33,16 +33,16 @@
             {
               "channel": "stable",
               "released_at": "",
-              "sha256": "8f8f52c6649542cf027bbc9b9c68d1ec042f9f34808a40413f0b8b3f66f3caa4",
-              "size_bytes": 71621873,
-              "url": "https://go.dev/dl/go1.27.1.darwin-amd64.tar.gz",
-              "version": "1.27.1"
+              "sha256": "587b59182488b23aa6e5fc25110405a3e0e5b38ed2f5b2f46ed13c32aee356fe",
+              "size_bytes": 71695284,
+              "url": "https://go.dev/dl/go1.27.2.darwin-amd64.tar.gz",
+              "version": "1.27.2"
             }
           ]
         },
         "darwin/arm64": {
           "epoch": 1,
-          "floor_version": "1.27.1",
+          "floor_version": "1.27.2",
           "provider": "golang",
           "revoked": [],
           "status": "active",
@@ -50,16 +50,16 @@
             {
               "channel": "stable",
               "released_at": "",
-              "sha256": "ee215d57e0ec269c60cc9ceca68e6bda321ba9ee5afe24f4b0988703c2d87d12",
-              "size_bytes": 68100347,
-              "url": "https://go.dev/dl/go1.27.1.darwin-arm64.tar.gz",
-              "version": "1.27.1"
+              "sha256": "76812b213b1b2302c978d28fa52fa92d541704b9e7d9d5db8002c50e4018c4c5",
+              "size_bytes": 68195916,
+              "url": "https://go.dev/dl/go1.27.2.darwin-arm64.tar.gz",
+              "version": "1.27.2"
             }
           ]
         },
         "linux/amd64": {
           "epoch": 1,
-          "floor_version": "1.27.1",
+          "floor_version": "1.27.2",
           "provider": "golang",
           "revoked": [],
           "status": "active",
@@ -67,16 +67,16 @@
             {
               "channel": "stable",
               "released_at": "",
-              "sha256": "63d339f0da5ab53635a56f2490a7984dfe12dfcff22ad749f63edaf590168445",
-              "size_bytes": 70553950,
-              "url": "https://go.dev/dl/go1.27.1.linux-amd64.tar.gz",
-              "version": "1.27.1"
+              "sha256": "ecbadb99091a3f46e31f5f934b068b1864eafa7995211b39eaddf76996045fe5",
+              "size_bytes": 70590635,
+              "url": "https://go.dev/dl/go1.27.2.linux-amd64.tar.gz",
+              "version": "1.27.2"
             }
           ]
         },
         "windows/amd64": {
           "epoch": 1,
-          "floor_version": "1.27.1",
+          "floor_version": "1.27.2",
           "provider": "golang",
           "revoked": [],
           "status": "active",
@@ -84,10 +84,10 @@
             {
               "channel": "stable",
               "released_at": "",
-              "sha256": "a3911b5e0e1b1053f25ed0675f4c1c6aad1e2bfcf253df2b9be4caabd2edd95d",
-              "size_bytes": 78931360,
-              "url": "https://go.dev/dl/go1.27.1.windows-amd64.zip",
-              "version": "1.27.1"
+              "sha256": "1314008898bd40df77af4b014f777f08873dbdfbcd3d92308728ee03304fe04f",
+              "size_bytes": 79008081,
+              "url": "https://go.dev/dl/go1.27.2.windows-amd64.zip",
+              "version": "1.27.2"
             }
           ]
         }
