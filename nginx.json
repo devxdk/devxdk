@@ -2,8 +2,30 @@
   "name": "nginx",
   "display_name": "Nginx",
   "kind": "service",
-  "revision": 3,
+  "revision": 4,
   "releases": [
+    {
+      "version": "1.30.6",
+      "channel": "stable",
+      "released_at": "2026-10-19",
+      "platforms": {
+        "linux/amd64": {
+          "url": "https://github.com/devxdk/devxdk/releases/download/nginx-1.30.6/nginx-1.30.6-linux-amd64.tar.gz",
+          "sha256": "3e50b49e19c6132fadabe480196671d68fb7b60acd86abf2602a0e98e4fc7f64",
+          "size_bytes": 5689268
+        },
+        "darwin/amd64": {
+          "url": "https://github.com/devxdk/devxdk/releases/download/nginx-1.30.6/nginx-1.30.6-darwin-amd64.tar.gz",
+          "sha256": "fddde8058558488cea4d40fbaab823878690746691df4300b133e31b1ac176f3",
+          "size_bytes": 2976296
+        },
+        "darwin/arm64": {
+          "url": "https://github.com/devxdk/devxdk/releases/download/nginx-1.30.6/nginx-1.30.6-darwin-arm64.tar.gz",
+          "sha256": "38b6e3ed0292cf5cf17d2ffd9a0c387cd9f3cf7c44fc1f9eb3882e97db7baf78",
+          "size_bytes": 3246065
+        }
+      }
+    },
     {
       "version": "1.30.5",
       "channel": "stable",
