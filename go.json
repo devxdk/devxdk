@@ -2,32 +2,32 @@
   "name": "go",
   "display_name": "Go",
   "kind": "runtime",
-  "revision": 3,
+  "revision": 4,
   "releases": [
     {
-      "version": "1.27.2",
+      "version": "1.27.3",
       "channel": "stable",
       "released_at": "",
       "platforms": {
         "windows/amd64": {
-          "url": "https://go.dev/dl/go1.27.2.windows-amd64.zip",
-          "sha256": "1314008898bd40df77af4b014f777f08873dbdfbcd3d92308728ee03304fe04f",
-          "size_bytes": 79008081
+          "url": "https://go.dev/dl/go1.27.3.windows-amd64.zip",
+          "sha256": "f26081f438319757f8a1b46d7d0b2c5ec7583d4038e485e0aa725cfde7885fff",
+          "size_bytes": 79010309
         },
         "linux/amd64": {
-          "url": "https://go.dev/dl/go1.27.2.linux-amd64.tar.gz",
-          "sha256": "ecbadb99091a3f46e31f5f934b068b1864eafa7995211b39eaddf76996045fe5",
-          "size_bytes": 70590635
+          "url": "https://go.dev/dl/go1.27.3.linux-amd64.tar.gz",
+          "sha256": "65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40",
+          "size_bytes": 70588678
         },
         "darwin/amd64": {
-          "url": "https://go.dev/dl/go1.27.2.darwin-amd64.tar.gz",
-          "sha256": "587b59182488b23aa6e5fc25110405a3e0e5b38ed2f5b2f46ed13c32aee356fe",
-          "size_bytes": 71695284
+          "url": "https://go.dev/dl/go1.27.3.darwin-amd64.tar.gz",
+          "sha256": "b6f8e931e4ab497fcde6da8ae4499a58f9d258e55c8a80824a516eae5950a750",
+          "size_bytes": 71697771
         },
         "darwin/arm64": {
-          "url": "https://go.dev/dl/go1.27.2.darwin-arm64.tar.gz",
-          "sha256": "76812b213b1b2302c978d28fa52fa92d541704b9e7d9d5db8002c50e4018c4c5",
-          "size_bytes": 68195916
+          "url": "https://go.dev/dl/go1.27.3.darwin-arm64.tar.gz",
+          "sha256": "dd3908cf20959d798c1e06ebe5b72213f0505ce01373b40ce3110975a6cd99c2",
+          "size_bytes": 68196737
         }
       }
     }
