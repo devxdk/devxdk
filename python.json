@@ -2,8 +2,30 @@
   "name": "python",
   "display_name": "Python",
   "kind": "runtime",
-  "revision": 2,
+  "revision": 3,
   "releases": [
+    {
+      "version": "3.14.9",
+      "channel": "stable",
+      "released_at": "2026-10-26",
+      "platforms": {
+        "linux/amd64": {
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261021/cpython-3.14.9%2B20261021-x86_64-unknown-linux-gnu-install_only.tar.gz",
+          "sha256": "dfa4c5a40c47f338f41658017be550c72247c391e6bfb1fa4da03ebc8451abdf",
+          "size_bytes": 76270309
+        },
+        "darwin/amd64": {
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261021/cpython-3.14.9%2B20261021-x86_64-apple-darwin-install_only.tar.gz",
+          "sha256": "600cf336dd007e7c72318214fd0708a56c555b516964175df4a748e4ff0487a2",
+          "size_bytes": 26931969
+        },
+        "darwin/arm64": {
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261021/cpython-3.14.9%2B20261021-aarch64-apple-darwin-install_only.tar.gz",
+          "sha256": "226d696642a8a53d03b4d5b255b1c319b1575a6d44bd723a953c9f507755e36a",
+          "size_bytes": 26834117
+        }
+      }
+    },
     {
       "version": "3.14.8",
       "channel": "stable",

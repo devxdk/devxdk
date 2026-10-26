@@ -2,8 +2,30 @@
   "name": "php",
   "display_name": "PHP",
   "kind": "runtime",
-  "revision": 4,
+  "revision": 5,
   "releases": [
+    {
+      "version": "8.5.12",
+      "channel": "stable",
+      "released_at": "2026-10-26",
+      "platforms": {
+        "linux/amd64": {
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.5.12/php-8.5.12-linux-amd64.tar.gz",
+          "sha256": "e97ebadf6aeecd3ad7b0922a1ed51aee67e5d9e24e2b2bf3110ce1bdbcd376d4",
+          "size_bytes": 48534880
+        },
+        "darwin/amd64": {
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.5.12/php-8.5.12-darwin-amd64.tar.gz",
+          "sha256": "bb3e2d9731576ac7f38a8ff88ecf548675eab3991ef559d732ba4413012e9994",
+          "size_bytes": 49679739
+        },
+        "darwin/arm64": {
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.5.12/php-8.5.12-darwin-arm64.tar.gz",
+          "sha256": "0068022ef6c9a16da3a0b3ca8f5717caac645a42cd53aea499dfe45ee5b3ff84",
+          "size_bytes": 50067341
+        }
+      }
+    },
     {
       "version": "8.5.11",
       "channel": "stable",
@@ -89,6 +111,28 @@
           "url": "https://github.com/devxdk/devxdk/releases/download/php-8.5.8/php-8.5.8-darwin-arm64.tar.gz",
           "sha256": "918132ce66b620261bee7d17403103fe696ed2cd292486d2bc6fe855ba615bfc",
           "size_bytes": 49948216
+        }
+      }
+    },
+    {
+      "version": "8.4.27",
+      "channel": "stable",
+      "released_at": "2026-10-26",
+      "platforms": {
+        "linux/amd64": {
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.4.27/php-8.4.27-linux-amd64.tar.gz",
+          "sha256": "946ce00f2db10813f8ba586e8f9943c8957948dc7b9f1c70dc826484ae825ea3",
+          "size_bytes": 47841218
+        },
+        "darwin/amd64": {
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.4.27/php-8.4.27-darwin-amd64.tar.gz",
+          "sha256": "a5596e3eb9cc26789c7d3ebf936c8ac56a1732951df7513e6c29028abc667460",
+          "size_bytes": 48878639
+        },
+        "darwin/arm64": {
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.4.27/php-8.4.27-darwin-arm64.tar.gz",
+          "sha256": "62cdfaaa2ba677fb47b2bbb4e04a8735e32c0de43ef5126484a7b2105110a2aa",
+          "size_bytes": 49243370
         }
       }
     },
