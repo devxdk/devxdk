@@ -1,0 +1,44 @@
+{
+  "artifact": {
+    "artifact_id": "12637037881",
+    "manifest_sha256": "f82de271c325f6b11f4656a9b96c6ea1cfc1d451569dc2f484bb52d1dab42d02"
+  },
+  "inputs": {},
+  "item": {
+    "component": "python",
+    "epoch": 1,
+    "line": "3.14",
+    "mode": "build",
+    "ordering_kind": "adopted",
+    "platform": "darwin/arm64",
+    "provider": "astral",
+    "recipe": "astral",
+    "revision": 1,
+    "runner": "macos-15",
+    "source_version": "3.14.9",
+    "version": "3.14.9"
+  },
+  "members": [],
+  "meta": {
+    "component": "python",
+    "epoch": 1,
+    "line": "3.14",
+    "ordering_kind": "adopted",
+    "platform": "darwin/arm64",
+    "provenance": {
+      "recipe": "python-astral",
+      "run_url": "https://github.com/devxdk/devxdk/actions/runs/40293980715",
+      "source_url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261021/cpython-3.14.9%2B20261021-aarch64-apple-darwin-install_only.tar.gz"
+    },
+    "provider": "astral",
+    "revision": 1,
+    "sha256": "226d696642a8a53d03b4d5b255b1c319b1575a6d44bd723a953c9f507755e36a",
+    "size_bytes": 26834117,
+    "source_version": "3.14.9",
+    "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261021/cpython-3.14.9%2B20261021-aarch64-apple-darwin-install_only.tar.gz",
+    "version": "3.14.9"
+  },
+  "operation_id": "40293980715",
+  "schema": 1,
+  "source_commit": "394817ecca4dc9af254ad36c8a05a2b806ca23a5"
+}
