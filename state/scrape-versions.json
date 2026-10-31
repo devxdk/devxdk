@@ -4,7 +4,7 @@
       "2": {
         "any": {
           "epoch": 1,
-          "floor_version": "2.11.0",
+          "floor_version": "2.11.1",
           "provider": "getcomposer",
           "revoked": [],
           "status": "active",
@@ -12,10 +12,10 @@
             {
               "channel": "stable",
               "released_at": "",
-              "sha256": "9674f12a2a181100d889ebfd0b4510805b3e94cea57869b14b383753d602599b",
-              "size_bytes": 3786815,
-              "url": "https://getcomposer.org/download/2.11.0/composer.phar",
-              "version": "2.11.0"
+              "sha256": "6f1b891e1d4927d62740276c540fb490e47689e19e102c49e8da849794882f8c",
+              "size_bytes": 3797852,
+              "url": "https://getcomposer.org/download/2.11.1/composer.phar",
+              "version": "2.11.1"
             }
           ]
         }
