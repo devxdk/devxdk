@@ -742,6 +742,53 @@
       }
     },
     "python": {
+      "3.14.10": {
+        "darwin/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "3.14.10",
+          "kind": "adopted",
+          "line": "3.14",
+          "provider": "astral",
+          "released_at": "2026-11-02",
+          "revoked": false,
+          "sha256": "01cedae5d4a66ac570e13cb35fa570d0e79ba8e9affd4518a5d85b6c2b98ff10",
+          "size_bytes": 27054861,
+          "source_version": "3.14.10",
+          "status": "active",
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.14.10%2B20261026-x86_64-apple-darwin-install_only.tar.gz"
+        },
+        "darwin/arm64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "3.14.10",
+          "kind": "adopted",
+          "line": "3.14",
+          "provider": "astral",
+          "released_at": "2026-11-02",
+          "revoked": false,
+          "sha256": "30a18bcb9ab75e485b4bf4e5d783dde165571e7e42c56dff47a2d2c5345183a4",
+          "size_bytes": 26891793,
+          "source_version": "3.14.10",
+          "status": "active",
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.14.10%2B20261026-aarch64-apple-darwin-install_only.tar.gz"
+        },
+        "linux/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "3.14.10",
+          "kind": "adopted",
+          "line": "3.14",
+          "provider": "astral",
+          "released_at": "2026-11-02",
+          "revoked": false,
+          "sha256": "1b38024924eb7f4cf0cab45d7b871d1f1991354190fccd2625ac7529a43786e2",
+          "size_bytes": 76564514,
+          "source_version": "3.14.10",
+          "status": "active",
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.14.10%2B20261026-x86_64-unknown-linux-gnu-install_only.tar.gz"
+        }
+      },
       "3.14.6": {
         "darwin/amd64": {
           "channel": "stable",
