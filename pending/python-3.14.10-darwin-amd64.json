@@ -1,0 +1,14 @@
+{
+  "component": "python",
+  "epoch": 1,
+  "line": "3.14",
+  "ordering_kind": "adopted",
+  "platform": "darwin/amd64",
+  "provider": "astral",
+  "revision": 1,
+  "sha256": "01cedae5d4a66ac570e13cb35fa570d0e79ba8e9affd4518a5d85b6c2b98ff10",
+  "size_bytes": 27054861,
+  "source_version": "3.14.10",
+  "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.14.10%2B20261026-x86_64-apple-darwin-install_only.tar.gz",
+  "version": "3.14.10"
+}
