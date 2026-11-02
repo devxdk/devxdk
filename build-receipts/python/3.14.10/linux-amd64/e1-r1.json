@@ -1,0 +1,44 @@
+{
+  "artifact": {
+    "artifact_id": "13133424435",
+    "manifest_sha256": "fc013b652ca1ac9b041fb16119a9c795fdd919c87d25f23c626057460fadc50b"
+  },
+  "inputs": {},
+  "item": {
+    "component": "python",
+    "epoch": 1,
+    "line": "3.14",
+    "mode": "build",
+    "ordering_kind": "adopted",
+    "platform": "linux/amd64",
+    "provider": "astral",
+    "recipe": "astral",
+    "revision": 1,
+    "runner": "ubuntu-22.04",
+    "source_version": "3.14.10",
+    "version": "3.14.10"
+  },
+  "members": [],
+  "meta": {
+    "component": "python",
+    "epoch": 1,
+    "line": "3.14",
+    "ordering_kind": "adopted",
+    "platform": "linux/amd64",
+    "provenance": {
+      "recipe": "python-astral",
+      "run_url": "https://github.com/devxdk/devxdk/actions/runs/41431288095",
+      "source_url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.14.10%2B20261026-x86_64-unknown-linux-gnu-install_only.tar.gz"
+    },
+    "provider": "astral",
+    "revision": 1,
+    "sha256": "1b38024924eb7f4cf0cab45d7b871d1f1991354190fccd2625ac7529a43786e2",
+    "size_bytes": 76564514,
+    "source_version": "3.14.10",
+    "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.14.10%2B20261026-x86_64-unknown-linux-gnu-install_only.tar.gz",
+    "version": "3.14.10"
+  },
+  "operation_id": "41431288095",
+  "schema": 1,
+  "source_commit": "5069adac34f8c547160eef5a5d9b600f078d0b24"
+}
