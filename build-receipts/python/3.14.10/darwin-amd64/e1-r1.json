@@ -1,0 +1,44 @@
+{
+  "artifact": {
+    "artifact_id": "13134028142",
+    "manifest_sha256": "8d4a8a1f6a9c917083267c8693f9a6ff6352a47b9990f7175fdc597074226335"
+  },
+  "inputs": {},
+  "item": {
+    "component": "python",
+    "epoch": 1,
+    "line": "3.14",
+    "mode": "build",
+    "ordering_kind": "adopted",
+    "platform": "darwin/amd64",
+    "provider": "astral",
+    "recipe": "astral",
+    "revision": 1,
+    "runner": "macos-15-intel",
+    "source_version": "3.14.10",
+    "version": "3.14.10"
+  },
+  "members": [],
+  "meta": {
+    "component": "python",
+    "epoch": 1,
+    "line": "3.14",
+    "ordering_kind": "adopted",
+    "platform": "darwin/amd64",
+    "provenance": {
+      "recipe": "python-astral",
+      "run_url": "https://github.com/devxdk/devxdk/actions/runs/41431288095",
+      "source_url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.14.10%2B20261026-x86_64-apple-darwin-install_only.tar.gz"
+    },
+    "provider": "astral",
+    "revision": 1,
+    "sha256": "01cedae5d4a66ac570e13cb35fa570d0e79ba8e9affd4518a5d85b6c2b98ff10",
+    "size_bytes": 27054861,
+    "source_version": "3.14.10",
+    "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.14.10%2B20261026-x86_64-apple-darwin-install_only.tar.gz",
+    "version": "3.14.10"
+  },
+  "operation_id": "41431288095",
+  "schema": 1,
+  "source_commit": "5069adac34f8c547160eef5a5d9b600f078d0b24"
+}
