@@ -1,0 +1,44 @@
+{
+  "artifact": {
+    "artifact_id": "14219340506",
+    "manifest_sha256": "d617e5a4d285f483de53d7f7c2664bf359c7a0166116f901dbd067315b8f601a"
+  },
+  "inputs": {},
+  "item": {
+    "component": "postgres",
+    "epoch": 1,
+    "line": "18",
+    "mode": "build",
+    "ordering_kind": "adopted",
+    "platform": "darwin/amd64",
+    "provider": "theseus",
+    "recipe": "theseus",
+    "revision": 1,
+    "runner": "macos-15-intel",
+    "source_version": "18.7.0",
+    "version": "18.7"
+  },
+  "members": [],
+  "meta": {
+    "component": "postgres",
+    "epoch": 1,
+    "line": "18",
+    "ordering_kind": "adopted",
+    "platform": "darwin/amd64",
+    "provenance": {
+      "recipe": "postgres-theseus",
+      "run_url": "https://github.com/devxdk/devxdk/actions/runs/43852390933",
+      "source_url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.7.0/postgresql-18.7.0-x86_64-apple-darwin.tar.gz"
+    },
+    "provider": "theseus",
+    "revision": 1,
+    "sha256": "9cd649259d6bf4af60a235e772c83853df215b63f4c1967c2eed7f9376aefb89",
+    "size_bytes": 92187545,
+    "source_version": "18.7.0",
+    "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.7.0/postgresql-18.7.0-x86_64-apple-darwin.tar.gz",
+    "version": "18.7"
+  },
+  "operation_id": "43852390933",
+  "schema": 1,
+  "source_commit": "2611996baf7b904bd2832081b82f31c5070f52bf"
+}
