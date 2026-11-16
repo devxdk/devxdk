@@ -739,6 +739,38 @@
           "status": "active",
           "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.0/postgresql-18.6.0-x86_64-pc-windows-msvc.tar.gz"
         }
+      },
+      "18.7": {
+        "darwin/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "18.7.0",
+          "kind": "adopted",
+          "line": "18",
+          "provider": "theseus",
+          "released_at": "2026-11-16",
+          "revoked": false,
+          "sha256": "9cd649259d6bf4af60a235e772c83853df215b63f4c1967c2eed7f9376aefb89",
+          "size_bytes": 92187545,
+          "source_version": "18.7.0",
+          "status": "active",
+          "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.7.0/postgresql-18.7.0-x86_64-apple-darwin.tar.gz"
+        },
+        "darwin/arm64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "18.7.0",
+          "kind": "adopted",
+          "line": "18",
+          "provider": "theseus",
+          "released_at": "2026-11-16",
+          "revoked": false,
+          "sha256": "86456c0ed99d2466524eaa074db6580cf7d748b91042e252c83eaca9a9d216e7",
+          "size_bytes": 88965986,
+          "source_version": "18.7.0",
+          "status": "active",
+          "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.7.0/postgresql-18.7.0-aarch64-apple-darwin.tar.gz"
+        }
       }
     },
     "python": {
