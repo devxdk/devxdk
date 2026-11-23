@@ -1,0 +1,860 @@
+{
+  "filters": {
+    "components": "",
+    "platforms": "",
+    "version": ""
+  },
+  "force": false,
+  "id": "45170373622",
+  "legs": {
+    "nginx-darwin-amd64": [
+      {
+        "component": "nginx",
+        "epoch": 1,
+        "line": "1.30",
+        "mode": "build",
+        "ordering_kind": "built",
+        "platform": "darwin/amd64",
+        "provider": "devxdk-nginx-unix",
+        "recipe": "nginx-unix",
+        "revision": 1,
+        "runner": "macos-15-intel",
+        "source_version": "1.30.7",
+        "version": "1.30.7"
+      }
+    ],
+    "nginx-darwin-arm64": [
+      {
+        "component": "nginx",
+        "epoch": 1,
+        "line": "1.30",
+        "mode": "build",
+        "ordering_kind": "built",
+        "platform": "darwin/arm64",
+        "provider": "devxdk-nginx-unix",
+        "recipe": "nginx-unix",
+        "revision": 1,
+        "runner": "macos-15",
+        "source_version": "1.30.7",
+        "version": "1.30.7"
+      }
+    ],
+    "nginx-linux-amd64": [
+      {
+        "component": "nginx",
+        "epoch": 1,
+        "line": "1.30",
+        "mode": "build",
+        "ordering_kind": "built",
+        "platform": "linux/amd64",
+        "provider": "devxdk-nginx-unix",
+        "recipe": "nginx-unix",
+        "revision": 1,
+        "runner": "ubuntu-22.04",
+        "source_version": "1.30.7",
+        "version": "1.30.7"
+      }
+    ],
+    "php-darwin-amd64": [
+      {
+        "component": "php",
+        "epoch": 1,
+        "line": "8.4",
+        "mode": "build",
+        "ordering_kind": "built",
+        "platform": "darwin/amd64",
+        "provider": "devxdk-php-spc",
+        "recipe": "php-spc",
+        "revision": 1,
+        "runner": "macos-15-intel",
+        "source_sha256": "deffc88c60fcfb99f683a9f6689e9c91cf41b7cba50bd5f01a232a98c27f2cd4",
+        "source_version": "8.4.28",
+        "version": "8.4.28"
+      },
+      {
+        "component": "php",
+        "epoch": 1,
+        "line": "8.5",
+        "mode": "build",
+        "ordering_kind": "built",
+        "platform": "darwin/amd64",
+        "provider": "devxdk-php-spc",
+        "recipe": "php-spc",
+        "revision": 1,
+        "runner": "macos-15-intel",
+        "source_sha256": "3aeb20a7e667e197929747f76047409196f91f0172357439319cba344df8b3e1",
+        "source_version": "8.5.13",
+        "version": "8.5.13"
+      }
+    ],
+    "php-darwin-arm64": [
+      {
+        "component": "php",
+        "epoch": 1,
+        "line": "8.4",
+        "mode": "build",
+        "ordering_kind": "built",
+        "platform": "darwin/arm64",
+        "provider": "devxdk-php-spc",
+        "recipe": "php-spc",
+        "revision": 1,
+        "runner": "macos-15",
+        "source_sha256": "deffc88c60fcfb99f683a9f6689e9c91cf41b7cba50bd5f01a232a98c27f2cd4",
+        "source_version": "8.4.28",
+        "version": "8.4.28"
+      },
+      {
+        "component": "php",
+        "epoch": 1,
+        "line": "8.5",
+        "mode": "build",
+        "ordering_kind": "built",
+        "platform": "darwin/arm64",
+        "provider": "devxdk-php-spc",
+        "recipe": "php-spc",
+        "revision": 1,
+        "runner": "macos-15",
+        "source_sha256": "3aeb20a7e667e197929747f76047409196f91f0172357439319cba344df8b3e1",
+        "source_version": "8.5.13",
+        "version": "8.5.13"
+      }
+    ],
+    "php-linux-amd64": [
+      {
+        "component": "php",
+        "epoch": 1,
+        "line": "8.4",
+        "mode": "build",
+        "ordering_kind": "built",
+        "platform": "linux/amd64",
+        "provider": "devxdk-php-spc",
+        "recipe": "php-spc",
+        "revision": 1,
+        "runner": "ubuntu-22.04",
+        "source_sha256": "deffc88c60fcfb99f683a9f6689e9c91cf41b7cba50bd5f01a232a98c27f2cd4",
+        "source_version": "8.4.28",
+        "version": "8.4.28"
+      },
+      {
+        "component": "php",
+        "epoch": 1,
+        "line": "8.5",
+        "mode": "build",
+        "ordering_kind": "built",
+        "platform": "linux/amd64",
+        "provider": "devxdk-php-spc",
+        "recipe": "php-spc",
+        "revision": 1,
+        "runner": "ubuntu-22.04",
+        "source_sha256": "3aeb20a7e667e197929747f76047409196f91f0172357439319cba344df8b3e1",
+        "source_version": "8.5.13",
+        "version": "8.5.13"
+      }
+    ],
+    "php-windows-amd64": [
+      {
+        "component": "php",
+        "epoch": 1,
+        "line": "8.4",
+        "mode": "build",
+        "ordering_kind": "built",
+        "platform": "windows/amd64",
+        "provider": "devxdk-php-windows",
+        "recipe": "php-windows",
+        "revision": 1,
+        "runner": "windows-2022",
+        "source_sha256": "c1f9280588b7b6ad7b518969022f0b0175f106fab9d0639ad0e4ce7cd47ac1ed",
+        "source_version": "8.4.28",
+        "version": "8.4.28"
+      },
+      {
+        "component": "php",
+        "epoch": 1,
+        "line": "8.5",
+        "mode": "build",
+        "ordering_kind": "built",
+        "platform": "windows/amd64",
+        "provider": "devxdk-php-windows",
+        "recipe": "php-windows",
+        "revision": 1,
+        "runner": "windows-2022",
+        "source_sha256": "4ae6c72bc0ca4f6b8f3e9b107874bae0135699f3aabe6c26a1f6103d040eea97",
+        "source_version": "8.5.13",
+        "version": "8.5.13"
+      }
+    ],
+    "postgres-linux-amd64": [
+      {
+        "component": "postgres",
+        "epoch": 1,
+        "line": "18",
+        "mode": "build",
+        "ordering_kind": "adopted",
+        "platform": "linux/amd64",
+        "provider": "theseus",
+        "recipe": "theseus",
+        "revision": 1,
+        "runner": "ubuntu-22.04",
+        "source_version": "18.7.0",
+        "version": "18.7"
+      }
+    ],
+    "postgres-windows-amd64": [
+      {
+        "component": "postgres",
+        "epoch": 1,
+        "line": "18",
+        "mode": "build",
+        "ordering_kind": "adopted",
+        "platform": "windows/amd64",
+        "provider": "theseus",
+        "recipe": "theseus",
+        "revision": 1,
+        "runner": "windows-2022",
+        "source_version": "18.7.0",
+        "version": "18.7"
+      }
+    ],
+    "python-windows-amd64": [
+      {
+        "component": "python",
+        "epoch": 1,
+        "line": "3.14",
+        "mode": "build",
+        "ordering_kind": "adopted",
+        "platform": "windows/amd64",
+        "provider": "astral",
+        "recipe": "astral",
+        "revision": 1,
+        "runner": "windows-2022",
+        "source_version": "3.14.10",
+        "version": "3.14.10"
+      }
+    ]
+  },
+  "schema": 1,
+  "source_commit": "ab533e0e1731e9c4b40b162a5c1c89c125c3b5be",
+  "targets": [
+    {
+      "component": "nginx",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "1.30",
+      "mode": "build",
+      "ordering_kind": "built",
+      "platform": "darwin/amd64",
+      "provider": "devxdk-nginx-unix",
+      "recipe": "nginx-unix",
+      "revision": 1,
+      "runner": "macos-15-intel",
+      "source_version": "1.30.7",
+      "version": "1.30.7"
+    },
+    {
+      "component": "nginx",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "1.30",
+      "mode": "build",
+      "ordering_kind": "built",
+      "platform": "darwin/arm64",
+      "provider": "devxdk-nginx-unix",
+      "recipe": "nginx-unix",
+      "revision": 1,
+      "runner": "macos-15",
+      "source_version": "1.30.7",
+      "version": "1.30.7"
+    },
+    {
+      "component": "nginx",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "1.30",
+      "mode": "build",
+      "ordering_kind": "built",
+      "platform": "linux/amd64",
+      "provider": "devxdk-nginx-unix",
+      "recipe": "nginx-unix",
+      "revision": 1,
+      "runner": "ubuntu-22.04",
+      "source_version": "1.30.7",
+      "version": "1.30.7"
+    },
+    {
+      "component": "php",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "8.4",
+      "mode": "build",
+      "ordering_kind": "built",
+      "platform": "darwin/amd64",
+      "provider": "devxdk-php-spc",
+      "recipe": "php-spc",
+      "revision": 1,
+      "runner": "macos-15-intel",
+      "source_sha256": "deffc88c60fcfb99f683a9f6689e9c91cf41b7cba50bd5f01a232a98c27f2cd4",
+      "source_version": "8.4.28",
+      "version": "8.4.28"
+    },
+    {
+      "component": "php",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "8.4",
+      "mode": "build",
+      "ordering_kind": "built",
+      "platform": "darwin/arm64",
+      "provider": "devxdk-php-spc",
+      "recipe": "php-spc",
+      "revision": 1,
+      "runner": "macos-15",
+      "source_sha256": "deffc88c60fcfb99f683a9f6689e9c91cf41b7cba50bd5f01a232a98c27f2cd4",
+      "source_version": "8.4.28",
+      "version": "8.4.28"
+    },
+    {
+      "component": "php",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "8.4",
+      "mode": "build",
+      "ordering_kind": "built",
+      "platform": "linux/amd64",
+      "provider": "devxdk-php-spc",
+      "recipe": "php-spc",
+      "revision": 1,
+      "runner": "ubuntu-22.04",
+      "source_sha256": "deffc88c60fcfb99f683a9f6689e9c91cf41b7cba50bd5f01a232a98c27f2cd4",
+      "source_version": "8.4.28",
+      "version": "8.4.28"
+    },
+    {
+      "component": "php",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "8.4",
+      "mode": "build",
+      "ordering_kind": "built",
+      "platform": "windows/amd64",
+      "provider": "devxdk-php-windows",
+      "recipe": "php-windows",
+      "revision": 1,
+      "runner": "windows-2022",
+      "source_sha256": "c1f9280588b7b6ad7b518969022f0b0175f106fab9d0639ad0e4ce7cd47ac1ed",
+      "source_version": "8.4.28",
+      "version": "8.4.28"
+    },
+    {
+      "component": "php",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "8.5",
+      "mode": "build",
+      "ordering_kind": "built",
+      "platform": "darwin/amd64",
+      "provider": "devxdk-php-spc",
+      "recipe": "php-spc",
+      "revision": 1,
+      "runner": "macos-15-intel",
+      "source_sha256": "3aeb20a7e667e197929747f76047409196f91f0172357439319cba344df8b3e1",
+      "source_version": "8.5.13",
+      "version": "8.5.13"
+    },
+    {
+      "component": "php",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "8.5",
+      "mode": "build",
+      "ordering_kind": "built",
+      "platform": "darwin/arm64",
+      "provider": "devxdk-php-spc",
+      "recipe": "php-spc",
+      "revision": 1,
+      "runner": "macos-15",
+      "source_sha256": "3aeb20a7e667e197929747f76047409196f91f0172357439319cba344df8b3e1",
+      "source_version": "8.5.13",
+      "version": "8.5.13"
+    },
+    {
+      "component": "php",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "8.5",
+      "mode": "build",
+      "ordering_kind": "built",
+      "platform": "linux/amd64",
+      "provider": "devxdk-php-spc",
+      "recipe": "php-spc",
+      "revision": 1,
+      "runner": "ubuntu-22.04",
+      "source_sha256": "3aeb20a7e667e197929747f76047409196f91f0172357439319cba344df8b3e1",
+      "source_version": "8.5.13",
+      "version": "8.5.13"
+    },
+    {
+      "component": "php",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "8.5",
+      "mode": "build",
+      "ordering_kind": "built",
+      "platform": "windows/amd64",
+      "provider": "devxdk-php-windows",
+      "recipe": "php-windows",
+      "revision": 1,
+      "runner": "windows-2022",
+      "source_sha256": "4ae6c72bc0ca4f6b8f3e9b107874bae0135699f3aabe6c26a1f6103d040eea97",
+      "source_version": "8.5.13",
+      "version": "8.5.13"
+    },
+    {
+      "accepted_asset": {
+        "sha256": "9cd649259d6bf4af60a235e772c83853df215b63f4c1967c2eed7f9376aefb89",
+        "size_bytes": 92187545,
+        "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.7.0/postgresql-18.7.0-x86_64-apple-darwin.tar.gz"
+      },
+      "component": "postgres",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "18",
+      "mode": "covered",
+      "ordering_kind": "adopted",
+      "platform": "darwin/amd64",
+      "provider": "theseus",
+      "recipe": "theseus",
+      "revision": 1,
+      "runner": "macos-15-intel",
+      "source_version": "18.7.0",
+      "version": "18.7"
+    },
+    {
+      "accepted_asset": {
+        "sha256": "86456c0ed99d2466524eaa074db6580cf7d748b91042e252c83eaca9a9d216e7",
+        "size_bytes": 88965986,
+        "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.7.0/postgresql-18.7.0-aarch64-apple-darwin.tar.gz"
+      },
+      "component": "postgres",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "18",
+      "mode": "covered",
+      "ordering_kind": "adopted",
+      "platform": "darwin/arm64",
+      "provider": "theseus",
+      "recipe": "theseus",
+      "revision": 1,
+      "runner": "macos-15",
+      "source_version": "18.7.0",
+      "version": "18.7"
+    },
+    {
+      "component": "postgres",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "18",
+      "mode": "build",
+      "ordering_kind": "adopted",
+      "platform": "linux/amd64",
+      "provider": "theseus",
+      "recipe": "theseus",
+      "revision": 1,
+      "runner": "ubuntu-22.04",
+      "source_version": "18.7.0",
+      "version": "18.7"
+    },
+    {
+      "component": "postgres",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "18",
+      "mode": "build",
+      "ordering_kind": "adopted",
+      "platform": "windows/amd64",
+      "provider": "theseus",
+      "recipe": "theseus",
+      "revision": 1,
+      "runner": "windows-2022",
+      "source_version": "18.7.0",
+      "version": "18.7"
+    },
+    {
+      "accepted_asset": {
+        "sha256": "01cedae5d4a66ac570e13cb35fa570d0e79ba8e9affd4518a5d85b6c2b98ff10",
+        "size_bytes": 27054861,
+        "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.14.10%2B20261026-x86_64-apple-darwin-install_only.tar.gz"
+      },
+      "component": "python",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "3.14",
+      "mode": "covered",
+      "ordering_kind": "adopted",
+      "platform": "darwin/amd64",
+      "provider": "astral",
+      "recipe": "astral",
+      "revision": 1,
+      "runner": "macos-15-intel",
+      "source_version": "3.14.10",
+      "version": "3.14.10"
+    },
+    {
+      "accepted_asset": {
+        "sha256": "30a18bcb9ab75e485b4bf4e5d783dde165571e7e42c56dff47a2d2c5345183a4",
+        "size_bytes": 26891793,
+        "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.14.10%2B20261026-aarch64-apple-darwin-install_only.tar.gz"
+      },
+      "component": "python",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "3.14",
+      "mode": "covered",
+      "ordering_kind": "adopted",
+      "platform": "darwin/arm64",
+      "provider": "astral",
+      "recipe": "astral",
+      "revision": 1,
+      "runner": "macos-15",
+      "source_version": "3.14.10",
+      "version": "3.14.10"
+    },
+    {
+      "accepted_asset": {
+        "sha256": "1b38024924eb7f4cf0cab45d7b871d1f1991354190fccd2625ac7529a43786e2",
+        "size_bytes": 76564514,
+        "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.14.10%2B20261026-x86_64-unknown-linux-gnu-install_only.tar.gz"
+      },
+      "component": "python",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "3.14",
+      "mode": "covered",
+      "ordering_kind": "adopted",
+      "platform": "linux/amd64",
+      "provider": "astral",
+      "recipe": "astral",
+      "revision": 1,
+      "runner": "ubuntu-22.04",
+      "source_version": "3.14.10",
+      "version": "3.14.10"
+    },
+    {
+      "component": "python",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "3.14",
+      "mode": "build",
+      "ordering_kind": "adopted",
+      "platform": "windows/amd64",
+      "provider": "astral",
+      "recipe": "astral",
+      "revision": 1,
+      "runner": "windows-2022",
+      "source_version": "3.14.10",
+      "version": "3.14.10"
+    },
+    {
+      "accepted_asset": {
+        "sha256": "b39ef5fba30161094a4c1ac7714affba3919434aa739351b874bf83dbf1a042c",
+        "size_bytes": 11905016,
+        "url": "https://github.com/devxdk/devxdk/releases/download/redis-8.8.0/redis-8.8.0-darwin-amd64.tar.gz"
+      },
+      "component": "redis",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "8",
+      "mode": "covered",
+      "ordering_kind": "built",
+      "platform": "darwin/amd64",
+      "provider": "devxdk-redis-unix",
+      "recipe": "redis-unix",
+      "revision": 1,
+      "runner": "macos-15-intel",
+      "source_sha256": "88422181efb0c9c0abba332e3e391d409e1e13714b838931669235e5796f704b",
+      "source_version": "8.8.0",
+      "version": "8.8.0"
+    },
+    {
+      "accepted_asset": {
+        "sha256": "b2b75362010627c2d6cb125195ba276e2d5b800fecb380425a220cb2bfa8eaff",
+        "size_bytes": 12824518,
+        "url": "https://github.com/devxdk/devxdk/releases/download/redis-8.8.0/redis-8.8.0-darwin-arm64.tar.gz"
+      },
+      "component": "redis",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "8",
+      "mode": "covered",
+      "ordering_kind": "built",
+      "platform": "darwin/arm64",
+      "provider": "devxdk-redis-unix",
+      "recipe": "redis-unix",
+      "revision": 1,
+      "runner": "macos-15",
+      "source_sha256": "88422181efb0c9c0abba332e3e391d409e1e13714b838931669235e5796f704b",
+      "source_version": "8.8.0",
+      "version": "8.8.0"
+    },
+    {
+      "accepted_asset": {
+        "sha256": "b4a4c15e8d8ea5c88f4e8763035b25bc78841ae92418b24542f78dc5931a2f7d",
+        "size_bytes": 22987906,
+        "url": "https://github.com/devxdk/devxdk/releases/download/redis-8.8.0/redis-8.8.0-linux-amd64.tar.gz"
+      },
+      "component": "redis",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "8",
+      "mode": "covered",
+      "ordering_kind": "built",
+      "platform": "linux/amd64",
+      "provider": "devxdk-redis-unix",
+      "recipe": "redis-unix",
+      "revision": 1,
+      "runner": "ubuntu-22.04",
+      "source_sha256": "88422181efb0c9c0abba332e3e391d409e1e13714b838931669235e5796f704b",
+      "source_version": "8.8.0",
+      "version": "8.8.0"
+    },
+    {
+      "accepted_asset": {
+        "sha256": "80044b270ba7ab7fee7664f13bb28ba597c2fc15e938af1f1847d86b847df50a",
+        "size_bytes": 20539735,
+        "url": "https://github.com/devxdk/devxdk/releases/download/redis-8.8.0/redis-8.8.0-windows-amd64.zip"
+      },
+      "component": "redis",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "8",
+      "mode": "covered",
+      "ordering_kind": "built",
+      "platform": "windows/amd64",
+      "provider": "devxdk-redis-msys2",
+      "recipe": "redis-msys2",
+      "revision": 1,
+      "runner": "windows-2022",
+      "source_sha256": "88422181efb0c9c0abba332e3e391d409e1e13714b838931669235e5796f704b",
+      "source_version": "8.8.0",
+      "version": "8.8.0"
+    },
+    {
+      "accepted_asset": {
+        "sha256": "66730e104cc79f08a4eebfba26798127994840b21d68d82b9ee242c827b70da8",
+        "size_bytes": 13566962,
+        "url": "https://github.com/devxdk/devxdk/releases/download/valkey-9.1.0/valkey-9.1.0-darwin-amd64.tar.gz"
+      },
+      "component": "valkey",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "9",
+      "mode": "covered",
+      "ordering_kind": "built",
+      "platform": "darwin/amd64",
+      "provider": "devxdk-valkey-unix",
+      "recipe": "valkey-unix",
+      "revision": 1,
+      "runner": "macos-15-intel",
+      "source_sha256": "7789fe1df257774457bafb4c1d56c9f7020c3879a7f5b4234af9030b2bd82dfd",
+      "source_version": "9.1.0",
+      "version": "9.1.0"
+    },
+    {
+      "accepted_asset": {
+        "sha256": "be1051e5e6329cbf1c6a7fa918d12f23cefed7e91e4bf2abcb0d563f81040656",
+        "size_bytes": 14260297,
+        "url": "https://github.com/devxdk/devxdk/releases/download/valkey-9.1.0/valkey-9.1.0-darwin-arm64.tar.gz"
+      },
+      "component": "valkey",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "9",
+      "mode": "covered",
+      "ordering_kind": "built",
+      "platform": "darwin/arm64",
+      "provider": "devxdk-valkey-unix",
+      "recipe": "valkey-unix",
+      "revision": 1,
+      "runner": "macos-15",
+      "source_sha256": "7789fe1df257774457bafb4c1d56c9f7020c3879a7f5b4234af9030b2bd82dfd",
+      "source_version": "9.1.0",
+      "version": "9.1.0"
+    },
+    {
+      "accepted_asset": {
+        "sha256": "b44bab7f6169f809d46f3a298216778d4e1e67e3ac01e8172bf8245c809662e5",
+        "size_bytes": 21707654,
+        "url": "https://github.com/devxdk/devxdk/releases/download/valkey-9.1.0/valkey-9.1.0-linux-amd64.tar.gz"
+      },
+      "component": "valkey",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "9",
+      "mode": "covered",
+      "ordering_kind": "built",
+      "platform": "linux/amd64",
+      "provider": "devxdk-valkey-unix",
+      "recipe": "valkey-unix",
+      "revision": 1,
+      "runner": "ubuntu-22.04",
+      "source_sha256": "7789fe1df257774457bafb4c1d56c9f7020c3879a7f5b4234af9030b2bd82dfd",
+      "source_version": "9.1.0",
+      "version": "9.1.0"
+    },
+    {
+      "accepted_asset": {
+        "sha256": "1ae52d5616711879c3519f0b5f0e321711ff7dbc75c3d01d9bfd29138e30e5d7",
+        "size_bytes": 18634994,
+        "url": "https://github.com/devxdk/devxdk/releases/download/valkey-9.1.0/valkey-9.1.0-windows-amd64.zip"
+      },
+      "component": "valkey",
+      "coverage_platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "windows/amd64"
+      ],
+      "epoch": 1,
+      "line": "9",
+      "mode": "covered",
+      "ordering_kind": "built",
+      "platform": "windows/amd64",
+      "provider": "devxdk-valkey-msys2",
+      "recipe": "valkey-msys2",
+      "revision": 1,
+      "runner": "windows-2022",
+      "source_sha256": "7789fe1df257774457bafb4c1d56c9f7020c3879a7f5b4234af9030b2bd82dfd",
+      "source_version": "9.1.0",
+      "version": "9.1.0"
+    }
+  ]
+}
