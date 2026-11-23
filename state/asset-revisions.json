@@ -141,6 +141,53 @@
           "status": "active",
           "url": "https://github.com/devxdk/devxdk/releases/download/nginx-1.30.6/nginx-1.30.6-linux-amd64.tar.gz"
         }
+      },
+      "1.30.7": {
+        "darwin/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "1.30",
+          "provider": "devxdk-nginx-unix",
+          "released_at": "2026-11-23",
+          "revoked": false,
+          "sha256": "0e2ec2690b2773160a4d5fbccbd776a61e1d0df3ecb6d21a139379e8b8b22ae0",
+          "size_bytes": 2976369,
+          "source_version": "1.30.7",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/nginx-1.30.7/nginx-1.30.7-darwin-amd64.tar.gz"
+        },
+        "darwin/arm64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "1.30",
+          "provider": "devxdk-nginx-unix",
+          "released_at": "2026-11-23",
+          "revoked": false,
+          "sha256": "5a420efaa176a4499448ee12372090a42f9a58a1f932758bbdd8adba5f38fb30",
+          "size_bytes": 3245994,
+          "source_version": "1.30.7",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/nginx-1.30.7/nginx-1.30.7-darwin-arm64.tar.gz"
+        },
+        "linux/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "1.30",
+          "provider": "devxdk-nginx-unix",
+          "released_at": "2026-11-23",
+          "revoked": false,
+          "sha256": "8b08fa39fbd9f2c6c3b8587f303bad7d076ae6ce85203849c3e19aca1fbc5f33",
+          "size_bytes": 5690945,
+          "source_version": "1.30.7",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/nginx-1.30.7/nginx-1.30.7-linux-amd64.tar.gz"
+        }
       }
     },
     "php": {
@@ -379,6 +426,53 @@
           "url": "https://github.com/devxdk/devxdk/releases/download/php-8.4.27/php-8.4.27-linux-amd64.tar.gz"
         }
       },
+      "8.4.28": {
+        "darwin/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "8.4",
+          "provider": "devxdk-php-spc",
+          "released_at": "2026-11-23",
+          "revoked": false,
+          "sha256": "3c1dbee9a75584b49d267b8b07033a3d3294242b683d8ed8ac1d04de646b80f8",
+          "size_bytes": 48879892,
+          "source_version": "8.4.28",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.4.28/php-8.4.28-darwin-amd64.tar.gz"
+        },
+        "darwin/arm64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "8.4",
+          "provider": "devxdk-php-spc",
+          "released_at": "2026-11-23",
+          "revoked": false,
+          "sha256": "631ec1a57a3259a45d88f180d06718d0f2beba571551d18fc70ad09d42dd9e37",
+          "size_bytes": 49248850,
+          "source_version": "8.4.28",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.4.28/php-8.4.28-darwin-arm64.tar.gz"
+        },
+        "linux/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "8.4",
+          "provider": "devxdk-php-spc",
+          "released_at": "2026-11-23",
+          "revoked": false,
+          "sha256": "abd1374dd2cfc785e4cd687093f337ee92950fcbe3663e0c16d9c74114f5d1d9",
+          "size_bytes": 47866866,
+          "source_version": "8.4.28",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.4.28/php-8.4.28-linux-amd64.tar.gz"
+        }
+      },
       "8.5.10": {
         "darwin/amd64": {
           "channel": "stable",
@@ -533,6 +627,53 @@
           "source_version": "8.5.12",
           "status": "active",
           "url": "https://github.com/devxdk/devxdk/releases/download/php-8.5.12/php-8.5.12-linux-amd64.tar.gz"
+        }
+      },
+      "8.5.13": {
+        "darwin/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "8.5",
+          "provider": "devxdk-php-spc",
+          "released_at": "2026-11-23",
+          "revoked": false,
+          "sha256": "a9c63e9de6053a27d8f1a95939322c19a814f7a23e087b570528b34db22741d4",
+          "size_bytes": 49682167,
+          "source_version": "8.5.13",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.5.13/php-8.5.13-darwin-amd64.tar.gz"
+        },
+        "darwin/arm64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "8.5",
+          "provider": "devxdk-php-spc",
+          "released_at": "2026-11-23",
+          "revoked": false,
+          "sha256": "58fa8ef85e115d856e001e340167c580d5e95d96f00edad90382855020c791f6",
+          "size_bytes": 50071776,
+          "source_version": "8.5.13",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.5.13/php-8.5.13-darwin-arm64.tar.gz"
+        },
+        "linux/amd64": {
+          "channel": "stable",
+          "epoch": 1,
+          "key": "1",
+          "kind": "built",
+          "line": "8.5",
+          "provider": "devxdk-php-spc",
+          "released_at": "2026-11-23",
+          "revoked": false,
+          "sha256": "3fb1879ff3dce5afc00c4c4fb8ccb251100284bd1edce0721eec10581e494959",
+          "size_bytes": 48562867,
+          "source_version": "8.5.13",
+          "status": "active",
+          "url": "https://github.com/devxdk/devxdk/releases/download/php-8.5.13/php-8.5.13-linux-amd64.tar.gz"
         }
       },
       "8.5.8": {
